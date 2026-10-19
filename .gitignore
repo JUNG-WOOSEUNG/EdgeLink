@@ -12,3 +12,6 @@ DerivedData/
 *.key
 ed25519*
 /build
+
+# 에이전트 작업 폴더
+/.claude/worktrees/
