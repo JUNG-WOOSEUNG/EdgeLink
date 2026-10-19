@@ -1081,33 +1081,36 @@ struct ArrangementView: View {
 struct PracticeStep: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var settings: AppSettings
+    /// 해본 미션 (InputRouter가 알려주면 자동 체크)
+    @State private var done: Set<PracticeMission> = []
+
+    enum PracticeMission { case go, back, hotkey }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: 32) {
                 VStack(alignment: .leading, spacing: 16) {
-                    // 모서리 전환(3단계 개발)이 들어오면 원래 문구로: "하나씩 해보면 자동으로 체크돼요. 이 창은 그대로 두고 해보세요."
                     StepHeader(title: "직접 넘어가볼까요?",
-                               message: "모서리 전환은 다음 업데이트에서 켜져요. 지금은 건너뛰기로 넘어가세요.")
+                               message: "하나씩 해보면 자동으로 체크돼요. 이 창은 그대로 두고 해보세요.")
                     VStack(spacing: 0) {
-                        mission(1, "아이폰으로 넘어가기", "\(placementLabel) 끝에서 커서를 꾹 밀어요")
+                        mission(1, .go, "아이폰으로 넘어가기", "\(placementLabel) 끝에서 커서를 꾹 밀어요")
                         Rectangle().fill(Color.lineSoft).frame(height: 1)
-                        mission(2, "Mac으로 돌아오기", "아이폰 화면 \(returnEdge) 끝으로 커서를 꾹 밀어요")
+                        mission(2, .back, "Mac으로 돌아오기", "아이폰 화면 \(returnEdge) 끝으로 커서를 꾹 밀어요")
                         Rectangle().fill(Color.lineSoft).frame(height: 1)
-                        mission(3, "단축키로 전환하기", "⌃⌥⌘Space를 눌러요. 어디서든 바로 넘어가요")
+                        mission(3, .hotkey, "단축키로 전환하기", "\(toggleKey)를 눌러요. 어디서든 바로 넘어가요")
                     }
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
                     GrayCard(padding: 0) {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("돌아오는 위치가 어긋나나요?").font(Typo.font(12, .bold))
-                                Text("전환이 켜지면 보정 도우미로 30초면 맞춰져요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                                Text(model.isConnected ? "보정 도우미로 30초면 맞춰져요." : "아이폰을 연결하면 쓸 수 있어요.")
+                                    .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                             }
                             Spacer()
-                            Button("보정 도우미") {}
+                            Button("보정 도우미") { model.present(.calibration) }
                                 .buttonStyle(PillButtonStyle(kind: .secondary, height: 32))
-                                .disabled(true)
-                                .help("아이폰 전환이 켜지면 쓸 수 있어요")
+                                .disabled(!model.isConnected)
                         }
                         .padding(.horizontal, 16).padding(.vertical, 10)
                     }
@@ -1124,11 +1127,23 @@ struct PracticeStep: View {
                     Button("건너뛰기") { model.complete(.practice) }.buttonStyle(TextLinkStyle(color: .textSecondary))
                     Button("다음") { model.complete(.practice) }
                         .buttonStyle(PillButtonStyle(height: 40))
-                        .disabled(true)
+                        .disabled(done.count < 3)
+                        .keyboardShortcut(.defaultAction)
+                }
+            }
+        }
+        .onReceive(model.router.practice) { event in
+            withAnimation(.easeOut(duration: 0.2)) {
+                switch event {
+                case .enteredByEdge: done.insert(.go)
+                case .returnedByEdge: done.insert(.back)
+                case .toggledByHotkey: done.insert(.hotkey)
                 }
             }
         }
     }
+
+    private var toggleKey: String { (settings.hotkeys[.toggleRemote] ?? Hotkey.defaults[.toggleRemote]!).display }
 
     private var current: Placement? { model.currentPlacement }
     private var placementLabel: String { current?.label ?? "모니터 오른쪽" }
@@ -1141,9 +1156,9 @@ struct PracticeStep: View {
         }
     }
 
-    private func mission(_ n: Int, _ title: String, _ hint: String) -> some View {
+    private func mission(_ n: Int, _ key: PracticeMission, _ title: String, _ hint: String) -> some View {
         HStack(spacing: 14) {
-            NumberDot(text: "\(n)", state: .todo, size: 26)
+            NumberDot(text: "\(n)", state: done.contains(key) ? .done : .todo, size: 26)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(Typo.font(14, .bold))
                 Text(hint).font(Typo.secondary).foregroundStyle(Color.textSecondary)
@@ -1240,7 +1255,11 @@ struct DoneStep: View {
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
-                BackButton(to: .practice)
+                HStack(spacing: 20) {
+                    BackButton(to: .practice)
+                    Button("제스처로 앱 전환기·홈 열기 설정 (선택) ›") { model.settingsWindow.showGestureSetup() }
+                        .buttonStyle(TextLinkStyle(color: .brandText))
+                }
             } trailing: {
                 Button("EdgeLink 사용하기") { model.finishOnboarding() }
                     .buttonStyle(PillButtonStyle(height: 40))
