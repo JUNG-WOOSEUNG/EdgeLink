@@ -14,9 +14,10 @@ cd EdgeLink
 claude --resume                       # 목록에서 EdgeLink 대화를 골라요
 ```
 
-- 대화 기록은 `.claude-session/`에 압축돼 있어요. 원래 PC 경로(`~/Workspace/EdgeLink`)는 이 PC 경로로 바꿔서 넣어요.
+- 대화 기록은 `.claude-session/`에 압축돼 있고, 이 프로젝트의 대화 메모리는 `.claude-memory/`에 읽을 수 있는 파일로 있어요. 복원 스크립트가 둘 다 넣어줘요(이미 있는 메모리 파일은 덮어쓰지 않음).
+- 대화 기록은 압축돼 있어요. 원래 PC 경로(`~/Workspace/EdgeLink`)는 이 PC 경로로 바꿔서 넣어요.
 - 이 PC에서 대화를 더 한 뒤 다시 옮기려면 `./scripts/save-claude-session.sh` 후 커밋·푸시하면 돼요.
-- 대화 기록에는 이메일, 기기 이름·블루투스 주소 등이 들어 있어요. **저장소를 공개로 바꾸기 전에는 `.claude-session/`을 지우세요.**
+- 대화 기록에는 이메일, 기기 이름·블루투스 주소 등이 들어 있어요. **저장소를 공개로 바꾸기 전에는 `.claude-session/`과 `.claude-memory/`를 지우세요.**
 
 ## 3. 빌드 환경
 

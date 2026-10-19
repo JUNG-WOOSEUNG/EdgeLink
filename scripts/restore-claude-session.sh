@@ -22,5 +22,13 @@ PY
   fi
 done
 [ -f .claude-session/sessions-extra.tar.gz ] && tar -xzf .claude-session/sessions-extra.tar.gz -C "$DST" --keep-old-files 2>/dev/null || true
+# 대화 메모리: 이 PC에 이미 있는 파일은 덮어쓰지 않는다 (MEMORY.md 색인은 없을 때만)
+if [ -d .claude-memory ]; then
+  mkdir -p "$DST/memory"
+  for m in .claude-memory/*.md; do
+    [ -f "$DST/memory/$(basename "$m")" ] || cp "$m" "$DST/memory/"
+  done
+  echo "메모리를 넣었어요: $DST/memory"
+fi
 echo "되돌려 넣었어요: $DST"
 echo "이제 이 폴더에서 claude --resume 을 실행하세요."

@@ -11,8 +11,14 @@ OUT=.claude-session
 rm -rf "$OUT"; mkdir -p "$OUT"
 # 대화 본문(세션마다 .jsonl 하나)
 for f in "$SRC"/*.jsonl; do gzip -9 -c "$f" > "$OUT/$(basename "$f").gz"; done
-# 하위 에이전트 기록, 큰 도구 결과, 메모리
-tar -czf "$OUT/sessions-extra.tar.gz" -C "$SRC" $(cd "$SRC" && ls -d */ 2>/dev/null | sed 's#/$##')
+# 하위 에이전트 기록, 큰 도구 결과 (메모리는 아래에서 따로)
+tar -czf "$OUT/sessions-extra.tar.gz" -C "$SRC" $(cd "$SRC" && ls -d */ 2>/dev/null | sed 's#/$##' | grep -v '^memory$')
+# 이 프로젝트의 대화 메모리: 읽을 수 있는 파일 그대로 .claude-memory/에
+if [ -d "$SRC/memory" ]; then
+  rm -rf .claude-memory; mkdir -p .claude-memory
+  cp "$SRC"/memory/*.md .claude-memory/ 2>/dev/null || true
+  echo "메모리: $(ls .claude-memory | wc -l | tr -d ' ')개 파일 → .claude-memory/"
+fi
 echo "원래 경로: $(pwd)" > "$OUT/README.txt"
 echo "저장 시각: $(date '+%Y-%m-%d %H:%M')" >> "$OUT/README.txt"
 du -sh "$OUT"/*
