@@ -1180,28 +1180,34 @@ struct PracticeStep: View {
 }
 
 struct PushArt: View {
-    /// 아이폰이 왼쪽에 있으면 그림을 좌우로 뒤집는다
+    /// 아이폰이 왼쪽에 있으면 아이폰·파란 구간·화살표만 왼쪽으로 옮긴다 (맥 화면은 뒤집지 않음)
     var mirrored = false
 
     var body: some View {
+        // 왼쪽 배치: 아이폰 0, 맥 80 / 오른쪽 배치: 맥 0, 아이폰 144
+        let macX: CGFloat = mirrored ? 80 : 0
+        let gateX: CGFloat = mirrored ? 68 : 108
+        let phoneX: CGFloat = mirrored ? 0 : 144
+        let lineX: CGFloat = mirrored ? 98 : 64
+        let headX: CGFloat = mirrored ? 90 : 96
         VStack(spacing: 10) {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 8).fill(Color(hex: 0x1A1A1A))
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.deviceOutline, lineWidth: 1))
                     .overlay(MacScreenArt(notch: false).clipShape(RoundedRectangle(cornerRadius: 4)).padding(5))
-                    .frame(width: 120, height: 140).offset(y: 30)
+                    .frame(width: 120, height: 140).offset(x: macX, y: 30)
                 Capsule().fill(Color.brand.opacity(0.25))
                     .overlay(Capsule().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
                     .shadow(color: Color.brand.opacity(0.55), radius: 7)
-                    .frame(width: 24, height: 80).offset(x: 108, y: 60)
-                Rectangle().fill(Color.brand).frame(width: 38, height: 2).offset(x: 64, y: 96)
-                Image(systemName: "arrowtriangle.right.fill").font(.system(size: 10)).foregroundStyle(Color.brand)
-                    .offset(x: 96, y: 90)
+                    .frame(width: 24, height: 80).offset(x: gateX, y: 60)
+                Rectangle().fill(Color.brand).frame(width: 38, height: 2).offset(x: lineX, y: 96)
+                Image(systemName: mirrored ? "arrowtriangle.left.fill" : "arrowtriangle.right.fill")
+                    .font(.system(size: 10)).foregroundStyle(Color.brand)
+                    .offset(x: headX, y: 90)
                 PhoneArt(width: 56, height: 112, bezel: 3) { PhoneScreenArt() }
-                    .offset(x: 144, y: 44)
+                    .offset(x: phoneX, y: 44)
             }
             .frame(width: 200, height: 200, alignment: .topLeading)
-            .scaleEffect(x: mirrored ? -1 : 1, y: 1)
             Text("파란 구간에서 바깥쪽으로\n꾹 밀어보세요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 .multilineTextAlignment(.center).lineSpacing(3)
         }
@@ -1248,7 +1254,7 @@ struct DoneStep: View {
                 HStack(spacing: 16) {
                     HStack(spacing: 10) {
                         MenuBarMiniArt()
-                        Text("설정은 메뉴바의 EdgeLink 아이콘에서 언제든 바꿀 수 있어요.")
+                        Text("설정은 메뉴바 아이콘에서 바꿀 수 있어요.")
                             .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     }
                     Spacer()
