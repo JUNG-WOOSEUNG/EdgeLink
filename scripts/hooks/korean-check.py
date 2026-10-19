@@ -3,13 +3,29 @@
 코드 블록, 인라인 코드, 링크 주소는 세지 않는다."""
 import json, re, sys
 
+def is_user_prompt(e):
+    """도구 결과가 아니라 사용자가 직접 보낸 메시지인지"""
+    if e.get("type") != "user":
+        return False
+    c = (e.get("message") or {}).get("content")
+    if isinstance(c, str):
+        return bool(c.strip())
+    if isinstance(c, list):
+        return any(isinstance(x, dict) and x.get("type") == "text" for x in c)
+    return False
+
 def last_assistant_text(path):
+    """사용자의 마지막 메시지 뒤에 쓴 답변만 본다.
+    훅이 도는 시점엔 방금 끝낸 답변이 아직 파일에 없을 수 있어서, 그 전 답변으로 잘못 판단하지 않게."""
     text = ""
     with open(path, encoding="utf-8") as f:
         for line in f:
             try:
                 e = json.loads(line)
             except Exception:
+                continue
+            if is_user_prompt(e):
+                text = ""
                 continue
             if e.get("type") != "assistant":
                 continue
