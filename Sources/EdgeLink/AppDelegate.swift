@@ -175,6 +175,8 @@ final class AppModel: NSObject, ObservableObject {
 
     func launch() {
         if Snapshot.directory != nil { return Snapshot.run(model: self) }
+        // 설정 창의 ⌘, 키 감시가 첫 실행부터 동작하게 미리 만든다
+        _ = settingsWindow
         // 개발용: 온보딩을 마쳤어도 창을 바로 연다
         if let v = ProcessInfo.processInfo.environment["EDGELINK_SHOW_ONBOARDING"] {
             openOnboarding(at: Int(v).flatMap(OnboardingStep.init(rawValue:)) ?? .layout)
@@ -212,6 +214,8 @@ final class AppModel: NSObject, ObservableObject {
 
     /// 블루투스는 온보딩 2단계(권한) 전에는 쓰지 않는다. 설명 없이 시스템 창이 먼저 뜨지 않게.
     func startBluetoothIfAllowed() {
+        // 화면 캡처 중엔 블루투스를 쓰지 않는다 (실제 아이폰에 연결을 시도했었음)
+        guard Snapshot.directory == nil else { return }
         guard !bluetoothStarted, permissions.bluetooth == .granted else { return }
         guard settings.onboardingDone || settings.onboardingStep >= OnboardingStep.permissions.rawValue else { return }
         do {
