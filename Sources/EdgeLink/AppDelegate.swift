@@ -63,6 +63,8 @@ final class AppModel: NSObject, ObservableObject {
 
     @Published private(set) var connection: ConnectionPhase = .idle
     @Published private(set) var connectingAddress: String?
+    /// 마지막으로 끊긴 시각 (팝오버 "3분 전에 끊겼어요")
+    @Published private(set) var disconnectedAt: Date?
     @Published var onboardingPage: OnboardingStep = .welcome {
         didSet { if onboardingPage != oldValue { enforceOnboardingGates() } }
     }
@@ -465,10 +467,12 @@ extension AppModel: BluetoothHIDDelegate {
             }
             hid.defaultAddress = address
             connectingAddress = nil
+            disconnectedAt = nil
             connection = .connected(name: name)
         case let .disconnected(reason):
             stopCircleIfNeeded()
             router.returnToMac(.disconnected)
+            if reason != .user { disconnectedAt = Date() }
             switch reason {
             case .user: connection = .idle
             case let .openFailed(stage, code):
@@ -552,12 +556,15 @@ struct MenuBarIcon: View {
         return false
     }
 
+    /// 연결 안 됨 · 연결됨(Mac 조작 중) · 아이폰 조작 중 (설계 문서 › 메뉴바 아이콘). 경고는 주황 점.
     private var symbol: String {
-        model.isConnected ? "iphone" : "iphone.slash"
+        guard model.isConnected else { return "iphone.slash" }
+        return model.controlMode == .mac ? "iphone" : "iphone.radiowaves.left.and.right"
     }
 
     private var label: String {
         if warning { return "EdgeLink · 문제 있음" }
+        if model.isConnected, model.controlMode != .mac { return "EdgeLink · 아이폰 조작 중" }
         return model.isConnected ? "EdgeLink · 연결됨" : "EdgeLink · 연결 안 됨"
     }
 

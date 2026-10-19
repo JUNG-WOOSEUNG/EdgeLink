@@ -325,9 +325,9 @@ struct ResetPairingView: View {
             Text("페어링을 초기화할까요?").font(Typo.font(16, .bold))
             VStack(alignment: .leading, spacing: 8) {
                 (Text("지워지는 것: ").font(Typo.bodyBold)
-                    + Text("기본 기기(\(settings.lastDeviceName ?? "없음")), 아이폰을 놓은 자리, 버튼 등록 기록, 처음 설정 진행"))
+                    + Text("기본 기기(\(settings.lastDeviceName ?? "없음")), 기기별 모델·방향, 버튼 등록 기록"))
                     .fixedSize(horizontal: false, vertical: true)
-                (Text("남는 것: ").font(Typo.bodyBold) + Text("단축키, 보정값, 기기 모델·방향 등 다른 설정"))
+                (Text("남는 것: ").font(Typo.bodyBold) + Text("단축키, 배치, 보정값 등 다른 설정"))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .font(Typo.body).lineSpacing(4)

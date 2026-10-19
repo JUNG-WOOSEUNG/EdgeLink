@@ -35,7 +35,8 @@ enum ReturnReason: Equatable {
     /// 사용자에게 보여줄 알림 (nil이면 알리지 않음)
     var toast: String? {
         switch self {
-        case .secureInput: return "비밀번호 입력이 시작돼서 돌아왔어요"
+        case .secureInput: return "Mac에서 비밀번호 입력이 시작돼서 Mac으로 돌아왔어요"
+        case .screenLocked: return "화면이 잠겨서 Mac으로 돌아왔어요"
         case .tapDisabled, .transportStalled: return "잠깐 멈춰서 Mac으로 돌아왔어요"
         case .disconnected: return "아이폰 연결이 끊겨서 돌아왔어요"
         case .permissionLost: return "권한이 꺼져서 돌아왔어요"

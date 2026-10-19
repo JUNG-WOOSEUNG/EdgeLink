@@ -136,11 +136,11 @@ final class AppSettings: ObservableObject {
     var unitsPerPoint: Double { unitsPerPointValue }
     var sensitivity: Double { sensitivityValue }
 
-    /// 페어링 초기화: 기기 정보와 온보딩 진행을 지운다 (설정값은 유지)
+    /// 페어링 초기화 (캔버스 4-4): 기본 기기, 기기별 모델·방향, 버튼 등록 기록을 지운다. 단축키·배치·보정값은 남긴다.
     func resetPairing() {
         lastDeviceAddress = nil
         lastDeviceName = nil
-        phoneLayout = nil
+        profile = DeviceProfile()
         gestureButtonsRegistered = false
         resetOnboarding()
     }

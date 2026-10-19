@@ -91,7 +91,6 @@ extension Color {
     static let segmentOn = Color(light: 0xFFFFFF, dark: 0x48484A)
     /// 배치 미리보기 모니터
     static let screenFill = Color(light: 0xE3F2FB, dark: 0x1F3A4D)
-    static let switchOff = Color(light: 0xCCCCCC, dark: 0x48484A)
     static let pillBorder = Color(light: 0xCCCCCC, dark: 0x545458)
 }
 
@@ -670,9 +669,18 @@ struct DisconnectedCard: View {
         switch model.connection {
         case .connecting: return "기본 기기 · 연결하는 중"
         case .pairing: return "기본 기기 · 페어링하는 중"
-        case .failed: return "기본 기기 · 연결 실패"
-        default: return "기본 기기 · 연결 끊김"
+        case .failed: return "기본 기기 · 연결 실패" + ago
+        default: return "기본 기기 · 연결 끊김" + ago
         }
+    }
+
+    /// " · 3분 전에 끊겼어요" (끊긴 시각을 알 때만)
+    private var ago: String {
+        guard let t = model.disconnectedAt else { return "" }
+        let m = Int(Date().timeIntervalSince(t) / 60)
+        if m < 1 { return " · 방금 끊겼어요" }
+        if m < 60 { return " · \(m)분 전에 끊겼어요" }
+        return " · \(m / 60)시간 전에 끊겼어요"
     }
 
     private var buttonTitle: String {

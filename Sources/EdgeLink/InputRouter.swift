@@ -938,7 +938,7 @@ final class InputRouter {
         }
         st.mode = .calibrating
         st.push?.reset()
-        st.calibration = CalibrationSession()
+        st.calibration = RouterCalibration()
         // 아이폰 포인터를 왼쪽 위로
         startPlanLocked(EntryPlan.cornerMoves(dx: -1, dy: -1))
         let gen = st.generation
@@ -962,7 +962,7 @@ final class InputRouter {
         lock.unlock()
     }
 
-    private func finishCalibrationLocked(_ cal: CalibrationSession) {
+    private func finishCalibrationLocked(_ cal: RouterCalibration) {
         let c = st.config
         switch Calibration.compute(dx: Double(cal.dx), dy: Double(cal.dy), width: c.phoneWidth, height: c.phoneHeight) {
         case let .success(v): st.calibration?.outcome = .finished(unitsPerPoint: v)
@@ -1184,7 +1184,7 @@ private struct PhoneSession {
     }
 }
 
-private struct CalibrationSession {
+private struct RouterCalibration {
     var ready = false
     var dx = 0
     var dy = 0
@@ -1232,7 +1232,7 @@ private struct TapState {
     var plan: [HIDMove] = []
     var planIndex = 0
     var planTimer: DispatchSourceTimer?
-    var calibration: CalibrationSession?
+    var calibration: RouterCalibration?
     var movedScheduled = false
 
     // 클립보드 보내기
