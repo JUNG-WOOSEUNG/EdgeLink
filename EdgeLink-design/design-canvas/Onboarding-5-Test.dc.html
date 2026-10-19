@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 시작하기 · 연결 확인</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 720px; height: 560px; box-sizing: border-box; background: #FFFFFF; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 12px; overflow: hidden">
+  <div style="height: 44px; display: flex; align-items: center; padding: 0 16px; gap: 8px" aria-hidden="true">
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FF5F57"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FEBC2E"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #D9D9D9"></span>
+  </div>
+  <div style="display: flex; justify-content: center; gap: 8px; padding: 0 0 16px">
+    <sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: {{s.color}}">
+        <span style="{{s.dot}}">{{s.mark}}</span>{{s.label}}<span style="{{s.line}}"></span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="flex-grow: 1; padding: 8px 48px 0; display: flex; gap: 40px; align-items: flex-start">
+    <div style="width: 150px; height: 290px; flex-shrink: 0; border-radius: 26px; background: #1A1A1A; padding: 7px; box-sizing: border-box; position: relative" aria-hidden="true">
+      <div style="width: 100%; height: 100%; border-radius: 20px; background: linear-gradient(160deg, #2B3A4A, #12161B); position: relative">
+        <div style="position: absolute; left: 33px; top: 83px; width: 70px; height: 70px; border-radius: 9999px; border: 1.5px dashed rgba(255,255,255,0.45)"></div>
+        <div style="position: absolute; left: 92px; top: 86px; width: 16px; height: 16px; border-radius: 9999px; background: rgba(255,255,255,0.85); border: 2px solid #FFFFFF; box-sizing: border-box"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 30px; text-align: center; font-size: 10px; color: rgba(255,255,255,0.8)">커서가 원을 그려요</div>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 800">아이폰 화면을 보세요</h1>
+        <p style="margin: 0; font-size: 13px; color: #4D4D4D; line-height: 1.4">EdgeLink가 아이폰 커서를 원 모양으로 움직이고 있어요. 커서가 보이나요?</p>
+      </div>
+
+      <sc-if value="{{asking}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; gap: 8px">
+          <a href="Onboarding-6-Layout.dc.html" style="height: 40px; padding: 0 22px; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; display: flex; align-items: center">네, 움직여요</a>
+          <button onClick="{{trouble}}" style="height: 40px; padding: 0 22px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 14px; font-weight: 600">안 보여요</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{troubled}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 8px; border: 1px solid #E5E5E5">
+          <div style="font-size: 13px; font-weight: 700">이것부터 확인해보세요</div>
+          <sc-for list="{{checks}}" as="c" hint-placeholder-count="3">
+            <div style="display: flex; gap: 10px; font-size: 12px; line-height: 1.4">
+              <span style="width: 18px; height: 18px; flex-shrink: 0; border-radius: 9999px; background: #F0F0F2; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center">{{c.n}}</span>
+              <span>{{c.text}}</span>
+            </div>
+          </sc-for>
+          <div style="display: flex; gap: 8px; margin-top: 4px">
+            <button onClick="{{retry}}" style="height: 36px; padding: 0 18px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">다시 움직이기</button>
+            <a href="Onboarding-4-AssistiveTouch.dc.html" style="height: 36px; padding: 0 18px; border-radius: 20px; border: 1px solid #CCCCCC; color: #1A1A1A; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center">AssistiveTouch 안내 다시 보기</a>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 8px; background: #F5F5F7">
+        <div style="font-size: 12px; font-weight: 700">키보드도 시험해볼까요? (선택)</div>
+        <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">아이폰에서 메모 앱을 열고 입력 칸을 누른 뒤 버튼을 누르면 ‘EdgeLink’가 입력돼요.</div>
+        <button style="align-self: flex-start; height: 32px; padding: 0 14px; border-radius: 20px; border: 1px solid {{accent}}; background: #FFFFFF; color: #0077B6; font-family: inherit; font-size: 12px; font-weight: 700">아이폰에 입력해보기</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 72px; border-top: 1px solid #E5E5E5; display: flex; align-items: center; justify-content: space-between; padding: 0 24px">
+    <a href="Onboarding-4-AssistiveTouch.dc.html" style="font-size: 13px; font-weight: 600; color: #1A1A1A; text-decoration: none">이전</a>
+    <span style="font-size: 12px; color: #4D4D4D">커서가 보이면 다음으로 넘어가요</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0097E4","options":["#0097E4","#094B7B","#1A1A1A"]},"$preview":{"width":720,"height":560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { trouble: false };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#0097E4';
+    const stepDefs = ['Mac 권한', '아이폰 연결', '배치', '연습'];
+    const current = 1;
+    const steps = stepDefs.map((label, i) => {
+      const done = i < current, on = i === current;
+      return {
+        label, mark: done ? '✓' : String(i + 1),
+        color: on ? '#1A1A1A' : '#4D4D4D',
+        dot: 'width: 20px; height: 20px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; ' +
+          (done ? 'background: #28A745; color: #FFFFFF' : on ? 'background: #0077B6; color: #FFFFFF' : 'border: 1px solid #8C8C8C; color: #4D4D4D; box-sizing: border-box'),
+        line: i < stepDefs.length - 1 ? 'width: 28px; height: 1px; background: #CCCCCC; margin-left: 4px' : 'display: none'
+      };
+    });
+    return {
+      accent, steps,
+      asking: !this.state.trouble, troubled: this.state.trouble,
+      trouble: () => this.setState({ trouble: true }),
+      retry: () => this.setState({ trouble: false }),
+      checks: [
+        { n: 1, text: '아이폰 잠금을 풀고 홈 화면을 띄워두세요.' },
+        { n: 2, text: 'AssistiveTouch가 켜져 있는지 확인하세요. 화면에 회색 동그라미 버튼이 보이면 켜진 거예요.' },
+        { n: 3, text: '아이폰 설정 › Bluetooth에서 이 Mac이 ‘연결됨’인지 확인하세요.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

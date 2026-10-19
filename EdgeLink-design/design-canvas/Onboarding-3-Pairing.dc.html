@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 시작하기 · 페어링</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 720px; height: 560px; box-sizing: border-box; background: #FFFFFF; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 12px; overflow: hidden">
+  <div style="height: 44px; display: flex; align-items: center; padding: 0 16px; gap: 8px" aria-hidden="true">
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FF5F57"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FEBC2E"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #D9D9D9"></span>
+  </div>
+  <div style="display: flex; justify-content: center; gap: 8px; padding: 0 0 16px">
+    <sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: {{s.color}}">
+        <span style="{{s.dot}}">{{s.mark}}</span>{{s.label}}<span style="{{s.line}}"></span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="flex-grow: 1; padding: 8px 48px 0; display: flex; gap: 32px">
+    <div style="display: flex; flex-direction: column; gap: 16px; width: 260px; flex-shrink: 0">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 800; line-height: 1.25">아이폰과 블루투스로 연결해요</h1>
+      <p style="margin: 0; font-size: 13px; color: #4D4D4D; line-height: 1.4">아이폰에서 <span style="font-weight: 700; color: #1A1A1A">설정 › Bluetooth</span> 화면을 열어두면 오른쪽 목록에 나타나요.</p>
+      <div style="align-self: center; width: 132px; height: 232px; border-radius: 22px; background: #1A1A1A; padding: 6px; box-sizing: border-box" aria-hidden="true">
+        <div style="width: 100%; height: 100%; border-radius: 17px; background: #F2F2F7; padding: 22px 10px 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px">
+          <div style="font-size: 13px; font-weight: 800">Bluetooth</div>
+          <div style="border-radius: 8px; background: #FFFFFF; padding: 7px 8px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; font-weight: 600">Bluetooth<span style="width: 22px; height: 13px; border-radius: 9999px; background: #34C759; display: flex; justify-content: flex-end; padding: 2px; box-sizing: border-box"><span style="width: 9px; height: 9px; border-radius: 9999px; background: #FFFFFF"></span></span></div>
+          <div style="font-size: 8px; color: #6E6E73">이 화면을 열어두세요</div>
+          <sc-if value="{{confirming}}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top: 6px; border-radius: 10px; background: #FFFFFF; padding: 8px; display: flex; flex-direction: column; gap: 4px; text-align: center; box-shadow: 0 4px 16px rgba(51,51,51,.24)">
+              <div style="font-size: 9px; font-weight: 700">블루투스 페어링 요청</div>
+              <div style="font-size: 12px; font-weight: 800; letter-spacing: 0">482 913</div>
+              <div style="font-size: 9px; font-weight: 700; color: #0077B6">페어링</div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #4D4D4D">
+        <span style="width: 12px; height: 12px; border-radius: 9999px; border: 2px solid {{accent}}; border-right-color: transparent; box-sizing: border-box"></span>
+        근처 기기 찾는 중
+      </div>
+      <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 60px; border-bottom: 1px solid #F0F0F0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"></rect></svg>
+          <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+            <div style="font-size: 14px; font-weight: 700">iPhone 15 Pro</div>
+            <div style="font-size: 12px; color: {{statusColor}}">{{statusText}}</div>
+          </div>
+          <sc-if value="{{idle}}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{pair}}" style="height: 34px; padding: 0 18px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">연결</button>
+          </sc-if>
+          <sc-if value="{{confirming}}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{confirm}}" style="height: 34px; padding: 0 18px; border: 1px solid {{accent}}; border-radius: 20px; background: #FFFFFF; color: #0077B6; font-family: inherit; font-size: 13px; font-weight: 700">번호가 같아요</button>
+          </sc-if>
+          <sc-if value="{{done}}" hint-placeholder-val="{{ false }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E7E34" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+          </sc-if>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 60px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8C8C8C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2.5"></rect></svg>
+          <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+            <div style="font-size: 14px; font-weight: 700">iPad Air</div>
+            <div style="font-size: 12px; color: #4D4D4D">근처에 있음</div>
+          </div>
+          <button style="height: 34px; padding: 0 18px; border: 1px solid #CCCCCC; border-radius: 20px; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 13px; font-weight: 600">연결</button>
+        </div>
+      </div>
+
+      <sc-if value="{{confirming}}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 12px 16px; border-radius: 8px; background: #F2FAFE; border: 1px solid #B3DDF5; display: flex; flex-direction: column; gap: 4px">
+          <div style="font-size: 13px; font-weight: 700; color: #094B7B">두 화면의 번호가 같은지 확인하세요</div>
+          <div style="font-size: 12px; line-height: 1.4">Mac에 <span style="font-weight: 800">482 913</span>이 보여요. 아이폰에도 같은 번호가 뜨면 아이폰에서 ‘페어링’을 누르세요.</div>
+        </div>
+      </sc-if>
+
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px">
+        <div style="font-size: 12px; font-weight: 700">목록에 아이폰이 없나요?</div>
+        <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">아이폰 블루투스가 켜져 있고 설정 › Bluetooth 화면이 열려 있는지 확인하세요. 예전에 연결했던 Mac이라면 아이폰에서 이 Mac을 ‘이 기기 지우기’ 한 뒤 다시 시도하세요. 다른 Mac에서 EdgeLink를 쓰고 있다면 그쪽 연결을 먼저 끊어주세요. 아이패드는 유니버설 컨트롤·Sidecar와 같이 쓰면 겹칠 수 있어요.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 72px; border-top: 1px solid #E5E5E5; display: flex; align-items: center; justify-content: space-between; padding: 0 24px">
+    <a href="Onboarding-2-Permissions.dc.html" style="font-size: 13px; font-weight: 600; color: #1A1A1A; text-decoration: none">이전</a>
+    <a href="Onboarding-4-AssistiveTouch.dc.html" style="{{nextStyle}}">{{nextLabel}}</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0097E4","options":["#0097E4","#094B7B","#1A1A1A"]},"$preview":{"width":720,"height":560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { phase: 'idle' };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#0097E4';
+    const ph = this.state.phase;
+    const stepDefs = ['Mac 권한', '아이폰 연결', '배치', '연습'];
+    const current = 1;
+    const steps = stepDefs.map((label, i) => {
+      const done = i < current, on = i === current;
+      return {
+        label, mark: done ? '✓' : String(i + 1),
+        color: on ? '#1A1A1A' : '#4D4D4D',
+        dot: 'width: 20px; height: 20px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; ' +
+          (done ? 'background: #28A745; color: #FFFFFF' : on ? 'background: #0077B6; color: #FFFFFF' : 'border: 1px solid #8C8C8C; color: #4D4D4D; box-sizing: border-box'),
+        line: i < stepDefs.length - 1 ? 'width: 28px; height: 1px; background: #CCCCCC; margin-left: 4px' : 'display: none'
+      };
+    });
+    const text = { idle: '근처에 있음', confirming: '페어링 확인 중…', done: '연결됨 · 기본 기기로 저장했어요' };
+    const color = { idle: '#4D4D4D', confirming: '#0077B6', done: '#1E7E34' };
+    const ok = ph === 'done';
+    return {
+      accent, steps,
+      idle: ph === 'idle', confirming: ph === 'confirming', done: ok,
+      statusText: text[ph], statusColor: color[ph],
+      pair: () => this.setState({ phase: 'confirming' }),
+      confirm: () => this.setState({ phase: 'done' }),
+      nextLabel: ok ? '다음' : '연결하면 넘어가요',
+      nextStyle: 'height: 40px; padding: 0 28px; border-radius: 20px; font-size: 14px; font-weight: 700; text-decoration: none; display: flex; align-items: center; ' +
+        (ok ? 'background: #0077B6; color: #FFFFFF' : 'background: #E5E5E5; color: #4D4D4D; pointer-events: none')
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 시작하기 · 완료</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 720px; height: 560px; box-sizing: border-box; background: #FFFFFF; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 12px; overflow: hidden">
+  <div style="height: 44px; display: flex; align-items: center; padding: 0 16px; gap: 8px" aria-hidden="true">
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FF5F57"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FEBC2E"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #D9D9D9"></span>
+  </div>
+
+  <div style="flex-grow: 1; padding: 8px 64px 0; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; align-items: center; gap: 16px">
+      <div style="width: 48px; height: 48px; border-radius: 9999px; background: #28A745; display: flex; align-items: center; justify-content: center">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 800">준비 끝났어요</h1>
+        <p style="margin: 0; font-size: 13px; color: #4D4D4D">이제 커서를 밀기만 하면 아이폰으로 넘어가요.</p>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 8px; border: 1px solid #E5E5E5">
+        <div style="font-size: 11px; color: #4D4D4D">권한</div>
+        <div style="font-size: 13px; font-weight: 700">3가지 모두 허용</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 8px; border: 1px solid #E5E5E5">
+        <div style="font-size: 11px; color: #4D4D4D">기기</div>
+        <div style="font-size: 13px; font-weight: 700">iPhone 15 Pro</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 8px; border: 1px solid #E5E5E5">
+        <div style="font-size: 11px; color: #4D4D4D">위치</div>
+        <div style="font-size: 13px; font-weight: 700">LG UltraFine 오른쪽</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">기억해두면 좋은 단축키</div>
+      <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px; padding: 0 16px">
+        <div style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; border-bottom: 1px solid #F0F0F0; font-size: 13px"><span>Mac ↔ 아이폰 전환</span><span style="padding: 3px 8px; border-radius: 6px; background: #F0F0F2; font-weight: 700">⌃⌥⌘Space</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; border-bottom: 1px solid #F0F0F0; font-size: 13px"><span>클립보드 보내기</span><span style="padding: 3px 8px; border-radius: 6px; background: #F0F0F2; font-weight: 700">⌃⌥⌘V</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; font-size: 13px"><span>모서리 전환 켜기/끄기</span><span style="padding: 3px 8px; border-radius: 6px; background: #F0F0F2; font-weight: 700">⌃⌥⌘E</span></div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 10px; flex-grow: 1">
+        <div style="height: 26px; padding: 0 10px; border-radius: 6px; background: #F0F0F2; display: flex; align-items: center; gap: 10px" aria-hidden="true">
+          <span style="width: 14px; height: 8px; border-radius: 2px; background: #B3B3B3"></span>
+          <span style="width: 18px; height: 18px; border-radius: 4px; background: {{accent}}; display: flex; align-items: center; justify-content: center"><span style="width: 6px; height: 11px; border-radius: 2px; border: 1.5px solid #FFFFFF; box-sizing: border-box"></span></span>
+          <span style="width: 14px; height: 8px; border-radius: 2px; background: #B3B3B3"></span>
+        </div>
+        <span style="font-size: 12px; color: #4D4D4D; line-height: 1.4">설정은 메뉴바의 EdgeLink 아이콘에서 언제든 바꿀 수 있어요.</span>
+      </div>
+      <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600">
+        <button onClick="{{flip}}" aria-pressed="{{loginOn}}" aria-label="로그인할 때 자동 실행" style="{{track}}"><span style="width: 20px; height: 20px; border-radius: 9999px; background: #FFFFFF; box-shadow: 0 2px 8px rgba(51,51,51,.16)"></span></button>
+        로그인할 때 자동 실행
+      </label>
+    </div>
+  </div>
+
+  <div style="height: 72px; border-top: 1px solid #E5E5E5; display: flex; align-items: center; justify-content: space-between; padding: 0 24px">
+    <a href="GestureSetup.dc.html" style="font-size: 13px; font-weight: 600; text-decoration: none">제스처로 앱 전환기·홈 열기 설정 (선택) &gt;</a>
+    <a href="Main.dc.html" style="height: 40px; padding: 0 28px; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; display: flex; align-items: center">EdgeLink 사용하기</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0097E4","options":["#0097E4","#094B7B","#1A1A1A"]},"$preview":{"width":720,"height":560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { login: true };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#0097E4';
+    const on = this.state.login;
+    return {
+      accent, loginOn: on ? 'true' : 'false',
+      flip: () => this.setState({ login: !on }),
+      track: 'width: 40px; height: 24px; flex-shrink: 0; border: 0; padding: 2px; border-radius: 9999px; display: flex; ' +
+        (on ? 'background: ' + accent + '; justify-content: flex-end' : 'background: #CCCCCC; justify-content: flex-start')
+    };
+  }
+}
+</script>
+</body>
+</html>

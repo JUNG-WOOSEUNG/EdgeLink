@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 시작하기 · 배치</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 720px; height: 560px; box-sizing: border-box; background: #FFFFFF; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 12px; overflow: hidden">
+  <div style="height: 44px; display: flex; align-items: center; padding: 0 16px; gap: 8px" aria-hidden="true">
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FF5F57"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FEBC2E"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #D9D9D9"></span>
+  </div>
+  <div style="display: flex; justify-content: center; gap: 8px; padding: 0 0 16px">
+    <sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: {{s.color}}">
+        <span style="{{s.dot}}">{{s.mark}}</span>{{s.label}}<span style="{{s.line}}"></span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="flex-grow: 1; padding: 0 48px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 800">아이폰을 어디에 두셨나요?</h1>
+      <p style="margin: 0; font-size: 13px; color: #4D4D4D">실제로 놓은 위치를 골라주세요. 배치도에서 아이폰을 끌어서 옮길 수도 있어요.</p>
+    </div>
+
+    <div style="position: relative; height: 230px; border-radius: 8px; background: #F5F5F7; border: 1px solid #E5E5E5; overflow: hidden">
+      <div style="position: absolute; left: 100px; top: 90px; width: 150px; height: 96px; box-sizing: border-box; border-radius: 5px; background: #E3F2FB; border: 1px solid #8C8C8C; display: flex; flex-direction: column; overflow: hidden">
+        <div style="height: 5px; background: #4D4D4D"></div>
+        <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">MacBook Pro</div>
+      </div>
+      <div style="position: absolute; left: 250px; top: 30px; width: 230px; height: 130px; box-sizing: border-box; border-radius: 5px; background: #E3F2FB; border: 1px solid #8C8C8C; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">LG UltraFine</div>
+      <div style="{{gateStyle}}"></div>
+      <div style="{{phoneStyle}}"><span style="width: 14px; height: 4px; border-radius: 9999px; background: #000000"></span></div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 8px">
+      <sc-for list="{{options}}" as="o" hint-placeholder-count="4">
+        <button onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="{{o.style}}">{{o.label}}</button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{conflict}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; gap: 10px; padding: 10px 14px; border-radius: 8px; background: #FFF6E0; border: 1px solid #FFC107; font-size: 12px; color: #5C3900; line-height: 1.4">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M12 3l10 18H2z"></path><path d="M12 10v5M12 18h.01"></path></svg>
+        <span><span style="font-weight: 700">Dock과 같은 쪽이에요.</span> 조금 더 길게 밀어야 넘어가요. Dock을 옆으로 옮기면 더 편해요.</span>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; align-items: center; gap: 12px; font-size: 13px">
+      <label for="om" style="color: #4D4D4D">기기</label>
+      <select id="om" style="height: 32px; min-width: 200px; padding: 0 8px; border-radius: 6px; border: 1px solid #CCCCCC; background: #FFFFFF; font-family: inherit; font-size: 13px; color: #1A1A1A"><option>iPhone</option><option>iPhone mini</option><option>iPhone Plus·Pro Max</option><option>iPad</option><option>iPad Pro 13</option></select>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F0F0F2; border-radius: 10px; width: 150px">
+        <button onClick="{{pickPortrait}}" style="{{portraitStyle}}">세로</button>
+        <button onClick="{{pickLandscape}}" style="{{landscapeStyle}}">가로</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 72px; border-top: 1px solid #E5E5E5; display: flex; align-items: center; justify-content: space-between; padding: 0 24px">
+    <a href="Onboarding-5-Test.dc.html" style="font-size: 13px; font-weight: 600; color: #1A1A1A; text-decoration: none">이전</a>
+    <a href="Onboarding-7-Practice.dc.html" style="height: 40px; padding: 0 28px; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; display: flex; align-items: center">다음</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0097E4","options":["#0097E4","#094B7B","#1A1A1A"]},"$preview":{"width":720,"height":560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { place: 'lg-right', landscape: false };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#0097E4';
+    const stepDefs = ['Mac 권한', '아이폰 연결', '배치', '연습'];
+    const current = 2;
+    const steps = stepDefs.map((label, i) => {
+      const done = i < current, on = i === current;
+      return {
+        label, mark: done ? '✓' : String(i + 1),
+        color: on ? '#1A1A1A' : '#4D4D4D',
+        dot: 'width: 20px; height: 20px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; ' +
+          (done ? 'background: #28A745; color: #FFFFFF' : on ? 'background: #0077B6; color: #FFFFFF' : 'border: 1px solid #8C8C8C; color: #4D4D4D; box-sizing: border-box'),
+        line: i < stepDefs.length - 1 ? 'width: 28px; height: 1px; background: #CCCCCC; margin-left: 4px' : 'display: none'
+      };
+    });
+    const D = { mac: { x: 100, y: 90, w: 150, h: 96 }, lg: { x: 250, y: 30, w: 230, h: 130 } };
+    const defs = [
+      { id: 'lg-right', label: 'LG UltraFine 오른쪽', d: 'lg', e: 'right' },
+      { id: 'lg-bottom', label: 'LG UltraFine 아래', d: 'lg', e: 'bottom' },
+      { id: 'mac-left', label: 'MacBook 왼쪽', d: 'mac', e: 'left' },
+      { id: 'mac-bottom', label: 'MacBook 아래', d: 'mac', e: 'bottom' }
+    ];
+    const cur = defs.find((o) => o.id === this.state.place);
+    const pw = this.state.landscape ? 90 : 44, ph = this.state.landscape ? 44 : 90;
+    const d = D[cur.d];
+    let px, py, gate;
+    if (cur.e === 'right') {
+      px = d.x + d.w + 4; py = d.y + d.h / 2 - ph / 2;
+      gate = { x: d.x + d.w - 2, y: Math.max(d.y, py) + 4, w: 4, h: Math.min(d.y + d.h, py + ph) - Math.max(d.y, py) - 8 };
+    } else if (cur.e === 'left') {
+      px = d.x - pw - 4; py = d.y + d.h / 2 - ph / 2;
+      gate = { x: d.x - 2, y: Math.max(d.y, py) + 4, w: 4, h: Math.min(d.y + d.h, py + ph) - Math.max(d.y, py) - 8 };
+    } else {
+      px = d.x + d.w / 2 - pw / 2; py = d.y + d.h + 4;
+      gate = { x: px + 4, y: d.y + d.h - 2, w: pw - 8, h: 4 };
+    }
+    const r = (v) => Math.round(v) + 'px';
+    const phoneStyle = 'position: absolute; left: ' + r(px) + '; top: ' + r(py) + '; width: ' + r(pw) + '; height: ' + r(ph) +
+      '; box-sizing: border-box; border-radius: 10px; background: #1A1A1A; border: 1.5px solid ' + accent +
+      '; display: flex; justify-content: center; align-items: flex-start; padding-top: 5px';
+    const gateStyle = 'position: absolute; left: ' + r(gate.x) + '; top: ' + r(gate.y) + '; width: ' + r(gate.w) + '; height: ' + r(gate.h) +
+      '; border-radius: 9999px; background: ' + accent + '; box-shadow: 0 0 8px ' + accent;
+    const seg = (on) => 'height: 30px; border: 0; border-radius: 7px; font-family: inherit; font-size: 13px; font-weight: 600; ' +
+      (on ? 'background: #FFFFFF; color: #1A1A1A; box-shadow: 0 2px 8px rgba(51,51,51,.16)' : 'background: transparent; color: #4D4D4D');
+    const options = defs.map((o) => {
+      const on = o.id === this.state.place;
+      return {
+        label: o.label, on: on ? 'true' : 'false',
+        pick: () => this.setState({ place: o.id }),
+        style: 'height: 34px; padding: 0 14px; border-radius: 20px; font-family: inherit; font-size: 13px; font-weight: 600; ' +
+          (on ? 'border: 1px solid ' + accent + '; background: #E5F4FC; color: #094B7B' : 'border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A')
+      };
+    });
+    return {
+      accent, steps, options, phoneStyle, gateStyle,
+      conflict: cur.e === 'bottom',
+      portraitStyle: seg(!this.state.landscape), landscapeStyle: seg(this.state.landscape),
+      pickPortrait: () => this.setState({ landscape: false }),
+      pickLandscape: () => this.setState({ landscape: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

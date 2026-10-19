@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 디자인 규격</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 1400px; height: 1000px; box-sizing: border-box; padding: 40px; background: #FFFFFF; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; gap: 40px; border: 1px solid #E5E5E5; border-radius: 12px">
+
+  <div style="width: 700px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 22px; font-weight: 800">EdgeLink 디자인 규격</div>
+      <div style="font-size: 12px; color: #4D4D4D">이름은 SwiftUI 코드에서 쓰는 이름이에요.</div>
+    </div>
+    <div style="font-size: 14px; font-weight: 800; margin-top: 6px">색</div>
+    <div style="border: 1px solid #E5E5E5; border-radius: 8px; overflow: hidden">
+      <div style="display: grid; grid-template-columns: 150px 120px 120px 1fr; padding: 8px 12px; background: #F5F5F7; font-size: 11.5px; font-weight: 700; color: #4D4D4D">
+        <span>이름</span><span>라이트</span><span>다크</span><span>쓰임</span>
+      </div>
+      <sc-for list="{{colors}}" as="c" hint-placeholder-count="18">
+        <div style="display: grid; grid-template-columns: 150px 120px 120px 1fr; align-items: center; padding: 6px 12px; border-top: 1px solid #F0F0F0; font-size: 12px">
+          <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11.5px">{{c.name}}</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="{{c.ls}}"></span><span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px">{{c.light}}</span></span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="{{c.ds}}"></span><span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px">{{c.dark}}</span></span>
+          <span style="color: #4D4D4D">{{c.use}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px; background: #FFF6E0; border: 1px solid #FFC107; font-size: 12px; color: #5C3900; line-height: 1.5">
+      <span><span style="font-weight: 700">글자가 있는 버튼 바탕은 brandFill(#0077B6)을 써요.</span> 흰 글자와 Innovation Blue(#0097E4)의 대비는 3.3:1로 기준(4.5:1)에 못 미쳐서예요. #0097E4는 선, 스위치, 아이콘처럼 글자가 없는 곳에만 써요. 캔버스의 모든 화면이 이 규칙에 맞게 고쳐져 있어요.</span>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 22px">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="font-size: 14px; font-weight: 800">글자</div>
+      <div style="font-size: 12px; color: #4D4D4D">SUIT(OFL 라이선스)를 앱에 넣어 써요. 불러오지 못하면 Apple SD Gothic Neo. 자간 0, 줄 간격 제목 1.2 · 나머지 1.3.</div>
+      <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px; padding: 4px 14px">
+        <sc-for list="{{type}}" as="t" hint-placeholder-count="7">
+          <div style="display: flex; align-items: baseline; gap: 12px; padding: 7px 0; border-bottom: 1px solid #F0F0F0">
+            <span style="width: 110px; flex-shrink: 0; font-size: 11.5px; color: #4D4D4D">{{t.name}}</span>
+            <span style="{{t.style}}">{{t.sample}}</span>
+            <span style="margin-left: auto; font-size: 11px; color: #4D4D4D; font-family: ui-monospace, Menlo, monospace">{{t.spec}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 14px; font-weight: 800">간격 (8pt 기준)</div>
+        <sc-for list="{{spaces}}" as="s" hint-placeholder-count="7">
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 12px">
+            <span style="width: 28px; font-family: ui-monospace, Menlo, monospace; font-size: 11px">{{s.v}}</span>
+            <span style="{{s.bar}}"></span>
+            <span style="color: #4D4D4D">{{s.use}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 14px; font-weight: 800">둥글기 · 그림자</div>
+        <sc-for list="{{radii}}" as="r" hint-placeholder-count="6">
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 12px">
+            <span style="{{r.box}}"></span>
+            <span style="width: 36px; font-family: ui-monospace, Menlo, monospace; font-size: 11px">{{r.v}}</span>
+            <span style="color: #4D4D4D">{{r.use}}</span>
+          </div>
+        </sc-for>
+        <div style="font-size: 12px; color: #4D4D4D; line-height: 1.5; margin-top: 4px">그림자: 작게 0 2 8 · 알림 0 4 16 · 시트 0 8 30, 모두 #333 16%. 다크 모드는 그림자 대신 테두리.</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div style="font-size: 14px; font-weight: 800">부품</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+        <button style="height: 36px; padding: 0 18px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">주 버튼</button>
+        <button style="height: 36px; padding: 0 18px; border-radius: 20px; border: 1px solid #0097E4; background: #FFFFFF; color: #0077B6; font-family: inherit; font-size: 13px; font-weight: 600">보조 버튼</button>
+        <button style="height: 36px; padding: 0 18px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 13px; font-weight: 600">일반 버튼</button>
+        <button style="height: 36px; padding: 0 18px; border-radius: 20px; border: 1px solid #EB1E1E; background: #FFFFFF; color: #C41818; font-family: inherit; font-size: 13px; font-weight: 600">위험 버튼</button>
+        <span style="width: 40px; height: 24px; box-sizing: border-box; padding: 2px; border-radius: 9999px; background: #0097E4; display: flex; justify-content: flex-end" aria-hidden="true"><span style="width: 20px; height: 20px; border-radius: 9999px; background: #FFFFFF; box-shadow: 0 2px 8px rgba(51,51,51,.16)"></span></span>
+        <span style="width: 40px; height: 24px; box-sizing: border-box; padding: 2px; border-radius: 9999px; background: #CCCCCC; display: flex" aria-hidden="true"><span style="width: 20px; height: 20px; border-radius: 9999px; background: #FFFFFF; box-shadow: 0 2px 8px rgba(51,51,51,.16)"></span></span>
+      </div>
+      <div style="border: 1px solid #E5E5E5; border-radius: 8px; overflow: hidden">
+        <sc-for list="{{parts}}" as="p" hint-placeholder-count="8">
+          <div style="display: grid; grid-template-columns: 170px 210px 1fr; padding: 7px 12px; border-bottom: 1px solid #F0F0F0; font-size: 12px">
+            <span style="font-weight: 700">{{p.name}}</span>
+            <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #094B7B">{{p.code}}</span>
+            <span style="color: #4D4D4D">{{p.spec}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1400,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sw = (c) => 'width: 16px; height: 16px; flex-shrink: 0; border-radius: 4px; border: 1px solid rgba(0,0,0,0.12); background: ' + c;
+    const defs = [
+      ['brand', '#0097E4', '#2EA8F0', '선, 스위치, 아이콘, 통로'],
+      ['brandFill', '#0077B6', '#0077B6', '글자 있는 주 버튼 바탕'],
+      ['brandText', '#0077B6', '#5CC0F5', '링크, 보조 버튼 글자'],
+      ['brandTint', '#E5F4FC', 'rgba(46,168,240,.18)', '선택된 항목 바탕'],
+      ['brandStrong', '#094B7B', '#8FD4F8', '선택 바탕 위 글자'],
+      ['textPrimary', '#1A1A1A', '#F2F2F2', '본문, 제목'],
+      ['textSecondary', '#4D4D4D', '#ABABAB', '설명, 보조 글자'],
+      ['textDecor', '#8C8C8C', '#6E6E73', '장식 선, 비활성 (글자 금지)'],
+      ['bgWindow', '#FFFFFF', '#1E1E1E', '설정·온보딩 창'],
+      ['bgSidebar', '#F5F5F7', '#252527', '사이드바, 회색 카드'],
+      ['bgPopover', '#FFFFFF', '#2A2A2C', '팝오버'],
+      ['line', '#E5E5E5', '#3A3A3C', '카드·창 테두리'],
+      ['lineSoft', '#F0F0F0', '#333336', '목록 구분선'],
+      ['success', '#28A745', '#4CD07D', '연결됨 점, 완료 (글자는 #1E7E34)'],
+      ['warningBg', '#FFF6E0', '#3A2E12', '안내 카드 바탕'],
+      ['warningLine', '#FFC107', '#8A6A1F', '안내 카드 테두리'],
+      ['warningText', '#5C3900', '#F5D48A', '안내 카드 글자'],
+      ['danger', '#EB1E1E', '#FF6B6B', '위험 버튼 테두리, 오류 (글자는 #C41818)']
+    ];
+    const colors = defs.map(([name, light, dark, use]) => ({ name, light, dark, use, ls: sw(light), ds: sw(dark) }));
+    const t = (name, size, weight, sample, spec) => ({ name, sample, spec, style: 'font-size: ' + size + 'px; font-weight: ' + weight + '; line-height: 1.25' });
+    return {
+      colors,
+      type: [
+        t('온보딩 제목', 22, 800, '아이폰을 어디에 두셨나요?', '22 / 800'),
+        t('화면 제목', 18, 800, '아이폰을 연결해요', '18 / 800'),
+        t('창·섹션 제목', 15, 700, 'EdgeLink 설정', '15 / 700'),
+        t('항목 이름', 14, 600, '자동으로 다시 연결', '14 / 600'),
+        t('본문·버튼', 13, 400, '모서리로 밀거나 단축키로 전환해요', '13 / 400·700'),
+        t('보조', 12, 400, '끄면 단축키로만 넘어가요', '12 / 400'),
+        t('캡션', 11.5, 400, '아이폰 화면', '11.5 / 400')
+      ],
+      spaces: [4, 8, 12, 16, 24, 32, 48].map((v) => ({
+        v: String(v),
+        bar: 'height: 10px; width: ' + v * 2 + 'px; border-radius: 3px; background: #0097E4',
+        use: { 4: '세그먼트 안쪽', 8: '버튼 사이', 12: '아이콘과 글자', 16: '카드 안쪽, 팝오버 가장자리', 24: '카드 사이, 창 아래', 32: '창 가장자리', 48: '온보딩 좌우' }[v]
+      })),
+      radii: [6, 8, 10, 12, 20, 9999].map((v) => ({
+        v: String(v),
+        box: 'width: 28px; height: 20px; border: 1.5px solid #0097E4; border-radius: ' + Math.min(v, 10) + 'px',
+        use: { 6: '키 버튼, 입력 칸', 8: '카드, 안내, 아이콘 상자', 10: '세그먼트, 미리보기', 12: '창, 팝오버, 시트', 20: '모든 버튼', 9999: '스위치, 점, 알약' }[v]
+      })),
+      parts: [
+        { name: '버튼 4종', code: 'PillButtonStyle(kind:)', spec: '높이 36 (팝오버 40, 작게 32), 좌우 16~18, 둥글기 20' },
+        { name: '스위치 줄', code: 'ToggleRow', spec: '최소 높이 52 (설정 60), 이름 14/600 + 설명 12' },
+        { name: '세그먼트', code: 'Picker(.segmented)', spec: '바탕 #F0F0F2, 선택 흰색 + 작은 그림자, 높이 36' },
+        { name: '카드', code: 'Card', spec: '안쪽 16, 테두리 line, 둥글기 8' },
+        { name: '안내 카드', code: 'Notice', spec: 'warning 색 3종, 아이콘 16~18, 버튼은 아래 줄' },
+        { name: '단계 카드', code: 'StepCard', spec: '번호 원 24, 지금 단계는 brand 테두리 + 6% 바탕' },
+        { name: '알림', code: 'Toast', spec: '화면 위쪽 가운데, 2.5초, hudWindow 흐림, 둥글기 12' },
+        { name: '모서리 효과', code: 'EdgeGlow', spec: '수치는 \u2018모서리 효과 · 움직임 시안\u2019 보드' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

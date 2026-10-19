@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 모서리 효과</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 1200px; height: 720px; box-sizing: border-box; padding: 32px; background: #FFFFFF; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; gap: 32px; border: 1px solid #E5E5E5; border-radius: 12px">
+
+  <div style="width: 640px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 18px; font-weight: 800">모서리 효과 · 직접 움직여보기</div>
+      <div style="font-size: 12px; color: #4D4D4D">슬라이더로 밀어보고, 넘어가기·돌아오기를 재생해보세요. 수치는 오른쪽 표와 같아요.</div>
+    </div>
+
+    <div style="{{stageStyle}}" role="img" aria-label="모서리 효과 미리보기">
+      <div style="{{screenStyle}}">
+        <div style="position: absolute; left: 32px; top: 32px; width: 180px; height: 110px; border-radius: 10px; background: {{winBg}}; border: 1px solid {{winBorder}}"></div>
+        <div style="position: absolute; left: 240px; top: 120px; width: 150px; height: 90px; border-radius: 10px; background: {{winBg}}; border: 1px solid {{winBorder}}"></div>
+        <div style="{{cursorStyle}}"></div>
+        <div style="{{pillStyle}}"></div>
+      </div>
+      <div style="{{phoneStyle}}"><span style="width: 14px; height: 4px; border-radius: 9999px; background: #000000"></span></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="push" style="font-size: 12px; font-weight: 600; width: 70px">미는 정도</label>
+      <input id="push" type="range" min="0" max="100" value="{{push}}" onChange="{{setPush}}" style="flex-grow: 1; accent-color: #0097E4">
+      <span style="font-size: 12px; color: #4D4D4D; width: 40px; text-align: right">{{push}}%</span>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+      <button onClick="{{playEnter}}" style="height: 34px; padding: 0 16px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">넘어가기 재생</button>
+      <button onClick="{{playReturn}}" style="height: 34px; padding: 0 16px; border-radius: 20px; border: 1px solid #0097E4; background: #FFFFFF; color: #0077B6; font-family: inherit; font-size: 13px; font-weight: 700">돌아오기 재생</button>
+      <button onClick="{{reset}}" style="height: 34px; padding: 0 16px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 13px; font-weight: 600">처음으로</button>
+      <span style="font-size: 12px; color: #4D4D4D; margin-left: 4px">지금: {{phaseLabel}}</span>
+    </div>
+    <div style="display: flex; gap: 12px">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F0F0F2; border-radius: 10px; width: 240px">
+        <button onClick="{{pickV}}" style="{{vStyle}}">세로 모서리</button>
+        <button onClick="{{pickH}}" style="{{hStyle}}">가로 모서리</button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F0F0F2; border-radius: 10px; width: 240px">
+        <button onClick="{{pickLight}}" style="{{lightStyle}}">밝은 배경</button>
+        <button onClick="{{pickDark}}" style="{{darkStyle}}">어두운 배경</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+    <div style="font-size: 14px; font-weight: 800">단계별 수치</div>
+    <div style="border: 1px solid #E5E5E5; border-radius: 8px; overflow: hidden">
+      <div style="display: grid; grid-template-columns: 1.3fr 1fr 1fr 0.9fr 0.9fr; padding: 8px 12px; background: #F5F5F7; font-size: 11.5px; font-weight: 700; color: #4D4D4D">
+        <span>단계</span><span>두께</span><span>길이</span><span>불투명도</span><span>시간</span>
+      </div>
+      <sc-for list="{{specs}}" as="r" hint-placeholder-count="5">
+        <div style="{{r.style}}">
+          <span style="font-weight: 700">{{r.name}}</span><span>{{r.b}}</span><span>{{r.l}}</span><span>{{r.o}}</span><span>{{r.t}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">곡선은 모두 ease-out (cubic-bezier 0.2, 0.8, 0.2, 1). 미는 중에는 애니메이션 없이 손을 그대로 따라가요.</div>
+
+    <div style="font-size: 14px; font-weight: 800; margin-top: 4px">규칙</div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <sc-for list="{{rules}}" as="r" hint-placeholder-count="6">
+        <div style="display: flex; gap: 10px; font-size: 12px; line-height: 1.5">
+          <span style="width: 6px; height: 6px; margin-top: 7px; flex-shrink: 0; border-radius: 9999px; background: #0097E4"></span>
+          <span>{{r}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":720}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { push: 60, phase: 'push', edge: 'v', bg: 'light' };
+  }
+  componentWillUnmount() { clearTimeout(this.t1); }
+  renderVals() {
+    const s = this.state;
+    const dark = s.bg === 'dark';
+    const p = s.push / 100;
+    const P = {
+      push: { b: 4 + 22 * p, l: 70 + 110 * p, o: 0.25 + 0.75 * p, d: 0 },
+      enter: { b: 34, l: 220, o: 1, d: 0.12 },
+      docked: { b: 6, l: 110, o: 0.85, d: 0.28 },
+      ret: { b: 30, l: 200, o: 1, d: 0.1 },
+      gone: { b: 2, l: 60, o: 0, d: 0.3 }
+    }[s.phase];
+    const vert = s.edge === 'v';
+    const SW = vert ? 500 : 640, SH = vert ? 420 : 300;
+    const curve = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+    const tr = P.d ? 'transition: all ' + P.d + 's ' + curve + ';' : '';
+    const tint = dark ? 'rgba(0,151,228,0.24)' : 'rgba(0,151,228,0.16)';
+    const rim = dark ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.6)';
+    const glow = dark ? 'box-shadow: 0 0 18px rgba(46,168,240,0.45);' : 'box-shadow: 0 2px 10px rgba(51,51,51,0.12);';
+    const r = (v) => Math.round(v) + 'px';
+    const pill = vert
+      ? 'left: ' + r(SW - P.b) + '; top: ' + r(SH / 2 - P.l / 2) + '; width: ' + r(P.b * 2) + '; height: ' + r(P.l) + ';'
+      : 'left: ' + r(SW / 2 - P.l / 2) + '; top: ' + r(SH - P.b) + '; width: ' + r(P.l) + '; height: ' + r(P.b * 2) + ';';
+    const pillStyle = 'position: absolute; ' + pill + ' border-radius: 9999px; background: ' + tint + '; border: 1px solid ' + rim +
+      '; backdrop-filter: blur(14px) saturate(1.4); opacity: ' + P.o + '; ' + glow + tr;
+    const showCursor = s.phase === 'push';
+    const cursorStyle = 'position: absolute; width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 18px solid ' + (dark ? '#FFFFFF' : '#1A1A1A') + '; ' +
+      (vert ? 'left: ' + r(SW - 16) + '; top: ' + r(SH / 2 - 9) + '; transform: rotate(-30deg);' : 'left: ' + r(SW / 2 - 7) + '; top: ' + r(SH - 22) + '; transform: rotate(-30deg);') +
+      ' opacity: ' + (showCursor ? 1 : 0) + ';';
+    const onPhone = s.phase === 'enter' || s.phase === 'docked';
+    const phonePos = vert ? 'left: 540px; top: 150px; width: 70px; height: 130px;' : 'left: 290px; top: 314px; width: 60px; height: 110px;';
+    const phoneStyle = 'position: absolute; ' + phonePos + ' box-sizing: border-box; border-radius: 14px; background: #1A1A1A; display: flex; justify-content: center; padding-top: 6px; border: 2px solid ' + (onPhone ? '#0097E4' : '#1A1A1A') + '; transition: border-color 0.2s;';
+    const stageStyle = 'position: relative; height: 420px; border-radius: 10px; overflow: hidden; background: ' + (dark ? '#0E1116' : '#F5F5F7') + ';' + (vert ? '' : ' height: 440px;');
+    const screenStyle = 'position: absolute; left: 0; top: 0; width: ' + SW + 'px; height: ' + SH + 'px; overflow: hidden; background: ' +
+      (dark ? 'linear-gradient(135deg, #1B2533, #2A1F3A)' : 'linear-gradient(135deg, #DCE8F3, #F2E6DA)') + '; border-right: ' + (vert ? '3px solid #1A1A1A' : '0') + '; border-bottom: ' + (vert ? '0' : '3px solid #1A1A1A') + ';';
+    const seg = (on) => 'height: 30px; border: 0; border-radius: 7px; font-family: inherit; font-size: 12px; font-weight: 600; ' +
+      (on ? 'background: #FFFFFF; color: #1A1A1A; box-shadow: 0 2px 8px rgba(51,51,51,.16)' : 'background: transparent; color: #4D4D4D');
+    const labels = { push: '미는 중', enter: '넘어가는 순간', docked: '아이폰 조작 중', ret: '돌아오는 순간', gone: 'Mac 조작 (효과 없음)' };
+    const specDefs = [
+      ['push', '미는 중', '4 → 26pt', '70 → 180pt', '25 → 100%', '따라감'],
+      ['enter', '넘어가는 순간', '34pt', '220pt', '100%', '0.12초'],
+      ['docked', '아이폰 조작 중', '6pt', '110pt', '85%', '0.28초'],
+      ['ret', '돌아오는 순간', '30pt', '200pt', '100%', '0.10초'],
+      ['gone', '사라짐', '2pt', '60pt', '0%', '0.30초']
+    ];
+    const specs = specDefs.map(([k, name, b, l, o, t]) => ({
+      name, b, l, o, t,
+      style: 'display: grid; grid-template-columns: 1.3fr 1fr 1fr 0.9fr 0.9fr; padding: 9px 12px; font-size: 12px; border-top: 1px solid #F0F0F0; ' +
+        (k === s.phase ? 'background: #E5F4FC; color: #094B7B' : '')
+    }));
+    return {
+      push: s.push, phaseLabel: labels[s.phase],
+      stageStyle, screenStyle, pillStyle, cursorStyle, phoneStyle,
+      winBg: dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)',
+      winBorder: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+      setPush: (e) => this.setState({ push: Number(e.target.value), phase: 'push' }),
+      playEnter: () => { clearTimeout(this.t1); this.setState({ phase: 'enter' }); this.t1 = setTimeout(() => this.setState({ phase: 'docked' }), 160); },
+      playReturn: () => { clearTimeout(this.t1); this.setState({ phase: 'ret' }); this.t1 = setTimeout(() => this.setState({ phase: 'gone' }), 140); },
+      reset: () => { clearTimeout(this.t1); this.setState({ phase: 'push', push: 60 }); },
+      pickV: () => this.setState({ edge: 'v' }), pickH: () => this.setState({ edge: 'h' }),
+      pickLight: () => this.setState({ bg: 'light' }), pickDark: () => this.setState({ bg: 'dark' }),
+      vStyle: seg(vert), hStyle: seg(!vert), lightStyle: seg(!dark), darkStyle: seg(dark),
+      specs,
+      rules: [
+        '알약 절반은 화면 밖에 있어서, 가장자리에 붙어 볼록 튀어나온 모양이 돼요.',
+        '길이는 통로 길이를 넘지 않고, 중심은 커서가 닿은 위치를 따라가요.',
+        '어두운 배경에서는 틴트를 16%에서 24%로 올리고 바깥 빛을 더해서 잘 보이게 해요.',
+        '가로 모서리(위·아래)는 같은 수치를 가로로 돌려서 써요.',
+        '동작 줄이기가 켜져 있으면 크기는 바뀌지 않고 불투명도만 0.2초 동안 바뀌어요.',
+        '밀다가 멈추면 0.25초 뒤 0.25초 동안 사라져요.'
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

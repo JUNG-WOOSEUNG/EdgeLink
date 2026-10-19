@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 빈 상태와 실패 상태</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 1000px; height: 640px; box-sizing: border-box; padding: 32px; background: #EEF1F4; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; border-radius: 12px">
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">설정 › 연결 · 페어링된 기기가 없을 때</div>
+    <div style="flex-grow: 1; background: #FFFFFF; border-radius: 12px; border: 1px solid #E5E5E5; padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center">
+      <div style="width: 56px; height: 56px; border-radius: 9999px; background: #F0F0F2; display: flex; align-items: center; justify-content: center">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4D4D4D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"></rect><path d="M12 8v5M9.5 10.5h5"></path></svg>
+      </div>
+      <div style="font-size: 15px; font-weight: 700">아직 페어링한 기기가 없어요</div>
+      <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4; max-width: 300px">아이폰에서 설정 › Bluetooth 화면을 열어두고 아래 버튼을 누르세요.</div>
+      <button style="height: 36px; padding: 0 20px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">새 기기 페어링</button>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">설정 › 배치 · 아이폰을 놓을 모서리가 없을 때</div>
+    <div style="flex-grow: 1; background: #FFFFFF; border-radius: 12px; border: 1px solid #E5E5E5; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+      <div style="position: relative; height: 110px; border-radius: 8px; background: #F5F5F7" aria-hidden="true">
+        <div style="position: absolute; left: 150px; top: 14px; width: 90px; height: 54px; border-radius: 4px; background: #E3F2FB; border: 1px solid #8C8C8C"></div>
+        <div style="position: absolute; left: 60px; top: 40px; width: 90px; height: 54px; border-radius: 4px; background: #E3F2FB; border: 1px solid #8C8C8C"></div>
+        <div style="position: absolute; left: 240px; top: 40px; width: 90px; height: 54px; border-radius: 4px; background: #E3F2FB; border: 1px solid #8C8C8C"></div>
+        <div style="position: absolute; left: 150px; top: 68px; width: 90px; height: 30px; border-radius: 4px; background: #E3F2FB; border: 1px solid #8C8C8C"></div>
+      </div>
+      <div style="display: flex; gap: 10px">
+        <span style="width: 8px; height: 8px; margin-top: 5px; flex-shrink: 0; border-radius: 9999px; background: #EB1E1E"></span>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <div style="font-size: 14px; font-weight: 700">아이폰을 놓을 수 있는 모서리가 없어요</div>
+          <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">모든 모서리가 다른 모니터와 맞닿아 있거나 너무 짧아요. 시스템 설정에서 모니터 배치를 바꿔 바깥쪽 모서리를 만들어주세요. 그동안은 단축키로만 넘어갈 수 있어요.</div>
+        </div>
+      </div>
+      <button style="align-self: flex-start; height: 34px; padding: 0 16px; border-radius: 20px; border: 1px solid #0097E4; background: #FFFFFF; color: #0077B6; font-family: inherit; font-size: 13px; font-weight: 700">디스플레이 설정 열기</button>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">보정 도우미 · 실패했을 때</div>
+    <div style="flex-grow: 1; background: #FFFFFF; border-radius: 12px; border: 1px solid #E5E5E5; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+      <div style="font-size: 16px; font-weight: 700">포인터 보정 도우미</div>
+      <div style="display: flex; gap: 10px; align-items: flex-start">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C41818" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="10"></circle><path d="M15 9l-6 6M9 9l6 6"></path></svg>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <div style="font-size: 13px; font-weight: 700">움직인 양이 너무 적어요</div>
+          <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">아이폰 포인터를 오른쪽 아래 끝까지 옮기기 전에 클릭한 것 같아요. 이전 보정값(2.12)은 그대로 두었어요.</div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: auto">
+        <button style="height: 34px; padding: 0 16px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 13px; font-weight: 600">기본값으로</button>
+        <button style="height: 34px; padding: 0 16px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">다시 하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">설정 › 입력 · 단축키를 기록할 때 (눌러보세요)</div>
+    <div style="flex-grow: 1; background: #FFFFFF; border-radius: 12px; border: 1px solid #E5E5E5; padding: 8px 20px; display: flex; flex-direction: column">
+      <sc-for list="{{keys}}" as="k" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-bottom: 1px solid #F0F0F0">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <span style="font-size: 14px; flex-grow: 1">{{k.label}}</span>
+            <button onClick="{{k.cycle}}" style="{{k.btn}}">{{k.text}}</button>
+          </div>
+          <sc-if value="{{k.error}}" hint-placeholder-val="{{ false }}">
+            <div style="font-size: 12px; color: #C41818; text-align: right">‘클립보드 보내기’에서 이미 쓰는 조합이에요</div>
+          </sc-if>
+          <sc-if value="{{k.recording}}" hint-placeholder-val="{{ false }}">
+            <div style="font-size: 12px; color: #4D4D4D; text-align: right">⌃ ⌥ ⇧ ⌘ 중 하나 이상과 함께 누르세요 · Esc 취소</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":640}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mode: 'recording' };
+  }
+  renderVals() {
+    const m = this.state.mode;
+    const next = { idle: 'recording', recording: 'error', error: 'idle' };
+    const btn = (st) => 'min-width: 130px; height: 32px; padding: 0 12px; border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: 600; ' +
+      (st === 'recording' ? 'border: 2px solid #0097E4; background: #E5F4FC; color: #094B7B'
+        : st === 'error' ? 'border: 2px solid #EB1E1E; background: #FFF0F0; color: #C41818'
+        : 'border: 1px solid #CCCCCC; background: #F5F5F7; color: #1A1A1A');
+    const text = { idle: '⌃⌥⌘Space', recording: '키를 누르세요…', error: '⌃⌥⌘V' };
+    return {
+      keys: [
+        { label: 'Mac ↔ 아이폰 전환', text: text[m], btn: btn(m), recording: m === 'recording', error: m === 'error', cycle: () => this.setState({ mode: next[m] }) },
+        { label: '클립보드 보내기', text: '⌃⌥⌘V', btn: btn('idle'), recording: false, error: false, cycle: () => {} },
+        { label: '모서리 전환 켜기/끄기', text: '⌃⌥⌘E', btn: btn('idle'), recording: false, error: false, cycle: () => {} }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

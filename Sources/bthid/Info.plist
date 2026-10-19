@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.edgelink.bthid</string>
+	<key>CFBundleName</key>
+	<string>bthid</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Mac이 아이폰에 키보드·마우스로 보이게 해요.</string>
+</dict>
+</plist>

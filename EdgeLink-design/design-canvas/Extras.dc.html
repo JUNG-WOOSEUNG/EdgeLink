@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 보정 도우미와 알림</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 800px; height: 640px; box-sizing: border-box; padding: 32px; background: #EEF1F4; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; gap: 32px; border-radius: 12px">
+
+  <div style="display: flex; flex-direction: column; gap: 16px; width: 420px; flex-shrink: 0">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">보정 도우미 (배치 › 보정 도우미)</div>
+
+    <div style="background: #FFFFFF; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 8px 30px rgba(51,51,51,.16)">
+      <div style="font-size: 17px; font-weight: 700">포인터 보정 도우미</div>
+      <div style="font-size: 12px; color: #4D4D4D; line-height: 1.3">시작하면 아이폰 포인터가 화면 왼쪽 위 끝으로 가요. 트랙패드로 천천히 오른쪽 아래 끝까지 옮긴 뒤 클릭하세요.</div>
+      <div style="display: flex; justify-content: center; padding: 8px 0">
+        <div style="position: relative; width: 96px; height: 180px; border-radius: 16px; background: #1A1A1A">
+          <div style="position: absolute; left: 6px; top: 6px; right: 6px; bottom: 6px; border-radius: 11px; background: #2B2B2B"></div>
+          <div style="position: absolute; left: 12px; top: 14px; width: 12px; height: 12px; border-radius: 9999px; border: 2px solid #FFFFFF; box-sizing: border-box"></div>
+          <div style="position: absolute; left: 22px; top: 24px; width: 58px; height: 2px; background: #0097E4; transform: rotate(62deg); transform-origin: left center"></div>
+          <div style="position: absolute; right: 12px; bottom: 14px; width: 14px; height: 14px; border-radius: 9999px; background: #0097E4; border: 2px solid #FFFFFF; box-sizing: border-box"></div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600">
+        <span style="width: 14px; height: 14px; border-radius: 9999px; border: 2px solid #0097E4; border-right-color: transparent; box-sizing: border-box"></span>
+        오른쪽 아래 끝까지 옮기고 클릭하세요
+      </div>
+      <div style="font-size: 12px; color: #4D4D4D; font-family: ui-monospace, Menlo, monospace">움직인 양  가로 742 · 세로 1580</div>
+      <div style="font-size: 12px; color: #4D4D4D">Esc를 누르면 취소돼요.</div>
+    </div>
+
+    <div style="background: #FFFFFF; border-radius: 12px; padding: 16px 24px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 8px rgba(51,51,51,.16)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E7E34" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M7 12l3.5 3.5L17 9"></path></svg>
+      <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+        <div style="font-size: 13px; font-weight: 600">보정 완료 (2.12)</div>
+        <div style="font-size: 12px; color: #4D4D4D">이제 돌아오는 위치가 포인터와 맞아요.</div>
+      </div>
+      <button style="height: 36px; padding: 0 16px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">완료</button>
+    </div>
+  </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; flex-grow: 1; min-width: 0">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">화면 위쪽 알림</div>
+
+    <sc-for list="{{toasts}}" as="t" hint-placeholder-count="10">
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,0.92); border: 1px solid #E5E5E5; box-shadow: 0 4px 16px rgba(51,51,51,.16)">
+        <span style="{{t.dot}}"></span>
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <div style="font-size: 13px; font-weight: 600; line-height: 1.3">{{t.text}}</div>
+          <div style="font-size: 11px; color: #4D4D4D; line-height: 1.3">{{t.when}}</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0097E4","options":["#0097E4","#094B7B","#1A1A1A"]},"$preview":{"width":800,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dot = (c) => 'width: 10px; height: 10px; margin-top: 4px; flex-shrink: 0; border-radius: 9999px; background: ' + c;
+    return {
+      accent: this.props.accent ?? '#0097E4',
+      toasts: [
+        { text: 'Mac에서 비밀번호 입력이 시작돼서 Mac으로 돌아왔어요', when: '아이폰 조작 중 Mac에 비밀번호 칸이 뜰 때', dot: dot('#EB1E1E') },
+        { text: 'Mac에서 비밀번호를 입력 중이라 넘어갈 수 없어요', when: '비밀번호 입력 중에 넘어가려 할 때', dot: dot('#EB1E1E') },
+        { text: '모서리 전환을 껐어요. 단축키로만 넘어가요', when: '⌃⌥⌘E를 눌렀을 때', dot: dot('#8C8C8C') },
+        { text: '한글 등 일부 글자는 빼고 보냈어요', when: '클립보드에 영문 외 글자가 있을 때', dot: dot('#FFC107') },
+        { text: '아이폰이 연결되지 않았어요', when: '연결 전에 전환하려 할 때', dot: dot('#8C8C8C') },
+        { text: '잠깐 멈춰서 Mac으로 돌아왔어요', when: '입력 감시가 시간 초과로 꺼졌을 때', dot: dot('#FFC107') },
+        { text: '화면이 잠겨서 Mac으로 돌아왔어요', when: '아이폰 조작 중 화면 잠금·화면 보호기', dot: dot('#8C8C8C') },
+        { text: '아이폰이 다른 기기에 연결돼 있어요', when: '다른 Mac이 먼저 연결했을 때', dot: dot('#FFC107') },
+        { text: '‘지민의 iPhone’의 연결을 거절했어요', when: '연결 요청을 거절하거나 30초가 지났을 때', dot: dot('#EB1E1E') }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

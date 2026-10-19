@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 확인 창</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 800px; height: 640px; box-sizing: border-box; padding: 32px; background: #EEF1F4; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; border-radius: 12px">
+
+  <div style="display: flex; flex-direction: column; gap: 12px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">연결 요청 확인 · 기본 기기가 아닌 기기가 연결해 올 때</div>
+    <div style="background: #FFFFFF; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 8px 30px rgba(51,51,51,.16)">
+      <sc-if value="{{reqPending}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 16px">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: #F0F0F2; display: flex; align-items: center; justify-content: center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"></rect></svg>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px">
+              <div style="font-size: 16px; font-weight: 700">‘지민의 iPhone’이 연결하려고 해요</div>
+              <div style="font-size: 12px; color: #4D4D4D">기본 기기가 아니에요</div>
+            </div>
+          </div>
+          <div style="font-size: 13px; line-height: 1.5">허용하면 아이폰으로 넘어갔을 때 <span style="font-weight: 700">키보드와 트랙패드 입력이 이 기기로 가요.</span> 모르는 기기라면 거절하세요.</div>
+          <div style="display: flex; align-items: center; gap: 8px">
+            <span style="font-size: 12px; color: #4D4D4D; flex-grow: 1">27초 뒤 자동으로 거절해요</span>
+            <button onClick="{{deny}}" style="height: 36px; padding: 0 18px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 13px; font-weight: 600">거절</button>
+            <button onClick="{{allow}}" style="height: 36px; padding: 0 18px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">허용</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{reqDone}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <div style="font-size: 15px; font-weight: 700">{{reqResult}}</div>
+          <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">{{reqDetail}}</div>
+          <button onClick="{{reset}}" style="align-self: flex-start; height: 32px; padding: 0 14px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 12px; font-weight: 600">다시 보기</button>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D; margin-top: 12px">단축키 겹침 확인 · 설정 › 입력에서 새 조합을 기록할 때</div>
+    <div style="background: #FFFFFF; border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #FFC107">
+      <div style="display: flex; gap: 10px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A4B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M12 3l10 18H2z"></path><path d="M12 10v5M12 18h.01"></path></svg>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <div style="font-size: 13px; font-weight: 700">방금 기록한 ⌃⌥Space가 입력 소스 전환과 겹쳐요</div>
+          <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">이대로 쓰면 Mac에서 한/영 전환이 안 될 수 있어요. VoiceOver를 쓰고 있다면 ⌃⌥만 쓰는 조합도 피해주세요.</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; margin-left: 28px">
+        <button style="height: 32px; padding: 0 14px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 12px; font-weight: 700">다른 조합 고르기</button>
+        <button style="height: 32px; padding: 0 14px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 12px; font-weight: 600">그래도 쓰기</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">클립보드 보내기 확인 · 첫 사용, 영문 외 글자가 섞였을 때</div>
+    <div style="background: #FFFFFF; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 8px 30px rgba(51,51,51,.16)">
+      <div style="font-size: 16px; font-weight: 700">아이폰 입력이 영어인지 확인하세요</div>
+      <div style="font-size: 13px; line-height: 1.5">클립보드 보내기는 글자를 하나씩 타이핑해요. 아이폰 입력이 한국어면 영문이 한글 자모로 입력돼요.</div>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 8px; background: #F5F5F7">
+        <div style="display: flex; justify-content: space-between; font-size: 12px"><span style="color: #4D4D4D">보낼 글자</span><span style="font-weight: 700">38자</span></div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px"><span style="color: #4D4D4D">빼고 보낼 글자 (한글 등)</span><span style="font-weight: 700; color: #8A4B00">6자</span></div>
+        <div style="font-size: 12px; font-family: ui-monospace, Menlo, monospace; color: #1A1A1A; margin-top: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis">meeting-room-3F · pw: [가려짐]</div>
+      </div>
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 13px">
+        <input type="checkbox" checked="{{skip}}" onChange="{{flipSkip}}" style="width: 16px; height: 16px; accent-color: {{accent}}">
+        다시 묻지 않기
+      </label>
+      <div style="display: flex; justify-content: flex-end; gap: 8px">
+        <button style="height: 36px; padding: 0 18px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 13px; font-weight: 600">취소</button>
+        <button style="height: 36px; padding: 0 18px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">보내기</button>
+      </div>
+    </div>
+    <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4; padding: 0 4px">미리보기는 앞부분만 보여주고, 비밀번호처럼 보이는 부분은 가려요. 회사 배포판에서 관리자가 이 기능을 끄면 버튼이 사라져요.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0097E4","options":["#0097E4","#094B7B","#1A1A1A"]},"$preview":{"width":800,"height":640}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { req: 'pending', skip: false };
+  }
+  renderVals() {
+    const s = this.state;
+    const results = {
+      allowed: ['허용했어요', '‘지민의 iPhone’이 새 기본 기기가 됐어요. 이전 기기는 설정 › 연결 목록에 남아요.'],
+      denied: ['거절했어요', '이 기기로는 아무 입력도 보내지 않았어요. 다시 연결해 오면 또 물어봐요.']
+    };
+    const r = results[s.req] || ['', ''];
+    return {
+      accent: this.props.accent ?? '#0097E4',
+      reqPending: s.req === 'pending', reqDone: s.req !== 'pending',
+      reqResult: r[0], reqDetail: r[1],
+      allow: () => this.setState({ req: 'allowed' }),
+      deny: () => this.setState({ req: 'denied' }),
+      reset: () => this.setState({ req: 'pending' }),
+      skip: s.skip, flipSkip: () => this.setState({ skip: !s.skip })
+    };
+  }
+}
+</script>
+</body>
+</html>

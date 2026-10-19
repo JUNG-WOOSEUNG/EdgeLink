@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 작은 창과 상태</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 1200px; height: 760px; box-sizing: border-box; padding: 32px; background: #EEF1F4; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; border-radius: 12px">
+
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">클립보드 보내는 중 · 화면 위쪽 알림 자리 (눌러보세요)</div>
+    <div style="display: flex; flex-direction: column; gap: 14px; padding: 24px; border-radius: 12px; background: #DCE3EA">
+      <sc-if value="{{sending}}" hint-placeholder-val="{{ true }}">
+        <div style="align-self: center; width: 380px; display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; border-radius: 12px; background: rgba(255,255,255,0.94); border: 1px solid #E5E5E5; box-shadow: 0 4px 16px rgba(51,51,51,.16)">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"></rect><path d="M16 5h2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"></path></svg>
+            <span style="font-size: 13px; font-weight: 700; flex-grow: 1">아이폰에 입력하는 중</span>
+            <span style="font-size: 12px; color: #4D4D4D">412자 남음</span>
+          </div>
+          <div style="height: 6px; border-radius: 9999px; background: #E5E5E5" aria-hidden="true"><div style="width: 38%; height: 6px; border-radius: 9999px; background: #0097E4"></div></div>
+          <div style="display: flex; align-items: center; justify-content: space-between">
+            <span style="font-size: 11.5px; color: #4D4D4D">Esc를 누르면 멈춰요 · 약 5초 남음</span>
+            <button onClick="{{finish}}" style="height: 28px; padding: 0 12px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 12px; font-weight: 600">멈추기</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{sent}}" hint-placeholder-val="{{ false }}">
+        <div style="align-self: center; width: 380px; display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-radius: 12px; background: rgba(255,255,255,0.94); border: 1px solid #E5E5E5; box-shadow: 0 4px 16px rgba(51,51,51,.16)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7E34" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+          <span style="font-size: 13px; font-weight: 700; flex-grow: 1">{{sentText}}</span>
+          <button onClick="{{again}}" style="height: 28px; padding: 0 12px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 12px; font-weight: 600">다시 보기</button>
+        </div>
+      </sc-if>
+      <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4; text-align: center">아이폰 조작 중이 아니어도 보낼 수 있어요. 보내는 동안 Mac 키보드 입력은 막지 않아요.</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">페어링 초기화 확인 · 설정 › 연결</div>
+    <div style="background: #FFFFFF; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 8px 30px rgba(51,51,51,.16)">
+      <div style="font-size: 16px; font-weight: 700">페어링을 초기화할까요?</div>
+      <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.5">
+        <div><span style="font-weight: 700">지워지는 것:</span> 기본 기기(iPhone 15 Pro), 기기별 모델·방향, 버튼 등록 기록</div>
+        <div><span style="font-weight: 700">남는 것:</span> 단축키, 배치, 보정값 등 다른 설정</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 8px; background: #F5F5F7; font-size: 12px; line-height: 1.5">
+        <div style="font-weight: 700">초기화한 뒤 해야 할 일</div>
+        <div>1. Mac: 시스템 설정 › 블루투스에서 아이폰 옆 ⓘ › 이 기기 지우기</div>
+        <div>2. 아이폰: 설정 › Bluetooth에서 이 Mac 옆 ⓘ › 이 기기 지우기</div>
+        <div>3. EdgeLink에서 다시 페어링</div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px">
+        <button style="height: 36px; padding: 0 18px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 13px; font-weight: 600">취소</button>
+        <button style="height: 36px; padding: 0 18px; border: 0; border-radius: 20px; background: #C41818; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">연결 로그 보기 · 설정 › 연결</div>
+    <div style="background: #FFFFFF; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 30px rgba(51,51,51,.16)">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <div style="font-size: 16px; font-weight: 700; flex-grow: 1">연결 로그</div>
+        <span style="font-size: 11.5px; color: #4D4D4D">최근 500줄 · 키 입력 내용은 남기지 않아요</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 8px; background: #F5F5F7; font-family: ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.6; height: 150px; overflow: hidden">
+        <sc-for list="{{logs}}" as="l" hint-placeholder-count="8">
+          <div style="{{l.style}}"><span style="color: #4D4D4D">{{l.t}}</span>  {{l.m}}</div>
+        </sc-for>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span style="font-size: 11.5px; color: #4D4D4D; flex-grow: 1">복사할 때 기기 주소 뒷자리는 가려져요 (A4-83-••-••-••-••)</span>
+        <button style="height: 32px; padding: 0 14px; border-radius: 20px; border: 1px solid #0097E4; background: #FFFFFF; color: #0077B6; font-family: inherit; font-size: 12px; font-weight: 700">복사</button>
+        <button style="height: 32px; padding: 0 14px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 12px; font-weight: 700">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">1-2 Mac 권한 · 블루투스를 거부했을 때</div>
+    <div style="background: #FFFFFF; border-radius: 12px; border: 1px solid #E5E5E5; padding: 0 16px; display: flex; flex-direction: column">
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-bottom: 1px solid #F0F0F0">
+        <div style="display: flex; align-items: center; gap: 14px">
+          <span style="width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px; background: #F0F0F2; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #094B7B">B</span>
+          <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+            <div style="font-size: 14px; font-weight: 700">블루투스</div>
+            <div style="font-size: 12px; color: #C41818; font-weight: 600">허용하지 않음으로 선택했어요</div>
+          </div>
+          <button style="height: 34px; padding: 0 16px; border: 0; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700">시스템 설정에서 켜기</button>
+        </div>
+        <div style="margin-left: 46px; padding: 12px; border-radius: 8px; background: #F2FAFE; border: 1px solid #B3DDF5; font-size: 12px; line-height: 1.5">
+          시스템 창은 한 번만 떠요. <span style="font-weight: 700">시스템 설정 › 개인정보 보호 및 보안 › 블루투스</span>에서 EdgeLink를 켜주세요. 켜면 자동으로 다음 권한으로 넘어가요.
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px 0; color: #8C8C8C">
+        <span style="width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px; background: #F5F5F7; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800">A</span>
+        <div style="font-size: 14px; font-weight: 700; color: #4D4D4D; flex-grow: 1">손쉬운 사용</div>
+        <span style="font-size: 12px">블루투스 다음에</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sending: true };
+  }
+  renderVals() {
+    const err = 'color: #C41818; font-weight: 700';
+    const rows = [
+      ['10:20:01', 'SDP 레코드 등록됨', ''],
+      ['10:20:01', 'iPhone 15 Pro에 연결 중…', ''],
+      ['10:20:02', '연결 실패: PSM 0x11, 0xe00002bc', err],
+      ['10:20:17', '15초 뒤 다시 시도', ''],
+      ['10:20:17', 'iPhone 15 Pro에 연결 중…', ''],
+      ['10:20:18', '채널 2개 열림 · 연결됨', ''],
+      ['10:21:40', '→ 아이폰 조작 (LG UltraFine 오른쪽)', ''],
+      ['10:22:05', '← Mac 조작', '']
+    ];
+    return {
+      sending: this.state.sending, sent: !this.state.sending,
+      sentText: '멈췄어요 · 672자까지 보냈어요',
+      finish: () => this.setState({ sending: false }),
+      again: () => this.setState({ sending: true }),
+      logs: rows.map(([t, m, st]) => ({ t, m, style: st }))
+    };
+  }
+}
+</script>
+</body>
+</html>

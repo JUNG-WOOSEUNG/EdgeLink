@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 아이콘</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 960px; height: 600px; box-sizing: border-box; padding: 40px; background: #FFFFFF; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; gap: 48px; border: 1px solid #E5E5E5; border-radius: 12px">
+
+  <div style="display: flex; flex-direction: column; gap: 20px; width: 380px; flex-shrink: 0">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 18px; font-weight: 800">앱 아이콘</div>
+      <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">화면 가장자리에서 유리 알약을 지나 아이폰으로 넘어가는 순간을 그렸어요. 1024×1024 원본, macOS 둥근 사각형 마스크.</div>
+    </div>
+    <svg width="220" height="220" viewBox="0 0 1024 1024" role="img" aria-label="EdgeLink 앱 아이콘">
+      <rect x="100" y="100" width="824" height="824" rx="185" fill="{{accent}}"></rect>
+      <rect x="100" y="100" width="824" height="824" rx="185" fill="none" stroke="#000000" stroke-opacity="0.08" stroke-width="4"></rect>
+      <path d="M100 285 a185 185 0 0 1 185 -185 H560 V924 H285 a185 185 0 0 1 -185 -185 Z" fill="#FFFFFF"></path>
+      <rect x="196" y="220" width="300" height="20" rx="10" fill="#DCEFFA"></rect>
+      <rect x="196" y="270" width="220" height="20" rx="10" fill="#DCEFFA"></rect>
+      <rect x="520" y="372" width="80" height="280" rx="40" fill="#FFFFFF" fill-opacity="0.55" stroke="#FFFFFF" stroke-width="10"></rect>
+      <rect x="640" y="300" width="210" height="424" rx="56" fill="#094B7B"></rect>
+      <rect x="660" y="320" width="170" height="384" rx="40" fill="#0B5E99"></rect>
+      <rect x="712" y="340" width="66" height="18" rx="9" fill="#094B7B"></rect>
+      <circle cx="745" cy="520" r="28" fill="none" stroke="#FFFFFF" stroke-width="12"></circle>
+    </svg>
+    <div style="display: flex; align-items: flex-end; gap: 24px">
+      <sc-for list="{{sizes}}" as="z" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+          <svg width="{{z.px}}" height="{{z.px}}" viewBox="0 0 1024 1024" aria-hidden="true">
+            <rect x="100" y="100" width="824" height="824" rx="185" fill="{{accent}}"></rect>
+            <path d="M100 285 a185 185 0 0 1 185 -185 H560 V924 H285 a185 185 0 0 1 -185 -185 Z" fill="#FFFFFF"></path>
+            <rect x="520" y="372" width="80" height="280" rx="40" fill="#FFFFFF" fill-opacity="0.55" stroke="#FFFFFF" stroke-width="10"></rect>
+            <rect x="640" y="300" width="210" height="424" rx="56" fill="#094B7B"></rect>
+          </svg>
+          <span style="font-size: 11.5px; color: #4D4D4D">{{z.label}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">32px 이하에서는 화면 속 줄과 아이폰 안쪽 화면을 빼서 단순하게 보여줘요. 그림자·그라데이션은 쓰지 않아요.</div>
+  </div>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 18px; font-weight: 800">메뉴바 아이콘</div>
+      <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">템플릿 이미지(흑백, isTemplate) 18×18pt, 선 두께 1.5pt. macOS가 라이트·다크 메뉴바에 맞춰 색을 바꿔요.</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+      <sc-for list="{{icons}}" as="i" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 8px; border-radius: 8px; background: #F5F5F7">
+          <svg width="72" height="72" viewBox="0 0 18 18" role="img" aria-label="{{i.label}}">
+            <path d="{{i.stroke}}" fill="none" stroke="#1A1A1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="{{i.fill}}" fill="#1A1A1A"></path>
+          </svg>
+          <div style="font-size: 12px; font-weight: 700; text-align: center">{{i.label}}</div>
+          <div style="font-size: 11px; color: #4D4D4D; text-align: center; line-height: 1.3">{{i.note}}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">실제 크기 · 라이트 메뉴바</div>
+      <div style="height: 28px; border-radius: 6px; background: #ECECEC; display: flex; align-items: center; justify-content: flex-end; gap: 18px; padding: 0 16px">
+        <span style="width: 18px; height: 8px; border-radius: 2px; background: #B3B3B3"></span>
+        <sc-for list="{{icons}}" as="i" hint-placeholder-count="4">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="{{i.stroke}}" fill="none" stroke="#1A1A1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="{{i.fill}}" fill="#1A1A1A"></path></svg>
+        </sc-for>
+        <span style="width: 18px; height: 8px; border-radius: 2px; background: #B3B3B3"></span>
+        <span style="font-size: 12px; font-weight: 600">10:20</span>
+      </div>
+      <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">실제 크기 · 다크 메뉴바</div>
+      <div style="height: 28px; border-radius: 6px; background: #2B2B2B; display: flex; align-items: center; justify-content: flex-end; gap: 18px; padding: 0 16px">
+        <span style="width: 18px; height: 8px; border-radius: 2px; background: #5C5C5C"></span>
+        <sc-for list="{{icons}}" as="i" hint-placeholder-count="4">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="{{i.stroke}}" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="{{i.fill}}" fill="#FFFFFF"></path></svg>
+        </sc-for>
+        <span style="width: 18px; height: 8px; border-radius: 2px; background: #5C5C5C"></span>
+        <span style="font-size: 12px; font-weight: 600; color: #FFFFFF">10:20</span>
+      </div>
+    </div>
+
+    <div style="font-size: 12px; color: #4D4D4D; line-height: 1.5">왼쪽 세로선은 Mac 화면 가장자리예요. 아이폰 조작 중엔 아이폰이 채워지고 화살표가 생겨서, 지금 입력이 어디로 가는지 메뉴바만 봐도 알 수 있어요. 문제 있음은 흑백 아이콘 안의 느낌표로 표시하고, 팝오버 첫 줄에서 이유를 알려줘요.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0097E4","options":["#0097E4","#094B7B","#1A1A1A"]},"$preview":{"width":960,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const phone = 'M10 2h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z';
+    const edge = 'M3 3v12';
+    return {
+      accent: this.props.accent ?? '#0097E4',
+      sizes: [
+        { px: 128, label: '128' }, { px: 64, label: '64' }, { px: 32, label: '32' }, { px: 16, label: '16' }
+      ],
+      icons: [
+        { label: '연결 안 됨', note: '아이폰 + 빗금', stroke: phone + 'M5.5 3.5l11 11', fill: '' },
+        { label: '연결됨', note: '가장자리 + 아이폰', stroke: edge + phone, fill: '' },
+        { label: '아이폰 조작 중', note: '아이폰이 채워지고 화살표', stroke: edge + 'M4.5 9h2.2M5.6 7.7L6.9 9 5.6 10.3', fill: phone },
+        { label: '문제 있음', note: '아이폰 안에 느낌표', stroke: edge + phone + 'M11.5 6v3.6M11.5 12.2v.01', fill: '' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

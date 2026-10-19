@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 시작하기 · 권한</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 720px; height: 560px; box-sizing: border-box; background: #FFFFFF; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 12px; overflow: hidden">
+  <div style="height: 44px; display: flex; align-items: center; padding: 0 16px; gap: 8px" aria-hidden="true">
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FF5F57"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FEBC2E"></span>
+    <span style="width: 12px; height: 12px; border-radius: 9999px; background: #D9D9D9"></span>
+  </div>
+  <div style="display: flex; justify-content: center; gap: 8px; padding: 0 0 16px">
+    <sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: {{s.color}}">
+        <span style="{{s.dot}}">{{s.mark}}</span>{{s.label}}<span style="{{s.line}}"></span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="flex-grow: 1; padding: 8px 48px 0; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 800">Mac 권한 3가지를 허용해주세요</h1>
+      <p style="margin: 0; font-size: 13px; color: #4D4D4D; line-height: 1.4">허용하면 자동으로 확인돼요. 앱을 다시 켤 필요는 없어요.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px">
+      <sc-for list="{{perms}}" as="p" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #F0F0F0">
+          <div style="display: flex; align-items: center; gap: 14px">
+            <span style="width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px; background: #F0F0F2; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #094B7B">{{p.glyph}}</span>
+            <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+              <div style="font-size: 14px; font-weight: 700">{{p.title}}</div>
+              <div style="font-size: 12px; color: #4D4D4D; line-height: 1.3">{{p.why}}</div>
+            </div>
+            <sc-if value="{{p.granted}}" hint-placeholder-val="{{ false }}">
+              <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #1E7E34">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+                허용됨
+              </span>
+            </sc-if>
+            <sc-if value="{{p.pending}}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{p.grant}}" style="{{p.btn}}">{{p.cta}}</button>
+            </sc-if>
+          </div>
+          <sc-if value="{{p.showGuide}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; gap: 16px; align-items: center; margin-left: 46px; padding: 12px; border-radius: 8px; background: #F2FAFE; border: 1px solid #B3DDF5">
+              <div style="width: 180px; flex-shrink: 0; border-radius: 6px; background: #FFFFFF; border: 1px solid #E5E5E5; padding: 8px; display: flex; flex-direction: column; gap: 6px" aria-hidden="true">
+                <div style="font-size: 10px; font-weight: 700; color: #4D4D4D">{{p.title}}</div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #0097E4"></span><span style="flex-grow: 1">EdgeLink</span><span style="width: 24px; height: 14px; border-radius: 9999px; background: #0097E4; display: flex; justify-content: flex-end; padding: 2px; box-sizing: border-box"><span style="width: 10px; height: 10px; border-radius: 9999px; background: #FFFFFF"></span></span></div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #8C8C8C"><span style="width: 14px; height: 14px; border-radius: 4px; background: #D9D9D9"></span><span style="flex-grow: 1">다른 앱</span><span style="width: 24px; height: 14px; border-radius: 9999px; background: #D9D9D9"></span></div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <div style="font-size: 12px; font-weight: 700; color: #094B7B">시스템 설정이 열렸어요</div>
+                <div style="font-size: 12px; color: #1A1A1A; line-height: 1.4">목록에서 EdgeLink를 켜주세요. 목록에 없으면 아래 + 버튼으로 EdgeLink를 추가하세요.</div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #4D4D4D"><span style="width: 10px; height: 10px; border-radius: 9999px; border: 2px solid #0097E4; border-right-color: transparent; box-sizing: border-box"></span>허용되길 기다리는 중</div>
+                <div style="font-size: 11.5px; color: #4D4D4D; line-height: 1.4">켜지지 않나요? 회사에서 관리하는 Mac이라면 관리자가 막아두었을 수 있어요. <a href="PopoverWarning.dc.html" style="font-weight: 600">관리자에게 보낼 내용 보기</a></div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; gap: 8px; font-size: 12px; color: #4D4D4D; line-height: 1.4">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+      <span>입력 내용은 저장하거나 인터넷으로 보내지 않아요. 아이폰으로 넘어갔을 때만 블루투스로 아이폰에 전달돼요.</span>
+    </div>
+  </div>
+
+  <div style="height: 72px; border-top: 1px solid #E5E5E5; display: flex; align-items: center; justify-content: space-between; padding: 0 24px">
+    <a href="Onboarding-1-Welcome.dc.html" style="font-size: 13px; font-weight: 600; color: #1A1A1A; text-decoration: none">이전</a>
+    <a href="Onboarding-3-Pairing.dc.html" style="{{nextStyle}}">{{nextLabel}}</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0097E4","options":["#0097E4","#094B7B","#1A1A1A"]},"$preview":{"width":720,"height":560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { bt: true, ax: false, im: false };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#0097E4';
+    const s = this.state;
+    const stepDefs = ['Mac 권한', '아이폰 연결', '배치', '연습'];
+    const current = 0;
+    const steps = stepDefs.map((label, i) => {
+      const done = i < current, on = i === current;
+      return {
+        label, mark: done ? '✓' : String(i + 1),
+        color: on ? '#1A1A1A' : '#4D4D4D',
+        dot: 'width: 20px; height: 20px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; ' +
+          (done ? 'background: #28A745; color: #FFFFFF' : on ? 'background: #0077B6; color: #FFFFFF' : 'border: 1px solid #8C8C8C; color: #4D4D4D; box-sizing: border-box'),
+        line: i < stepDefs.length - 1 ? 'width: 28px; height: 1px; background: #CCCCCC; margin-left: 4px' : 'display: none'
+      };
+    });
+    const order = ['bt', 'ax', 'im'];
+    const firstPending = order.find((k) => !s[k]);
+    const defs = [
+      { key: 'bt', glyph: 'B', title: '블루투스', why: 'Mac이 아이폰에 키보드·마우스로 보이게 해요', cta: '허용' },
+      { key: 'ax', glyph: 'A', title: '손쉬운 사용', why: '아이폰 조작 중엔 입력이 Mac에 가지 않도록 막아요', cta: '설정 열기' },
+      { key: 'im', glyph: 'K', title: '입력 모니터링', why: '키보드 입력을 읽어서 아이폰으로 보내요', cta: '설정 열기' }
+    ];
+    const perms = defs.map((d) => {
+      const isNext = d.key === firstPending;
+      return {
+        ...d, granted: s[d.key], pending: !s[d.key],
+        showGuide: !s[d.key] && isNext && d.key !== 'bt',
+        grant: () => this.setState({ [d.key]: true }),
+        btn: 'height: 34px; padding: 0 16px; border-radius: 20px; font-family: inherit; font-size: 13px; font-weight: 700; ' +
+          (isNext ? 'border: 0; background: ' + accent + '; color: #FFFFFF' : 'border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A')
+      };
+    });
+    const all = order.every((k) => s[k]);
+    return {
+      accent, steps, perms,
+      nextLabel: all ? '다음' : '권한을 허용하면 넘어가요',
+      nextStyle: 'height: 40px; padding: 0 28px; border-radius: 20px; font-size: 14px; font-weight: 700; text-decoration: none; display: flex; align-items: center; ' +
+        (all ? 'background: #0077B6; color: #FFFFFF' : 'background: #E5E5E5; color: #4D4D4D; pointer-events: none')
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>EdgeLink 설정</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0077B6}a:hover{color:#094B7B}
+</style>
+</helmet>
+<div style="width: 860px; height: 640px; box-sizing: border-box; background: #FFFFFF; font-family: SUIT, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: #1A1A1A; display: flex; border: 1px solid #E5E5E5; border-radius: 12px; overflow: hidden">
+
+  <div style="width: 200px; flex-shrink: 0; background: #F5F5F7; border-right: 1px solid #E5E5E5; display: flex; flex-direction: column">
+    <div style="height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 16px" aria-hidden="true">
+      <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FF5F57"></span>
+      <span style="width: 12px; height: 12px; border-radius: 9999px; background: #FEBC2E"></span>
+      <span style="width: 12px; height: 12px; border-radius: 9999px; background: #28C840"></span>
+    </div>
+    <nav aria-label="설정 메뉴" style="display: flex; flex-direction: column; gap: 2px; padding: 0 8px">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+        <button onClick="{{t.pick}}" aria-current="{{t.current}}" style="{{t.style}}">
+          <span style="{{t.iconBox}}">{{t.short}}</span>
+          <span>{{t.label}}</span>
+        </button>
+      </sc-for>
+    </nav>
+  </div>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column">
+    <div style="height: 52px; display: flex; align-items: center; padding: 0 32px; border-bottom: 1px solid #E5E5E5; font-size: 15px; font-weight: 700">{{title}}</div>
+    <div style="padding: 24px 32px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; flex-grow: 1">
+
+      <sc-if value="{{isGeneral}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 24px">
+          <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px; padding: 0 16px">
+            <sc-for list="{{generalToggles}}" as="t" hint-placeholder-count="3">
+              <div style="display: flex; align-items: center; gap: 12px; min-height: 60px; border-bottom: 1px solid #F0F0F0">
+                <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+                  <label for="{{t.id}}" style="font-size: 14px; font-weight: 600; line-height: 1.3">{{t.label}}</label>
+                  <div style="font-size: 12px; color: #4D4D4D; line-height: 1.3">{{t.hint}}</div>
+                </div>
+                <button id="{{t.id}}" onClick="{{t.flip}}" aria-pressed="{{t.on}}" style="{{t.track}}"><span style="{{t.knob}}"></span></button>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; border: 1px solid #E5E5E5; border-radius: 8px; padding: 16px">
+            <label for="sens" style="font-size: 14px; font-weight: 600">전환 감도</label>
+            <div style="font-size: 12px; color: #4D4D4D; line-height: 1.3">모서리를 얼마나 밀어야 아이폰으로 넘어갈지 정해요. 자꾸 실수로 넘어가면 오른쪽으로 옮기세요.</div>
+            <div style="display: flex; align-items: center; gap: 12px">
+              <span style="font-size: 12px; color: #4D4D4D">살짝</span>
+              <input id="sens" type="range" min="0" max="100" value="{{sens}}" onChange="{{setSens}}" style="flex-grow: 1; accent-color: {{accent}}">
+              <span style="font-size: 12px; color: #4D4D4D">꾹</span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; border: 1px solid #E5E5E5; border-radius: 8px; padding: 16px">
+            <div style="font-size: 14px; font-weight: 600">메뉴바 표시</div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F0F0F2; border-radius: 10px">
+              <button onClick="{{pickIconOnly}}" style="{{iconOnlyStyle}}">아이콘만</button>
+              <button onClick="{{pickIconName}}" style="{{iconNameStyle}}">아이콘 + 기기 이름</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isLayout}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 16px">
+          <div style="font-size: 13px; color: #4D4D4D; line-height: 1.3">아이폰을 실제로 놓은 쪽 모니터 가장자리로 끌어다 놓으세요. 놓을 수 있는 곳이 파란 선으로 표시돼요.</div>
+          <div style="position: relative; height: 260px; border-radius: 8px; background: #F5F5F7; border: 1px solid #E5E5E5; overflow: hidden">
+            <div style="position: absolute; left: 96px; top: 96px; width: 170px; height: 108px; border-radius: 5px; background: #E3F2FB; border: 1px solid #8C8C8C; display: flex; flex-direction: column; overflow: hidden">
+              <div style="height: 6px; background: #4D4D4D"></div>
+              <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">MacBook Pro</div>
+            </div>
+            <div style="position: absolute; left: 266px; top: 48px; width: 228px; height: 130px; border-radius: 5px; background: #E3F2FB; border: 1px solid #8C8C8C; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">LG UltraFine</div>
+            <div style="position: absolute; left: 266px; top: 178px; width: 228px; height: 3px; border-radius: 9999px; background: #B3DDF5"></div>
+            <div style="position: absolute; left: 96px; top: 203px; width: 170px; height: 3px; border-radius: 9999px; background: #B3DDF5"></div>
+            <div style="position: absolute; left: 492px; top: 60px; width: 5px; height: 106px; border-radius: 9999px; background: {{accent}}; box-shadow: 0 0 8px {{accent}}"></div>
+            <div style="position: absolute; left: 502px; top: 56px; width: 54px; height: 114px; border-radius: 12px; background: #1A1A1A; border: 1.5px solid {{accent}}; display: flex; align-items: flex-start; justify-content: center; padding-top: 6px; box-sizing: border-box">
+              <span style="width: 18px; height: 5px; border-radius: 9999px; background: #000000"></span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 13px">
+            <span style="width: 8px; height: 8px; border-radius: 9999px; background: #28A745"></span>
+            <span>모니터 2대 · 아이폰: <span style="font-weight: 600">LG UltraFine 오른쪽</span></span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; border: 1px solid #E5E5E5; border-radius: 8px; padding: 16px">
+            <div style="font-size: 14px; font-weight: 600">기기</div>
+            <div style="font-size: 12px; color: #4D4D4D; line-height: 1.3">배치도의 아이폰 크기와 돌아오는 위치 계산에 쓰여요. 기기마다 따로 저장돼요. 아이폰 화면 회전 잠금을 켜두면 위치가 어긋나지 않아요.</div>
+            <div style="display: flex; align-items: center; gap: 12px">
+              <label for="model" style="font-size: 13px; color: #4D4D4D">모델</label>
+              <select id="model" style="height: 32px; min-width: 220px; padding: 0 8px; border-radius: 6px; border: 1px solid #CCCCCC; background: #FFFFFF; font-family: inherit; font-size: 13px; color: #1A1A1A"><option>iPhone</option><option>iPhone mini</option><option>iPhone Plus·Pro Max</option><option>iPad</option><option>iPad Pro 13</option></select>
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F0F0F2; border-radius: 10px; width: 160px">
+                <button onClick="{{pickPortrait}}" style="{{portraitStyle}}">세로</button>
+                <button onClick="{{pickLandscape}}" style="{{landscapeStyle}}">가로</button>
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; border: 1px solid #E5E5E5; border-radius: 8px; padding: 16px">
+            <label for="calib" style="font-size: 14px; font-weight: 600">아이폰 포인터 이동 보정</label>
+            <div style="font-size: 12px; color: #4D4D4D; line-height: 1.3">Mac으로 돌아오는 위치가 어긋날 때 조절해요. 도우미를 쓰면 자동으로 맞춰줘요.</div>
+            <div style="display: flex; align-items: center; gap: 12px">
+              <span style="font-size: 12px; color: #4D4D4D">작게</span>
+              <input id="calib" type="range" min="0" max="100" value="{{calib}}" onChange="{{setCalib}}" style="flex-grow: 1; accent-color: {{accent}}">
+              <span style="font-size: 12px; color: #4D4D4D">크게</span>
+              <button style="height: 36px; padding: 0 16px; border-radius: 20px; border: 1px solid {{accent}}; background: #FFFFFF; color: #0077B6; font-family: inherit; font-size: 13px; font-weight: 600">보정 도우미</button>
+            </div>
+            <div style="font-size: 11.5px; color: #4D4D4D; text-align: right">아이폰이 연결되지 않으면 버튼이 흐려지고 “아이폰을 연결하면 쓸 수 있어요”가 보여요</div>
+          </div>
+          <a href="Onboarding-1-Welcome.dc.html" style="align-self: flex-start; font-size: 13px; font-weight: 600; text-decoration: none">온보딩 다시 보기 &gt;</a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isInput}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 24px">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">단축키</div>
+            <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px; padding: 0 16px">
+              <sc-for list="{{shortcuts}}" as="k" hint-placeholder-count="8">
+                <div style="display: flex; align-items: center; gap: 12px; min-height: 46px; border-bottom: 1px solid #F0F0F0">
+                  <span style="flex-grow: 1; font-size: 14px">{{k.label}}</span>
+                  <button style="min-width: 96px; height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #CCCCCC; background: #F5F5F7; font-family: inherit; font-size: 13px; font-weight: 600; color: #1A1A1A">{{k.keys}}</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">⌘Tab, Mission Control처럼 macOS가 먼저 처리하는 단축키는 아이폰 조작 중에도 Mac에서 동작할 수 있어요.</div>
+            <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">아이폰으로 보낼 때</div>
+            <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px; padding: 0 16px">
+              <sc-for list="{{inputToggles}}" as="t" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; gap: 12px; min-height: 60px; border-bottom: 1px solid #F0F0F0">
+                  <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+                    <label for="{{t.id}}" style="font-size: 14px; font-weight: 600; line-height: 1.3">{{t.label}}</label>
+                    <div style="font-size: 12px; color: #4D4D4D; line-height: 1.3">{{t.hint}}</div>
+                  </div>
+                  <button id="{{t.id}}" onClick="{{t.flip}}" aria-pressed="{{t.on}}" style="{{t.track}}"><span style="{{t.knob}}"></span></button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <div style="font-size: 12px; font-weight: 600; color: #4D4D4D; flex-grow: 1">제스처를 아이폰 동작으로</div>
+              <span style="font-size: 11.5px; font-weight: 600; color: #8A4B00; padding: 2px 8px; border-radius: 9999px; background: #FFF6E0">아이폰 등록 전</span>
+              <a href="GestureSetup.dc.html" style="height: 30px; padding: 0 14px; border-radius: 20px; background: #0077B6; color: #FFFFFF; font-size: 12px; font-weight: 700; text-decoration: none; display: flex; align-items: center">아이폰 버튼 등록</a>
+            </div>
+            <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px; padding: 0 16px">
+              <sc-for list="{{gestures}}" as="g" hint-placeholder-count="4">
+                <div style="display: flex; align-items: center; gap: 12px; min-height: 60px; border-bottom: 1px solid #F0F0F0">
+                  <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+                    <label for="{{g.id}}" style="font-size: 14px; font-weight: 600; line-height: 1.3">{{g.label}}</label>
+                    <div style="font-size: 12px; color: #4D4D4D; line-height: 1.3">{{g.hint}}</div>
+                  </div>
+                  <span style="font-size: 12px; font-weight: 600; color: #094B7B; padding: 4px 10px; border-radius: 6px; background: #E5F4FC; white-space: nowrap">{{g.action}}</span>
+                  <button id="{{g.id}}" onClick="{{g.flip}}" aria-pressed="{{g.on}}" style="{{g.track}}"><span style="{{g.knob}}"></span></button>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size: 12px; color: #4D4D4D; line-height: 1.4">제스처는 마우스 추가 버튼으로 바꿔 보내요. 아이폰 AssistiveTouch에 버튼을 한 번 등록해야 동작해요. 앱 사이 좌우 넘기기와 뒤로 가기는 지원하지 않아요.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isConnection}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 24px">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">기기</div>
+            <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px; padding: 0 16px">
+              <div style="display: flex; align-items: center; gap: 12px; min-height: 60px; border-bottom: 1px solid #F0F0F0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"></rect></svg>
+                <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+                  <div style="font-size: 14px; font-weight: 600">iPhone 15 Pro</div>
+                  <div style="font-size: 12px; color: #1E7E34">연결됨 · 기본 기기</div>
+                </div>
+                <button style="height: 32px; padding: 0 14px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 600; color: #1A1A1A">연결 끊기</button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; min-height: 60px">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2.5"></rect></svg>
+                <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+                  <div style="font-size: 14px; font-weight: 600">iPad Air</div>
+                  <div style="font-size: 12px; color: #4D4D4D">페어링됨</div>
+                </div>
+                <button style="height: 32px; padding: 0 14px; border-radius: 20px; border: 0; background: #0077B6; font-family: inherit; font-size: 13px; font-weight: 700; color: #FFFFFF">연결</button>
+              </div>
+            </div>
+            <button style="align-self: flex-start; height: 36px; padding: 0 4px; border: 0; background: transparent; font-family: inherit; font-size: 13px; font-weight: 600; color: #0077B6">+ 새 기기 페어링</button>
+          </div>
+          <div style="display: flex; flex-direction: column; border: 1px solid #E5E5E5; border-radius: 8px; padding: 0 16px">
+            <sc-for list="{{connToggles}}" as="t" hint-placeholder-count="2">
+              <div style="display: flex; align-items: center; gap: 12px; min-height: 60px; border-bottom: 1px solid #F0F0F0">
+                <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+                  <label for="{{t.id}}" style="font-size: 14px; font-weight: 600; line-height: 1.3">{{t.label}}</label>
+                  <div style="font-size: 12px; color: #4D4D4D; line-height: 1.3">{{t.hint}}</div>
+                </div>
+                <button id="{{t.id}}" onClick="{{t.flip}}" aria-pressed="{{t.on}}" style="{{t.track}}"><span style="{{t.knob}}"></span></button>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div style="font-size: 12px; font-weight: 600; color: #4D4D4D">문제 해결</div>
+            <div style="display: flex; gap: 8px">
+              <button style="height: 36px; padding: 0 16px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 600; color: #1A1A1A">연결 로그 보기</button>
+              <button style="height: 36px; padding: 0 16px; border-radius: 20px; border: 1px solid #EB1E1E; background: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 600; color: #C41818">페어링 초기화</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isAbout}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 48px; text-align: center">
+          <div style="width: 72px; height: 72px; border-radius: 16px; background: {{accent}}; display: flex; align-items: center; justify-content: center">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2.5"></rect><path d="M2 12h4M4 10l2 2-2 2"></path></svg>
+          </div>
+          <div style="font-size: 20px; font-weight: 700">EdgeLink</div>
+          <div style="font-size: 13px; color: #4D4D4D">버전 0.1 · Mac 하나로 아이폰까지</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 20px; border-radius: 8px; border: 1px solid #E5E5E5; text-align: left">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px"><span style="width: 8px; height: 8px; border-radius: 9999px; background: #28A745"></span>블루투스 · 허용됨</div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px"><span style="width: 8px; height: 8px; border-radius: 9999px; background: #28A745"></span>손쉬운 사용 · 허용됨</div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px"><span style="width: 8px; height: 8px; border-radius: 9999px; background: #28A745"></span>입력 모니터링 · 허용됨</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-radius: 8px; border: 1px solid #E5E5E5; width: 360px; box-sizing: border-box; text-align: left">
+            <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+              <div style="font-size: 13px; font-weight: 600">자동으로 업데이트 확인</div>
+              <div style="font-size: 11.5px; color: #4D4D4D">하루 한 번 · 마지막 확인 오늘 09:12 · 최신 버전이에요</div>
+            </div>
+            <button style="height: 30px; padding: 0 12px; border-radius: 20px; border: 1px solid #CCCCCC; background: #FFFFFF; color: #1A1A1A; font-family: inherit; font-size: 12px; font-weight: 600; white-space: nowrap">지금 확인</button>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0097E4","options":["#0097E4","#094B7B","#1A1A1A"]},"$preview":{"width":860,"height":640}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tab: 'layout', sens: 55, calib: 45, menubar: 'icon', orient: 'portrait',
+      login: true, glass: true, sound: false,
+      invert: false, hangul: true, dragLock: true,
+      reconnect: true, sleep: true, media: true, onlyDefault: true, gSwitcher: true, gHome: true, gNotify: true, gControl: true
+    };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#0097E4';
+    const s = this.state;
+    const sw = (key, label, hint) => {
+      const on = s[key];
+      return {
+        id: 'st-' + key, label, hint, on: on ? 'true' : 'false',
+        flip: () => this.setState({ [key]: !s[key] }),
+        track: 'width: 40px; height: 24px; flex-shrink: 0; border: 0; padding: 2px; border-radius: 9999px; display: flex; ' +
+          (on ? 'background: ' + accent + '; justify-content: flex-end' : 'background: #CCCCCC; justify-content: flex-start'),
+        knob: 'width: 20px; height: 20px; border-radius: 9999px; background: #FFFFFF; box-shadow: 0 2px 8px rgba(51,51,51,.16)'
+      };
+    };
+    const seg = (on) => 'height: 36px; border: 0; border-radius: 7px; font-family: inherit; font-size: 13px; font-weight: 600; ' +
+      (on ? 'background: #FFFFFF; color: #1A1A1A; box-shadow: 0 2px 8px rgba(51,51,51,.16)' : 'background: transparent; color: #4D4D4D');
+    const defs = [
+      ['general', '일반', 'G'], ['layout', '배치', 'L'], ['input', '입력', 'I'],
+      ['connection', '연결', 'C'], ['about', '정보', 'i']
+    ];
+    const tabs = defs.map(([id, label, short]) => {
+      const on = s.tab === id;
+      return {
+        label, short, current: on ? 'page' : 'false',
+        pick: () => this.setState({ tab: id }),
+        style: 'height: 36px; border: 0; border-radius: 8px; padding: 0 10px; display: flex; align-items: center; gap: 10px; text-align: left; font-family: inherit; font-size: 13px; font-weight: 600; ' +
+          (on ? 'background: #DCEFFA; color: #094B7B' : 'background: transparent; color: #1A1A1A'),
+        iconBox: 'width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #FFFFFF; background: ' + (on ? accent : '#8C8C8C')
+      };
+    });
+    const titles = { general: '일반', layout: '배치', input: '입력', connection: '연결', about: '정보' };
+    return {
+      accent, tabs, title: titles[s.tab],
+      isGeneral: s.tab === 'general', isLayout: s.tab === 'layout', isInput: s.tab === 'input',
+      isConnection: s.tab === 'connection', isAbout: s.tab === 'about',
+      sens: s.sens, calib: s.calib,
+      setSens: (e) => this.setState({ sens: Number(e.target.value) }),
+      setCalib: (e) => this.setState({ calib: Number(e.target.value) }),
+      iconOnlyStyle: seg(s.menubar === 'icon'), iconNameStyle: seg(s.menubar === 'name'),
+      portraitStyle: seg(s.orient === 'portrait'), landscapeStyle: seg(s.orient === 'landscape'),
+      pickPortrait: () => this.setState({ orient: 'portrait' }),
+      pickLandscape: () => this.setState({ orient: 'landscape' }),
+      pickIconOnly: () => this.setState({ menubar: 'icon' }),
+      pickIconName: () => this.setState({ menubar: 'name' }),
+      generalToggles: [
+        sw('login', '로그인할 때 자동 실행', 'Mac을 켜면 바로 아이폰과 연결돼요'),
+        sw('glass', '모서리 유리 효과', '밀 때 가장자리가 볼록하게 부풀어요'),
+        sw('sound', '전환할 때 소리', '넘어가고 돌아올 때 짧은 효과음을 내요')
+      ],
+      shortcuts: [
+        { label: 'Mac ↔ 아이폰 전환', keys: '⌃⌥⌘Space' },
+        { label: '클립보드 보내기', keys: '⌃⌥⌘V' },
+        { label: '모서리 전환 켜기/끄기', keys: '⌃⌥⌘E' },
+        { label: '아이폰 앱 전환기', keys: '⌃⌥⌘↑' },
+        { label: '아이폰 홈', keys: '⌃⌥⌘H' },
+        { label: '아이폰 알림 센터', keys: '⌃⌥⌘↓' },
+        { label: '아이폰 제어 센터', keys: '⌃⌥⌘C' },
+        { label: '아이폰 잠금 화면', keys: '⌃⌥⌘L' }
+      ],
+      gestures: [
+        { ...sw('gSwitcher', '세 손가락 위로 쓸기', '단축키 ⌃⌥⌘↑ · Mac이 먼저 쓸 수 있어요'), action: '버튼 4 → 앱 전환기' },
+        { ...sw('gHome', '네 손가락 모으기', '단축키 ⌃⌥⌘H'), action: '버튼 5 → 홈' },
+        { ...sw('gNotify', '세 손가락 아래로 쓸기', '단축키 ⌃⌥⌘↓'), action: '버튼 6 → 알림 센터' },
+        { ...sw('gControl', '네 손가락 아래로 쓸기', '단축키 ⌃⌥⌘C'), action: '버튼 7 → 제어 센터' }
+      ],
+      inputToggles: [
+        sw('invert', '스크롤 방향 반전', '아이폰에서만 반대로 스크롤해요'),
+        sw('hangul', 'Caps Lock으로 한/영 전환', 'Caps Lock을 누르면 아이폰에 ⌃Space를 보내요'),
+        sw('dragLock', '드래그 중엔 넘어가지 않기', '파일이나 창을 끌다 실수로 넘어가는 걸 막아요'),
+        sw('media', '미디어 키를 아이폰으로', '아이폰 조작 중엔 볼륨·재생 키를 아이폰에 보내요')
+      ],
+      connToggles: [
+        sw('onlyDefault', '기본 기기만 연결 허용', '다른 기기가 연결해 오면 허용할지 물어봐요'),
+        sw('reconnect', '자동으로 다시 연결', '앱을 켜거나 깨어날 때 기본 기기에 연결해요. 실패가 이어지면 간격을 늘려요'),
+        sw('sleep', '잠자기 중엔 연결 끊기', '배터리를 아끼기 위해 Mac이 잠들면 끊어요')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

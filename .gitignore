@@ -1,0 +1,13 @@
+.DS_Store
+/.build
+/.swiftpm
+/Packages
+*.xcodeproj/xcuserdata
+xcuserdata/
+DerivedData/
+.omc/
+# 서명 키·인증서는 절대 저장소에 올리지 않는다
+*.p12
+*.cer
+*.key
+ed25519*
