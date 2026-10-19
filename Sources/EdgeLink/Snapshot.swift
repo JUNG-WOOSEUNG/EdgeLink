@@ -28,6 +28,7 @@ enum Snapshot {
         }
         // 담당별 캡처 (설정 창, 팝오버 상태별, 확인 창 등): 각 파일의 extension Snapshot에서 한 줄씩 추가
         // 예: renderSettings(model: model, dir: dir, appearance: appearance, suffix: suffix)
+        renderSettings(model: model, dir: dir, appearance: appearance, suffix: suffix)
 
         let popover = PopoverView()
             .environmentObject(model)
