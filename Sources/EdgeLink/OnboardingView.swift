@@ -183,7 +183,7 @@ struct WelcomeArt: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 10).fill(Color(hex: 0x1A1A1A))
-                .overlay(RoundedRectangle(cornerRadius: 5).fill(Color(hex: 0xE3F2FB)).padding(6))
+                .overlay(MacScreenArt().clipShape(RoundedRectangle(cornerRadius: 5)).padding(6))
                 .frame(width: 200, height: 126).offset(x: 20, y: 10)
             RoundedRectangle(cornerRadius: 4).fill(Color(hex: 0xB3B3B3))
                 .frame(width: 240, height: 8).offset(x: 0, y: 136)
@@ -191,10 +191,15 @@ struct WelcomeArt: View {
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
                 .shadow(color: Color.brand.opacity(0.5), radius: 8)
                 .frame(width: 20, height: 64).offset(x: 206, y: 40)
-            RoundedRectangle(cornerRadius: 12).fill(Color(hex: 0x1A1A1A))
-                .overlay(RoundedRectangle(cornerRadius: 9).fill(Color(hex: 0x2B2B2B)).padding(4)
-                    .overlay(Circle().strokeBorder(.white, lineWidth: 2).frame(width: 10, height: 10)))
-                .frame(width: 52, height: 104).offset(x: 246, y: 26)
+            PhoneArt(width: 52, height: 104, bezel: 3) {
+                ZStack {
+                    PhoneScreenArt()
+                    // AssistiveTouch 커서
+                    Circle().fill(Color.white.opacity(0.35)).overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
+                        .frame(width: 10, height: 10).offset(x: -6, y: 8)
+                }
+            }
+            .offset(x: 246, y: 26)
         }
         .frame(width: 300, height: 150, alignment: .topLeading)
         .accessibilityHidden(true)
@@ -232,7 +237,7 @@ struct PermissionsStep: View {
                 }
                 .font(Typo.secondary).foregroundStyle(Color.textSecondary)
             }
-            .padding(.horizontal, 48).padding(.top, 8)
+            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -379,6 +384,7 @@ struct SettingsMiniArt: View {
 struct PairingStep: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var devices: DeviceDirectory
+    @State private var showHelp = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -417,17 +423,29 @@ struct PairingStep: View {
                     }
 
                     Spacer(minLength: 0)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("목록에 아이폰이 없나요?").font(Typo.font(12, .bold))
-                        Text("아이폰 블루투스가 켜져 있고 설정 › Bluetooth 화면이 열려 있는지 확인하세요. 예전에 연결했던 Mac이라면 아이폰에서 이 Mac을 ‘이 기기 지우기’ 한 뒤 다시 시도하세요. 다른 Mac에서 EdgeLink를 쓰고 있다면 그쪽 연결을 먼저 끊어주세요. 아이패드는 유니버설 컨트롤·Sidecar와 같이 쓰면 겹칠 수 있어요.")
-                            .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Button {
+                            withAnimation(.easeOut(duration: 0.15)) { showHelp.toggle() }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("목록에 아이폰이 없나요?")
+                                Image(systemName: showHelp ? "chevron.up" : "chevron.down").font(.system(size: 9, weight: .bold))
+                            }
+                        }
+                        .buttonStyle(TextLinkStyle(color: .brandText))
+                        if showHelp {
+                            VStack(alignment: .leading, spacing: 4) {
+                                helpLine("아이폰 블루투스를 켜고 설정 › Bluetooth 화면을 열어두세요.")
+                                helpLine("예전에 연결했던 Mac이라면 아이폰에서 이 Mac을 ‘이 기기 지우기’ 한 뒤 다시 시도하세요.")
+                                helpLine("다른 Mac에서 EdgeLink를 쓰고 있다면 그쪽 연결을 먼저 끊어주세요.")
+                                helpLine("아이패드는 유니버설 컨트롤·Sidecar와 같이 쓰면 겹칠 수 있어요.")
+                            }
+                        }
                     }
-                    .padding(.bottom, 8)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .padding(.horizontal, 48).padding(.top, 8)
+            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -447,6 +465,14 @@ struct PairingStep: View {
             devices.stop()
             model.acceptingNewDevice = false
         }
+    }
+
+    private func helpLine(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text("·")
+            Text(text).fixedSize(horizontal: false, vertical: true)
+        }
+        .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(2)
     }
 
     private var pairingCode: Int? {
@@ -572,6 +598,7 @@ struct PhoneBluetoothArt: View {
                 .padding(EdgeInsets(top: 22, leading: 10, bottom: 10, trailing: 10))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .background(RoundedRectangle(cornerRadius: 17).fill(Color(hex: 0xF2F2F7)))
+                .overlay(Capsule().fill(Color.black).frame(width: 40, height: 11).padding(.top, 6), alignment: .top)
                 .padding(6)
             )
             .accessibilityHidden(true)
@@ -594,25 +621,22 @@ struct AssistiveTouchStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 20) {
                 StepHeader(title: "아이폰에서 마우스 커서를 켜주세요",
-                           message: "아이폰은 AssistiveTouch를 켜야 마우스 커서가 보여요. 키보드는 이 설정 없이도 돼요.")
+                           message: "아이폰은 AssistiveTouch를 켜야 마우스 커서가 보여요. 아이패드는 이 단계를 건너뛰어도 돼요.")
                 HStack(spacing: 12) {
                     ForEach(path.indices, id: \.self) { i in pathCard(i) }
                 }
-                HStack(spacing: 16) {
-                    tip("포인터가 너무 빠르거나 느리면",
-                        "아이폰 설정 › 손쉬운 사용 › 포인터 제어에서 바꿀 수 있어요. 바꾼 뒤엔 EdgeLink에서 보정을 다시 해주세요.")
-                    tip("화면 회전 잠금도 켜두세요",
-                        "아이폰이 가로로 돌면 돌아오는 위치가 어긋나요. 제어 센터에서 켤 수 있어요. 아이패드는 커서 단계를 건너뛰어도 돼요.")
+                VStack(alignment: .leading, spacing: 8) {
+                    tip("arrow.up.left.and.arrow.down.right", "포인터가 너무 빠르거나 느리면 아이폰 설정 › 손쉬운 사용 › 포인터 제어에서 바꿔요.")
+                    tip("lock.rotation", "화면 회전 잠금도 켜두세요. 아이폰이 가로로 돌면 돌아오는 위치가 어긋나요.")
                 }
-                .fixedSize(horizontal: false, vertical: true)
                 Toggle(isOn: $checked) {
                     Text("아이폰에서 AssistiveTouch를 켰어요").font(Typo.font(14, .semibold))
                 }
                 .toggleStyle(.checkbox)
             }
-            .padding(.horizontal, 48).padding(.top, 8)
+            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -662,17 +686,13 @@ struct AssistiveTouchStep: View {
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.bgSidebar))
     }
 
-    private func tip(_ title: String, _ text: String) -> some View {
-        Card(padding: 0, stretch: true) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(Typo.font(12, .bold))
-                Text(text).font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 16).padding(.vertical, 12)
+    private func tip(_ icon: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.brand)
+                .frame(width: 16).padding(.top, 1)
+            Text(text).font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxHeight: .infinity)
     }
 }
 
@@ -742,7 +762,7 @@ struct TestStep: View {
                     }
                 }
             }
-            .padding(.horizontal, 48).padding(.top, 8)
+            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -793,8 +813,7 @@ struct PhoneCircleArt: View {
             .frame(width: 150, height: 290)
             .overlay(
                 ZStack {
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(LinearGradient(colors: [Color(hex: 0x2B3A4A), Color(hex: 0x12161B)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    PhoneScreenArt().clipShape(RoundedRectangle(cornerRadius: 20)).opacity(0.85)
                     Circle().strokeBorder(Color.white.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                         .frame(width: 70, height: 70)
                     Circle().fill(Color.white.opacity(0.85)).overlay(Circle().strokeBorder(.white, lineWidth: 2))
@@ -876,7 +895,7 @@ struct LayoutStep: View {
                     .frame(width: 150)
                 }
             }
-            .padding(.horizontal, 48)
+            .padding(.horizontal, 48).padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -1049,10 +1068,10 @@ struct ArrangementView: View {
         Capsule().fill(Color.brand).shadow(color: Color.brand, radius: 4)
             .frame(width: gate.width, height: gate.height)
             .offset(x: gate.minX, y: gate.minY)
-        RoundedRectangle(cornerRadius: 10).fill(Color(hex: 0x1A1A1A))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.brand, lineWidth: 1.5))
-            .overlay(Capsule().fill(.black).frame(width: 14, height: 4).padding(.top, 5), alignment: .top)
+        PhoneArt(width: min(phone.width, phone.height), height: max(phone.width, phone.height), bezel: 3) { PhoneScreenArt() }
+            .rotationEffect(.degrees(landscape ? -90 : 0))
             .frame(width: phone.width, height: phone.height)
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.brand, lineWidth: 1.5))
             .offset(x: phone.minX, y: phone.minY)
     }
 }
@@ -1067,8 +1086,9 @@ struct PracticeStep: View {
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: 32) {
                 VStack(alignment: .leading, spacing: 16) {
+                    // 모서리 전환(3단계 개발)이 들어오면 원래 문구로: "하나씩 해보면 자동으로 체크돼요. 이 창은 그대로 두고 해보세요."
                     StepHeader(title: "직접 넘어가볼까요?",
-                               message: "하나씩 해보면 자동으로 체크돼요. 이 창은 그대로 두고 해보세요.")
+                               message: "모서리 전환은 다음 업데이트에서 켜져요. 지금은 건너뛰기로 넘어가세요.")
                     VStack(spacing: 0) {
                         mission(1, "아이폰으로 넘어가기", "\(placementLabel) 끝에서 커서를 꾹 밀어요")
                         Rectangle().fill(Color.lineSoft).frame(height: 1)
@@ -1077,29 +1097,24 @@ struct PracticeStep: View {
                         mission(3, "단축키로 전환하기", "⌃⌥⌘Space를 눌러요. 어디서든 바로 넘어가요")
                     }
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
-                    // 모서리 전환(3단계 개발)이 들어오면 자동 체크로 바뀐다
-                    Text("모서리 전환은 다음 업데이트에서 켜져요. 지금은 건너뛰기로 넘어가세요.")
-                        .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     GrayCard(padding: 0) {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("돌아오는 위치가 어긋나나요?").font(Typo.font(12, .bold))
-                                Text("보정 도우미로 30초면 맞춰져요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                                Text("전환이 켜지면 보정 도우미로 30초면 맞춰져요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                             }
                             Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Button("보정 도우미") {}
-                                    .buttonStyle(PillButtonStyle(kind: .secondary, height: 34))
-                                    .disabled(true)
-                                Text("전환이 켜지면 쓸 수 있어요").font(Typo.caption).foregroundStyle(Color.textSecondary)
-                            }
+                            Button("보정 도우미") {}
+                                .buttonStyle(PillButtonStyle(kind: .secondary, height: 32))
+                                .disabled(true)
+                                .help("아이폰 전환이 켜지면 쓸 수 있어요")
                         }
-                        .padding(.horizontal, 16).padding(.vertical, 12)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
                     }
                 }
                 PushArt(mirrored: current?.edge == .left).frame(width: 200)
             }
-            .padding(.horizontal, 48).padding(.top, 8)
+            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -1146,8 +1161,8 @@ struct PushArt: View {
     var body: some View {
         VStack(spacing: 10) {
             ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 6).fill(Color(hex: 0xE3F2FB))
-                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.textDecor, lineWidth: 1))
+                RoundedRectangle(cornerRadius: 8).fill(Color(hex: 0x1A1A1A))
+                    .overlay(MacScreenArt(notch: false).clipShape(RoundedRectangle(cornerRadius: 4)).padding(5))
                     .frame(width: 120, height: 140).offset(y: 30)
                 Capsule().fill(Color.brand.opacity(0.25))
                     .overlay(Capsule().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
@@ -1156,8 +1171,8 @@ struct PushArt: View {
                 Rectangle().fill(Color.brand).frame(width: 38, height: 2).offset(x: 64, y: 96)
                 Image(systemName: "arrowtriangle.right.fill").font(.system(size: 10)).foregroundStyle(Color.brand)
                     .offset(x: 96, y: 90)
-                RoundedRectangle(cornerRadius: 12).fill(Color(hex: 0x1A1A1A))
-                    .frame(width: 56, height: 112).offset(x: 144, y: 44)
+                PhoneArt(width: 56, height: 112, bezel: 3) { PhoneScreenArt() }
+                    .offset(x: 144, y: 44)
             }
             .frame(width: 200, height: 200, alignment: .topLeading)
             .scaleEffect(x: mirrored ? -1 : 1, y: 1)
@@ -1178,7 +1193,7 @@ struct DoneStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 24) {
                 HStack(spacing: 16) {
                     Circle().fill(Color.success).frame(width: 48, height: 48)
                         .overlay(Image(systemName: "checkmark").font(.system(size: 20, weight: .heavy)).foregroundStyle(.white))
@@ -1221,7 +1236,7 @@ struct DoneStep: View {
                     .tint(Color.brand)
                 }
             }
-            .padding(.horizontal, 64).padding(.top, 8)
+            .padding(.horizontal, 64).padding(.top, 8).padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
