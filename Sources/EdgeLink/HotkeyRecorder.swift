@@ -1,10 +1,43 @@
 import AppKit
 import SwiftUI
 
-/// 단축키를 기록하는 중인지. 기록하는 동안은 ⌘, 같은 앱 단축키를 받지 않는다.
-/// InputRouter도 이 값이 true면 전환 단축키를 처리하지 않아야 한다 (합칠 때 연결).
+/// 단축키를 기록하는 중인지. 기록하는 동안은 ⌘, 같은 앱 단축키를 받지 않고,
+/// InputRouter도 Mac 조작 단축키를 처리하지 않는다.
+/// 키를 가로채는 로컬 모니터도 여기서 하나만 들고 있어서, 앱이 비활성화되거나 창이 닫히면
+/// 기록 줄이 사라지지 않았어도 확실히 정리된다 (모니터가 남으면 앱 전체 keyDown을 삼킨다).
 enum HotkeyRecorderState {
-    static var isRecording = false
+    private(set) static var isRecording = false
+    private static var monitor: Any?
+    private static var observers: [NSObjectProtocol] = []
+
+    /// 기록이 밖에서 끝났을 때 (앱 비활성화, 창 닫힘). 기록 줄이 받아서 표시를 되돌린다.
+    static let didEndNotification = Notification.Name("EdgeLinkHotkeyRecordingDidEnd")
+
+    /// 기록 시작. 기록하는 동안 keyDown·flagsChanged는 handler로만 간다.
+    static func begin(_ handler: @escaping (NSEvent) -> Void) {
+        end(notify: false)
+        isRecording = true
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+            handler(event)
+            return nil // 기록 중엔 다른 곳으로 보내지 않는다
+        }
+        let center = NotificationCenter.default
+        // 다른 앱으로 가거나 설정 창이 키 창이 아니게 되면 기록을 끝낸다
+        for name in [NSApplication.didResignActiveNotification, NSWindow.didResignKeyNotification] {
+            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { _ in end() })
+        }
+    }
+
+    /// 기록 끝. 모니터와 관찰자를 모두 지운다. notify면 기록 줄에 알린다.
+    static func end(notify: Bool = true) {
+        if let m = monitor { NSEvent.removeMonitor(m) }
+        monitor = nil
+        observers.forEach { NotificationCenter.default.removeObserver($0) }
+        observers = []
+        let was = isRecording
+        isRecording = false
+        if was, notify { NotificationCenter.default.post(name: didEndNotification, object: nil) }
+    }
 }
 
 // MARK: - 겹침 확인
@@ -87,7 +120,6 @@ struct HotkeyRecorderRow: View {
     var initialPhase: Phase = .idle
 
     @State private var phase: Phase = .idle
-    @State private var monitor: Any?
     @State private var noModifierHint = false
 
     private var hotkey: Hotkey { settings.hotkeys[action] ?? Hotkey.defaults[action]! }
@@ -142,9 +174,20 @@ struct HotkeyRecorderRow: View {
         .padding(.vertical, 8)
         .frame(minHeight: 48)
         .onAppear { if phase == .idle, initialPhase != .idle { phase = initialPhase } }
-        .onChange(of: active) { a in if a != action, case .recording = phase { stop(keep: .idle) } }
-        .onDisappear { stop(keep: .idle) }
+        .onChange(of: active) { a in if a != action, isRecording { stop(keep: .idle) } }
+        // 확인 창에서 "그래도 쓰기"로 저장했거나 기본값으로 되돌리면 "아직 저장하지 않았어요"를 지운다
+        .onChange(of: settings.hotkeys[action]) { _ in if case .rejected = phase { phase = .idle } }
+        // 앱이 비활성화되거나 창이 닫혀 기록이 끝났다
+        .onReceive(NotificationCenter.default.publisher(for: HotkeyRecorderState.didEndNotification)) { _ in
+            if isRecording {
+                phase = .idle
+                if active == action { active = nil }
+            }
+        }
+        .onDisappear { if isRecording { stop(keep: .idle) } }
     }
+
+    private var isRecording: Bool { if case .recording = phase { return true } else { return false } }
 
     private var isIdle: Bool { if case .idle = phase { return true } else { return false } }
 
@@ -203,24 +246,13 @@ struct HotkeyRecorderRow: View {
         active = action
         noModifierHint = false
         phase = .recording(held: 0)
-        HotkeyRecorderState.isRecording = true
-        removeMonitor()
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
-            handle(event)
-            return nil // 기록 중엔 다른 곳으로 보내지 않는다
-        }
+        HotkeyRecorderState.begin { handle($0) }
     }
 
     private func stop(keep next: Phase) {
-        removeMonitor()
-        HotkeyRecorderState.isRecording = false
+        HotkeyRecorderState.end(notify: false)
         if active == action { active = nil }
         phase = next
-    }
-
-    private func removeMonitor() {
-        if let m = monitor { NSEvent.removeMonitor(m) }
-        monitor = nil
     }
 
     private func handle(_ event: NSEvent) {
@@ -238,6 +270,10 @@ struct HotkeyRecorderRow: View {
         }
         let candidate = Hotkey(keyCode: event.keyCode, modifiers: mods)
         if candidate == hotkey { return stop(keep: .idle) }
+        // 안전 조합은 아이폰 조작 중 늘 Mac으로 돌아오는 데 쓰여서, 다른 동작에 주면 그 동작은 영영 동작하지 않는다
+        if action != .toggleRemote, candidate == Hotkey.safetyCombo {
+            return stop(keep: .rejected(attempt: candidate, message: "Mac ↔ 아이폰 전환에 쓰는 조합이라 다른 동작에 쓸 수 없어요"))
+        }
         if let other = HotkeyAction.allCases.first(where: { $0 != action && settings.hotkeys[$0] == candidate }) {
             return stop(keep: .rejected(attempt: candidate, message: "‘\(other.settingsLabel)’에서 이미 쓰는 조합이에요"))
         }
@@ -259,6 +295,9 @@ extension HotkeyAction {
 }
 
 extension Hotkey {
+    /// ⌃⌥⌘Space. 아이폰 조작 중엔 설정과 상관없이 Mac으로 돌아온다 (InputRouter.safetyCombo와 같은 조합).
+    static let safetyCombo = Hotkey(keyCode: 0x31, modifiers: ctrlOptCmd)
+
     static func modifierSymbols(_ m: UInt64) -> String {
         var s = ""
         if m & control != 0 { s += "⌃" }
