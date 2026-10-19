@@ -144,12 +144,14 @@ struct TextLinkStyle: ButtonStyle {
 struct Card<Content: View>: View {
     var padding: CGFloat = 16
     var fill: Color = .clear
+    /// 같은 줄 카드끼리 높이를 맞출 때만 true (남는 높이를 채운다)
+    var stretch = false
     @ViewBuilder var content: Content
 
     var body: some View {
         content
             .padding(padding)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: stretch ? .infinity : nil, alignment: .topLeading)
             .background(RoundedRectangle(cornerRadius: 8).fill(fill))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
     }
@@ -159,12 +161,14 @@ struct Card<Content: View>: View {
 struct GrayCard<Content: View>: View {
     var padding: CGFloat = 16
     var radius: CGFloat = 8
+    /// 같은 줄 카드끼리 높이를 맞출 때만 true (남는 높이를 채운다)
+    var stretch = false
     @ViewBuilder var content: Content
 
     var body: some View {
         content
             .padding(padding)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: stretch ? .infinity : nil, alignment: .topLeading)
             .background(RoundedRectangle(cornerRadius: radius).fill(Color.bgSidebar))
     }
 }

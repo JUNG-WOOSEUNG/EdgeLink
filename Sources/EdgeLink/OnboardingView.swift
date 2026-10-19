@@ -166,7 +166,7 @@ struct WelcomeStep: View {
     }
 
     private func feature(_ title: String, _ text: String) -> some View {
-        GrayCard {
+        GrayCard(stretch: true) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(Typo.bodyBold)
                 Text(text).font(Typo.secondary).foregroundStyle(Color.textSecondary)
@@ -663,7 +663,7 @@ struct AssistiveTouchStep: View {
     }
 
     private func tip(_ title: String, _ text: String) -> some View {
-        Card(padding: 0) {
+        Card(padding: 0, stretch: true) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(Typo.font(12, .bold))
                 Text(text).font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
@@ -683,6 +683,8 @@ struct TestStep: View {
     @EnvironmentObject var settings: AppSettings
     @State private var trouble = false
     @State private var typed = false
+    /// 키보드 시험 중엔 커서를 멈춘다 (움직이는 동안엔 입력 칸을 누르기 어렵고 입력이 섞인다)
+    @State private var circlePaused = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -715,12 +717,26 @@ struct TestStep: View {
                             Text("아이폰에서 메모 앱을 열고 입력 칸을 누른 뒤 버튼을 누르면 ‘EdgeLink’가 입력돼요. 아이폰 키보드가 한국어면 한글로 들어가요.")
                                 .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Button(typed ? "다시 입력해보기" : "아이폰에 입력해보기") {
-                                model.type("EdgeLink")
-                                typed = true
+                            HStack(spacing: 8) {
+                                Button(typed ? "다시 입력해보기" : "아이폰에 입력해보기") {
+                                    model.stopCircle()
+                                    circlePaused = true
+                                    model.type("EdgeLink")
+                                    typed = true
+                                }
+                                .buttonStyle(PillButtonStyle(kind: .secondary, height: 32))
+                                .disabled(!model.isConnected)
+                                if circlePaused {
+                                    Button("커서 다시 움직이기") {
+                                        model.startCircle()
+                                        circlePaused = false
+                                    }
+                                    .buttonStyle(PillButtonStyle(kind: .plain, height: 32))
+                                }
                             }
-                            .buttonStyle(PillButtonStyle(kind: .secondary, height: 32))
-                            .disabled(!model.isConnected)
+                            if circlePaused {
+                                Text("입력하는 동안 커서를 멈췄어요.").font(Typo.caption).foregroundStyle(Color.textSecondary)
+                            }
                         }
                         .padding(.horizontal, 16).padding(.vertical, 14)
                     }
@@ -749,6 +765,7 @@ struct TestStep: View {
                 HStack(spacing: 8) {
                     Button("다시 움직이기") {
                         model.startCircle()
+                        circlePaused = false
                         trouble = false
                     }
                     .buttonStyle(PillButtonStyle(height: 36))
@@ -1080,7 +1097,7 @@ struct PracticeStep: View {
                         .padding(.horizontal, 16).padding(.vertical, 12)
                     }
                 }
-                PushArt().frame(width: 200)
+                PushArt(mirrored: current?.edge == .left).frame(width: 200)
             }
             .padding(.horizontal, 48).padding(.top, 8)
             .frame(maxHeight: .infinity, alignment: .top)
@@ -1123,6 +1140,9 @@ struct PracticeStep: View {
 }
 
 struct PushArt: View {
+    /// 아이폰이 왼쪽에 있으면 그림을 좌우로 뒤집는다
+    var mirrored = false
+
     var body: some View {
         VStack(spacing: 10) {
             ZStack(alignment: .topLeading) {
@@ -1140,6 +1160,7 @@ struct PushArt: View {
                     .frame(width: 56, height: 112).offset(x: 144, y: 44)
             }
             .frame(width: 200, height: 200, alignment: .topLeading)
+            .scaleEffect(x: mirrored ? -1 : 1, y: 1)
             Text("파란 구간에서 바깥쪽으로\n꾹 밀어보세요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 .multilineTextAlignment(.center).lineSpacing(3)
         }
