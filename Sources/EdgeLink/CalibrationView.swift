@@ -14,6 +14,8 @@ final class CalibrationSession: ObservableObject {
     }
 
     @Published var phase: Phase
+    /// 시작할 때의 보정값. 라우터가 끝나자마자 새 값을 저장하므로 미리 잡아 둔다.
+    @Published private(set) var previous: Double?
     unowned let model: AppModel
 
     init(model: AppModel, phase: Phase = .intro(note: nil)) {
@@ -30,6 +32,7 @@ final class CalibrationSession: ObservableObject {
 
     func start() {
         guard model.isConnected, !running else { return }
+        previous = model.settings.unitsPerPoint
         phase = .preparing
         model.router.startCalibration { [weak self] event in
             DispatchQueue.main.async { self?.handle(event) }
@@ -55,15 +58,16 @@ final class CalibrationSession: ObservableObject {
         case let .moved(dx, dy):
             phase = .measuring(dx: dx, dy: dy)
         case let .finished(value):
-            let old = model.settings.unitsPerPoint
+            // 저장은 라우터가 한다. 여기서는 받은 값을 보여주기만 한다.
+            let old = previous ?? model.settings.unitsPerPoint
             if value < 0.2 {
+                // 라우터가 이미 저장했을 수 있으니 이전 값으로 되돌린다 ("그대로 두었어요"가 맞게)
+                if model.settings.unitsPerPointValue != old { model.settings.unitsPerPointValue = old }
                 phase = .failed(title: "움직인 양이 너무 적어요",
                                 reason: "아이폰 포인터를 오른쪽 아래 끝까지 옮기기 전에 클릭한 것 같아요.")
             } else {
-                // 설계 문서 › 보정: 범위 0.6~4.0
-                let v = min(max(value, 0.6), 4.0)
-                model.settings.unitsPerPointValue = v
-                phase = .done(old: old, new: v)
+                // 설계 문서 › 보정: 범위 0.6~4.0 (표시만 맞춘다)
+                phase = .done(old: old, new: min(max(value, 0.6), 4.0))
             }
         case let .failed(reason):
             phase = .failed(title: "보정하지 못했어요", reason: reason)
@@ -123,7 +127,7 @@ struct CalibrationView: View {
                     Button("닫기") { handle.close() }
                         .buttonStyle(DialogButtonStyle(kind: .plain))
                     Button("시작") { session.start() }
-                        .buttonStyle(DialogButtonStyle(kind: .primary))
+                        .buttonStyle(DialogButtonStyle(kind: .primary, dimWhenDisabled: true))
                         .keyboardShortcut(.defaultAction)
                         .disabled(!model.isConnected)
                 }
@@ -153,8 +157,9 @@ struct CalibrationView: View {
             }
             .accessibilityElement(children: .combine)
             VStack(alignment: .leading, spacing: 6) {
-                Text(verbatim: "움직인 양  가로 \(moved?.0 ?? 0) · 세로 \(moved?.1 ?? 0)")
-                    .font(.system(size: 12, design: .monospaced)).foregroundStyle(Color.textSecondary)
+                (Text("움직인 양   가로 ") + Text(verbatim: "\(moved?.0 ?? 0)").monospacedDigit()
+                    + Text(" · 세로 ") + Text(verbatim: "\(moved?.1 ?? 0)").monospacedDigit())
+                    .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     .accessibilityLabel("움직인 양 가로 \(moved?.0 ?? 0), 세로 \(moved?.1 ?? 0)")
                 Text("Esc를 누르면 취소돼요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
             }
@@ -207,7 +212,7 @@ struct CalibrationView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title).font(Typo.font(13, .bold))
-                    Text("\(reason) 이전 보정값(\(format(settings.unitsPerPoint)))은 그대로 두었어요.")
+                    Text("\(reason) 이전\u{00A0}보정값(\(format(session.previous ?? settings.unitsPerPoint)))은 그대로 두었어요.")
                         .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -223,7 +228,7 @@ struct CalibrationView: View {
                     }
                     .buttonStyle(DialogButtonStyle(kind: .plain))
                     Button("다시 하기") { session.start() }
-                        .buttonStyle(DialogButtonStyle(kind: .primary))
+                        .buttonStyle(DialogButtonStyle(kind: .primary, dimWhenDisabled: true))
                         .keyboardShortcut(.defaultAction)
                         .disabled(!model.isConnected)
                 }
@@ -245,12 +250,13 @@ struct CalibrationPhoneArt: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 16).fill(Color(hex: 0x1A1A1A))
+                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.deviceOutline, lineWidth: 1))
             RoundedRectangle(cornerRadius: 11).fill(Color(hex: 0x2B2B2B)).padding(6)
             Path { p in
                 p.move(to: CGPoint(x: 22, y: 24))
                 p.addLine(to: CGPoint(x: 74, y: 156))
             }
-            .stroke(Color.brand, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: progress == nil ? [4, 4] : []))
+            .stroke(Color.brand, style: StrokeStyle(lineWidth: 2, lineCap: .round))
             Circle().strokeBorder(Color.white, lineWidth: 2)
                 .frame(width: 12, height: 12)
                 .offset(x: 12, y: 14)

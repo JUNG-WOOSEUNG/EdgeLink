@@ -5,6 +5,7 @@ import SwiftUI
 /// AppDialog를 작은 창(시트처럼 보이는 창)으로 띄운다 (캔버스 4-1, 4-2, 4-4).
 /// - 앱을 앞으로 가져오고 화면 가운데에 띄운다.
 /// - 같은 종류는 하나만. 이미 떠 있으면 앞으로 가져온다(내용이 다르면 바꾼다).
+///   연결 요청은 같은 요청이 다시 와도 포커스를 뺏지 않고 그대로 둔다.
 /// - Esc로 닫는다. 연결 요청은 Esc가 거절이다.
 final class DialogPresenter: NSObject, NSWindowDelegate {
     unowned let model: AppModel
@@ -24,6 +25,8 @@ final class DialogPresenter: NSObject, NSWindowDelegate {
         let key = dialog.kind
         if let w = windows[key] {
             if shown[key] == dialog {
+                // 아이폰이 같은 요청을 되풀이해 보내도 하던 일을 끊지 않는다
+                if case .connectionRequest = dialog { return }
                 bringFront(w)
                 return
             }
@@ -100,19 +103,19 @@ final class DialogHandle {
 
     func close() { window?.close() }
 
+    /// 여러 번 불려도 된다 (보정 도우미는 Esc마다 취소·닫기를 고른다). 한 번만 처리할 일은 내용 쪽에서 막는다.
     func cancel() {
-        if let onCancel {
-            self.onCancel = nil
-            onCancel()
-        } else {
-            close()
-        }
+        if let onCancel { onCancel() } else { close() }
     }
 
+    /// 창이 닫힐 때 한 번. 내용 쪽 클로저가 이 핸들을 붙잡고 있으므로 여기서 끊는다 (순환 참조).
     fileprivate func closed() {
         guard !didClose else { return }
         didClose = true
-        onClose?()
+        let close = onClose
+        onCancel = nil
+        onClose = nil
+        close?()
     }
 }
 

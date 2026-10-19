@@ -18,7 +18,11 @@ extension Snapshot {
         model.hid.disconnect()
 
         // 팝오버
-        save("popover-setup", PopoverView(preview: PopoverPreview(state: .setup)))
+        // 캔버스 2-2와 같은 3/8단계, 그리고 마지막 단계만 남은 8/8
+        save("popover-setup", PopoverView(preview: PopoverPreview(state: .setup, setupStep: OnboardingStep.permissions.rawValue)))
+        save("popover-setup-last", PopoverView(preview: PopoverPreview(state: .setup, setupStep: OnboardingStep.practice.rawValue)))
+        // 끊긴 시각이 있게: 실제 끊김 소식을 한 번 흉내 낸다 (disconnectedAt은 AppModel만 바꿀 수 있다)
+        model.hid(model.hid, didChange: .disconnected(.channelClosed))
         model.debugSetConnection(.idle)
         save("popover-disconnected", PopoverView(preview: PopoverPreview(state: .disconnected)))
         save("popover-no-device", PopoverView(preview: PopoverPreview(state: .disconnected, noDevice: true)))

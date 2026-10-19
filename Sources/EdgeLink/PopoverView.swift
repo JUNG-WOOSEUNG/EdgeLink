@@ -24,6 +24,8 @@ struct PopoverPreview {
     var menuOpen = false
     /// 연결 끊김 상태에서 페어링한 기기가 없는 것처럼 (캔버스 4-3)
     var noDevice = false
+    /// 설정 중 상태에서 끝낸 단계를 정한다 (nil이면 실제 설정)
+    var setupStep: Int?
 }
 
 /// 메뉴바 팝오버. 너비 360, 높이는 내용에 맞춤(최대 640).
@@ -38,7 +40,7 @@ struct PopoverView: View {
     var body: some View {
         let state = preview?.state ?? liveState
         return VStack(alignment: .leading, spacing: 0) {
-            PopoverHeader(state: state)
+            PopoverHeader(state: state, noDevice: noDevice)
             content(state)
             PopoverFooter()
         }
@@ -48,6 +50,9 @@ struct PopoverView: View {
         .foregroundStyle(Color.textPrimary)
         .noFocusRing()
     }
+
+    /// 페어링한 기본 기기가 없음
+    private var noDevice: Bool { settings.lastDeviceAddress == nil || (preview?.noDevice ?? false) }
 
     private var liveState: PopoverState {
         if !settings.onboardingDone { return .setup }
@@ -62,11 +67,12 @@ struct PopoverView: View {
     @ViewBuilder private func content(_ state: PopoverState) -> some View {
         switch state {
         case .setup:
-            SetupCard().padding(EdgeInsets(top: 8, leading: 16, bottom: 24, trailing: 16))
+            SetupCard(previewStep: preview?.setupStep).padding(EdgeInsets(top: 8, leading: 16, bottom: 24, trailing: 16))
         case let .problem(p):
             ProblemCard(problem: p).padding(EdgeInsets(top: 4, leading: 16, bottom: 24, trailing: 16))
         case .disconnected:
-            DisconnectedCard(devices: model.devices, previewNoDevice: preview?.noDevice ?? false).padding(EdgeInsets(top: 8, leading: 16, bottom: 24, trailing: 16))
+            DisconnectedCard(devices: model.devices, previewNoDevice: preview?.noDevice ?? false)
+                .padding(EdgeInsets(top: 8, leading: 16, bottom: noDevice ? 20 : 24, trailing: 16))
         case .connected:
             ConnectedPanel(devices: model.devices, menuOpen: preview?.menuOpen ?? false)
         }
@@ -94,12 +100,21 @@ extension Color {
     static let pillBorder = Color(light: 0xCCCCCC, dark: 0x545458)
 }
 
+extension String {
+    /// 영문·숫자 바로 뒤에 붙은 한글(조사)에서 줄이 갈리지 않게 한다 ("Mac이라면"이 "Mac / 이라면"으로 나뉘지 않게).
+    /// 사이에 U+2060(단어 잇기)을 넣는다. 눈에는 보이지 않는다.
+    var keepingWords: String {
+        replacingOccurrences(of: #"([A-Za-z0-9)])(?=[가-힣])"#, with: "$1\u{2060}", options: .regularExpression)
+    }
+}
+
 // MARK: - 머리
 
 struct PopoverHeader: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var settings: AppSettings
     let state: PopoverState
+    var noDevice = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -160,7 +175,9 @@ struct PopoverHeader: View {
         default:
             HStack(spacing: 6) {
                 Circle().fill(dotColor).frame(width: 8, height: 8)
-                Text(statusText).font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                Text(statusText)
+                    .font(isFailed ? Typo.font(12, .semibold) : Typo.secondary)
+                    .foregroundStyle(isFailed ? Color.warningStrong : .textSecondary)
                     .lineLimit(1).truncationMode(.middle)
             }
         }
@@ -175,12 +192,16 @@ struct PopoverHeader: View {
         }
     }
 
+    /// 연결 실패는 문제 있음과 같은 주황 계열로 (빨강은 카드의 "오류" 줄에만)
+    private var isFailed: Bool {
+        guard case .disconnected = state, case .failed = model.connection else { return false }
+        return true
+    }
+
     private var dotColor: Color {
         switch state {
         case .connected: return .success
-        case .disconnected:
-            if case .failed = model.connection { return .danger }
-            return .textDecor
+        case .disconnected: return isFailed ? .warningDot : .textDecor
         default: return .textDecor
         }
     }
@@ -193,7 +214,7 @@ struct PopoverHeader: View {
             case .connecting: return "연결하는 중…"
             case .pairing: return "페어링하는 중…"
             case .failed: return "연결 실패"
-            default: return "연결 끊김"
+            default: return noDevice ? "연결된 기기 없음" : "연결 끊김"
             }
         case .connected:
             switch model.controlMode {
@@ -383,23 +404,29 @@ struct SetupCard: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var settings: AppSettings
     @EnvironmentObject var permissions: Permissions
+    /// 캡처용: 끝낸 단계 (nil이면 실제 설정)
+    var previewStep: Int?
 
     var body: some View {
-        let next = model.resumeStep()
+        let step = previewStep ?? settings.onboardingStep
+        let next = previewStep.map { OnboardingStep(rawValue: min($0 + 1, OnboardingStep.done.rawValue)) ?? .welcome } ?? model.resumeStep()
         let total = OnboardingStep.allCases.count
+        // 마지막 단계만 남았으면 "조금 남았어요" 대신
+        let almost = next == .done
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("설정이 조금 남았어요").font(Typo.screenTitle)
-                Text("멈춘 곳부터 이어서 하면 돼요.").font(Typo.body).foregroundStyle(Color.textSecondary)
+                Text(almost ? "거의 다 됐어요" : "설정이 조금 남았어요").font(Typo.screenTitle)
+                Text(almost ? "마무리 화면만 보면 바로 쓸 수 있어요." : "멈춘 곳부터 이어서 하면 돼요.")
+                    .font(Typo.body).foregroundStyle(Color.textSecondary)
             }
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("다음: \(next.title)").font(Typo.font(12, .bold)).foregroundStyle(Color.brandStrong)
+                    Text("다음: \(almost ? "마무리" : next.title)").font(Typo.font(12, .bold)).foregroundStyle(Color.brandStrong)
                     Spacer()
                     Text("\(next.rawValue) / \(total)단계").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 }
                 ProgressBar(value: Double(next.rawValue) / Double(total))
-                Button { model.openOnboarding() } label: { Text("설정 이어하기") }
+                Button { model.openOnboarding() } label: { Text(almost ? "마무리하기" : "설정 이어하기") }
                     .buttonStyle(WidePillStyle(height: 38))
                     .padding(.top, 2)
             }
@@ -407,26 +434,43 @@ struct SetupCard: View {
             .background(RoundedRectangle(cornerRadius: 10).fill(Color.infoBg))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.brand, lineWidth: 1))
 
-            VStack(alignment: .leading, spacing: 8) {
-                checkRow(permissions.allGranted, "Mac 권한 3가지")
-                checkRow(settings.onboardingStep >= OnboardingStep.test.rawValue, "아이폰 연결")
-                checkRow(settings.onboardingStep >= OnboardingStep.practice.rawValue, "배치 · 연습")
-            }
-            .font(Typo.secondary).foregroundStyle(Color.textSecondary)
+            checklist(step: step)
         }
     }
 
-    private func checkRow(_ done: Bool, _ text: String) -> some View {
-        HStack(spacing: 8) {
-            if done {
-                Text("✓").font(Typo.font(12, .bold)).foregroundStyle(Color.successText)
-            } else {
-                Circle().strokeBorder(Color.textDecor, lineWidth: 1.5).frame(width: 8, height: 8).padding(.horizontal, 3)
+    /// 캔버스 2-2: 끝낸 묶음은 한 줄씩 ✓, 남은 묶음은 빈 원 하나에 한 줄로 ("아이폰 연결 · 배치 · 연습")
+    private func checklist(step: Int) -> some View {
+        let permsDone = previewStep.map { $0 >= OnboardingStep.permissions.rawValue } ?? permissions.allGranted
+        let groups: [(String, Bool)] = [
+            ("Mac 권한 3가지", permsDone),
+            ("아이폰 연결", step >= OnboardingStep.test.rawValue),
+            ("배치", step >= OnboardingStep.layout.rawValue),
+            ("연습", step >= OnboardingStep.practice.rawValue),
+        ]
+        let done = groups.filter(\.1).map(\.0)
+        let left = groups.filter { !$0.1 }.map(\.0)
+        return VStack(alignment: .leading, spacing: 6) {
+            ForEach(done, id: \.self) { name in
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy))
+                        .foregroundStyle(Color.successText)
+                        .frame(width: 14)
+                    Text(name)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(name), 끝남")
             }
-            Text(text)
+            if !left.isEmpty {
+                HStack(spacing: 8) {
+                    Circle().strokeBorder(Color.textDecor, lineWidth: 1.5).frame(width: 8, height: 8)
+                        .frame(width: 14)
+                    Text(left.joined(separator: " · "))
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(left.joined(separator: ", ")), 남음")
+            }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(text), \(done ? "끝남" : "남음")")
+        .font(Typo.secondary).foregroundStyle(Color.textSecondary)
     }
 }
 
@@ -463,14 +507,15 @@ struct ProblemCard: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(copy.title).font(Typo.font(14, .bold))
-                        Text(copy.body).font(Typo.secondary).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(copy.body.keepingWords).font(Typo.secondary).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .foregroundStyle(Color.warningText)
                 .accessibilityElement(children: .combine)
                 Button { action() } label: { Text(copied ? "복사했어요" : copy.cta) }
                     .buttonStyle(WidePillStyle(height: 38))
-                Text(copy.hint).font(Typo.caption).foregroundStyle(Color.warningText).lineSpacing(2)
+                Text(copy.hint.keepingWords).font(Typo.caption).foregroundStyle(Color.warningText).lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(16)
@@ -492,7 +537,8 @@ struct ProblemCard: View {
                         if i < items.count - 1 { Rectangle().fill(Color.lineSoft).frame(height: 1) }
                     }
                 }
-                .foregroundStyle(Color.textDecor)
+                // textDecor는 다크에서 대비가 모자라 보조 글자 색을 흐리게 쓴다
+                .foregroundStyle(Color.textSecondary.opacity(0.7))
                 .padding(.horizontal, 12)
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
                 Text("해결되면 자동으로 다시 동작해요. 앱을 다시 켤 필요는 없어요.")
@@ -507,25 +553,25 @@ struct ProblemCard: View {
         switch problem {
         case .policy:
             return ("회사 정책으로 막혀 있을 수 있어요",
-                    "1분이 지나도 권한이 켜지지 않았어요. 회사에서 관리하는 Mac이라면 관리자가 막아둔 걸 수 있어요.",
+                    "1분이 지나도 권한이 켜지지 않았어요. 회사에서 관리하는 Mac이라면 관리자가 막아 둔 걸 수 있어요.",
                     "관리자에게 보낼 내용 복사",
                     "복사되는 내용: 앱 이름, 번들 ID, 필요한 권한 3가지와 이유.")
         case let .permission(kind):
             return ("\(kind.title) 권한이 꺼졌어요",
                     "이 권한이 없으면 아이폰 조작 중에도 입력이 Mac으로 가요. 그래서 전환을 멈췄어요.",
                     "시스템 설정에서 다시 켜기",
-                    "목록에서 EdgeLink를 켜주세요. 켜면 1초 안에 다시 동작해요.")
+                    "목록에서 EdgeLink를 켜 주세요. 켜면 1초 안에 다시 동작해요.")
         case .bluetoothDenied:
             return ("블루투스 권한이 없어요",
                     "블루투스 권한이 있어야 아이폰에 키보드·마우스로 연결할 수 있어요.",
                     "시스템 설정에서 켜기",
-                    "시스템 설정 › 개인정보 보호 및 보안 › 블루투스에서 EdgeLink를 켜주세요.")
+                    "시스템 설정 › \("개인정보 보호 및 보안".nonBreaking) › 블루투스에서 EdgeLink를 켜 주세요.")
         case .bluetoothOff:
-            let name = settings.lastDeviceName.map { "기본 기기(\($0))" } ?? "기본 기기"
+            let name = settings.lastDeviceName.map { "기본 기기(\($0.nonBreaking))" } ?? "기본 기기"
             return ("Mac 블루투스가 꺼져 있어요",
-                    "블루투스가 켜져야 아이폰에 키보드·마우스로 연결할 수 있어요. 다시 연결 시도도 멈췄어요.",
+                    "블루투스가 켜져야 아이폰에 키보드·마우스로 \("연결할 수 있어요.".nonBreaking) 그동안 다시 연결 시도도 멈춰요.",
                     "블루투스 설정 열기",
-                    "켜면 \(name)에 자동으로 다시 연결해요.")
+                    "켜면 \(name)에 \("자동으로 다시 연결해요.".nonBreaking)")
         }
     }
 
@@ -551,13 +597,24 @@ struct DisconnectedCard: View {
     @ObservedObject var devices: DeviceDirectory
     var previewNoDevice = false
 
+    private var noDevice: Bool { settings.lastDeviceAddress == nil || previewNoDevice }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            if settings.lastDeviceAddress == nil || previewNoDevice {
+        VStack(alignment: .leading, spacing: 18) {
+            if noDevice {
                 emptyState
             } else {
-                defaultDeviceCard
+                // 끊긴 시각·다시 시도까지 남은 시간이 흐르게 1초마다 다시 그린다
+                TimelineView(.periodic(from: .now, by: 1)) { ctx in defaultDeviceCard(now: ctx.date) }
             }
+            if !others.isEmpty || !noDevice {
+                list
+            }
+        }
+        .onAppear { if permissions.bluetooth == .granted { devices.reloadPaired() } }
+    }
+
+    private var list: some View {
             VStack(alignment: .leading, spacing: 8) {
                 if !others.isEmpty {
                     Text("다른 기기").font(Typo.font(12, .semibold)).foregroundStyle(Color.textSecondary)
@@ -582,14 +639,12 @@ struct DisconnectedCard: View {
                         .accessibilityLabel("\(item.name) 연결")
                     }
                 }
-                if settings.lastDeviceAddress != nil && !previewNoDevice {
+                if !noDevice {
                     Button("+ 새 기기 페어링") { model.openOnboarding(at: .pairing) }
                         .buttonStyle(LinkButtonStyle(size: 12))
                         .padding(.vertical, 4)
                 }
             }
-        }
-        .onAppear { if permissions.bluetooth == .granted { devices.reloadPaired() } }
     }
 
     private var busy: Bool {
@@ -605,7 +660,7 @@ struct DisconnectedCard: View {
         return devices.items.filter { $0.paired && $0.kind != .other && $0.address.lowercased() != mine }
     }
 
-    private var defaultDeviceCard: some View {
+    private func defaultDeviceCard(now: Date) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 PhoneGlyph(kind: .plain)
@@ -615,7 +670,7 @@ struct DisconnectedCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(settings.lastDeviceName ?? "기본 기기").font(Typo.font(14, .bold))
                         .lineLimit(1).truncationMode(.middle)
-                    Text(subtitle).font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                    Text(subtitle(now: now)).font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -630,11 +685,19 @@ struct DisconnectedCard: View {
             .buttonStyle(WidePillStyle(height: 38))
             .disabled(busy)
             VStack(alignment: .leading, spacing: 6) {
-                Text(reason).font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                Text(reason(now: now).keepingWords).font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
                 if case let .failed(message) = model.connection {
-                    Text("오류: \(message)").font(Typo.caption).foregroundStyle(Color.textSecondary)
-                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    let e = ConnectionError(message)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("오류: \(e.friendly)".keepingWords).font(Typo.font(12, .semibold)).foregroundStyle(Color.dangerText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let raw = e.raw {
+                            Text(verbatim: raw).font(Typo.caption).foregroundStyle(Color.textSecondary)
+                                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
                 }
             }
         }
@@ -652,7 +715,7 @@ struct DisconnectedCard: View {
                     .frame(width: 26, height: 26))
                 .accessibilityHidden(true)
             Text("아직 페어링한 기기가 없어요").font(Typo.font(15, .bold))
-            Text("아이폰에서 설정 › Bluetooth 화면을 열어두고 아래 버튼을 누르세요.")
+            Text("아이폰에서 설정 › Bluetooth 화면을 열어 두고 아래 버튼을 눌러 주세요.".keepingWords)
                 .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -665,22 +728,42 @@ struct DisconnectedCard: View {
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.line, lineWidth: 1))
     }
 
-    private var subtitle: String {
+    /// 머리글(연결하는 중·연결 실패·연결 끊김)과 겹치지 않게, 끊긴 시각을 알면 시각만
+    private func subtitle(now: Date) -> String {
         switch model.connection {
-        case .connecting: return "기본 기기 · 연결하는 중"
-        case .pairing: return "기본 기기 · 페어링하는 중"
-        case .failed: return "기본 기기 · 연결 실패" + ago
-        default: return "기본 기기 · 연결 끊김" + ago
+        case .connecting, .pairing: return "기본 기기"
+        default: return "기본 기기" + (ago(now: now).map { " · \($0)" } ?? "")
         }
     }
 
-    /// " · 3분 전에 끊겼어요" (끊긴 시각을 알 때만)
-    private var ago: String {
-        guard let t = model.disconnectedAt else { return "" }
-        let m = Int(Date().timeIntervalSince(t) / 60)
-        if m < 1 { return " · 방금 끊겼어요" }
-        if m < 60 { return " · \(m)분 전에 끊겼어요" }
-        return " · \(m / 60)시간 전에 끊겼어요"
+    /// "3분 전에 끊겼어요" (끊긴 시각을 알 때만)
+    private func ago(now: Date) -> String? {
+        guard let t = model.disconnectedAt else { return nil }
+        let m = Int(now.timeIntervalSince(t) / 60)
+        if m < 1 { return "방금 끊겼어요" }
+        if m < 60 { return "\(m)분 전에 끊겼어요" }
+        return "\(m / 60)시간 전에 끊겼어요"
+    }
+
+    /// 다음 자동 재연결까지 남은 시간 (모르면 nil).
+    /// BluetoothHID가 예약 시각을 내보내지 않아서, 끊긴 시각 + 재연결 정책의 지연으로 어림한다.
+    private func retryIn(now: Date) -> TimeInterval? {
+        guard settings.autoReconnect, let t = model.disconnectedAt else { return nil }
+        // ReconnectPolicy.attempt는 private라 Mirror로 읽는다 (예약할 때 하나 올라간 값)
+        let attempt = Mirror(reflecting: model.hid.reconnectPolicy).children
+            .first { $0.label == "attempt" }?.value as? Int ?? 0
+        guard attempt > 0 else { return nil }
+        let delay = ReconnectPolicy.delays[min(attempt - 1, ReconnectPolicy.delays.count - 1)]
+        return max(0, t.addingTimeInterval(delay).timeIntervalSince(now))
+    }
+
+    /// "1분 뒤에 자동으로 다시 시도해요."
+    private func retrySentence(now: Date) -> String {
+        guard settings.autoReconnect else { return "자동 다시 연결이 꺼져 있어요. 설정 › 연결에서 켤 수 있어요." }
+        guard let r = retryIn(now: now) else { return "자동으로 다시 시도해요." }
+        if r < 1 { return "곧 자동으로 다시 시도해요." }
+        if r < 60 { return "\(Int(r.rounded(.up)))초 뒤에 자동으로 다시 시도해요." }
+        return "\(Int((r / 60).rounded(.up)))분 뒤에 자동으로 다시 시도해요."
     }
 
     private var buttonTitle: String {
@@ -691,17 +774,37 @@ struct DisconnectedCard: View {
         }
     }
 
-    private var reason: String {
-        let retry = settings.autoReconnect
-            ? "자동으로 다시 시도해요."
-            : "자동 다시 연결이 꺼져 있어요. 설정 › 연결에서 켤 수 있어요."
+    private func reason(now: Date) -> String {
+        let retry = retrySentence(now: now)
         switch model.connection {
         case .connecting, .pairing:
-            return "아이폰 화면이 켜져 있고 블루투스가 켜져 있는지 확인하세요."
+            return "아이폰 화면과 블루투스가 켜져 있는지 확인해 주세요."
         case .failed:
-            return "아이폰 블루투스가 꺼져 있거나 멀리 있을 수 있어요. 회사 Mac이라면 보안 정책이 블루투스 키보드를 막았을 수도 있어요. \(retry)"
+            return "아이폰 블루투스가 꺼져 있거나 멀리 있을 수 있어요. 회사에서 관리하는 Mac은 보안 정책으로 블루투스 키보드를 막기도 해요. \(retry)"
         default:
             return "아이폰 블루투스가 꺼져 있거나 멀리 있을 수 있어요. \(retry)"
+        }
+    }
+}
+
+/// 연결 실패 문구를 사용자 말로 바꾼다. 원문(단계·코드)은 따로 작게 보여준다.
+struct ConnectionError {
+    let friendly: String
+    let raw: String?
+
+    init(_ message: String) {
+        // AppModel이 만드는 "인터럽트 채널(0x13) 실패 (기기 없음)" 같은 문구만 바꾸고, 이미 사용자 말이면 그대로
+        let technical = message.range(of: #"\(.*\)|0x[0-9a-fA-F]+|실패"#, options: .regularExpression) != nil
+        guard technical else { friendly = message; raw = nil; return }
+        raw = message
+        if message.contains("채널") {
+            friendly = "아이폰이 키보드 연결을 받지 않았어요"
+        } else if message.contains("기기 연결") || message.contains("기기 없음") {
+            friendly = "아이폰을 찾지 못했어요"
+        } else if message.contains("시간") || message.contains("timeout") {
+            friendly = "아이폰이 제때 답하지 않았어요"
+        } else {
+            friendly = "아이폰에 연결하지 못했어요"
         }
     }
 }
@@ -777,6 +880,10 @@ struct ConnectedPanel: View {
             Group {
                 if calibrating {
                     Text("보정 중에는 바꿀 수 없어요. 보정 도우미를 끝내면 다시 쓸 수 있어요.")
+                } else if model.controlMode == .phone {
+                    // 아이폰 조작 중: 어떻게 돌아오는지
+                    (settings.edgeEnabled ? Text("Mac 쪽 화면 끝으로 밀거나 ") : Text(""))
+                        + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 Mac에 돌아와요.")
                 } else if settings.edgeEnabled {
                     Text("모서리로 밀거나 ") + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 전환해요.")
                 } else {
