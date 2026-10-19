@@ -11,3 +11,4 @@ DerivedData/
 *.cer
 *.key
 ed25519*
+/build

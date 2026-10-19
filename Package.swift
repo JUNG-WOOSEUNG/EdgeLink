@@ -7,6 +7,7 @@ let package = Package(
     products: [
         .library(name: "EdgeLinkCore", targets: ["EdgeLinkCore"]),
         .executable(name: "bthid", targets: ["bthid"]),
+        .executable(name: "EdgeLink", targets: ["EdgeLink"]),
     ],
     targets: [
         // 블루투스 HID: SDP 등록, L2CAP 채널, 리포트 전송. 앱과 bthid가 같이 쓴다.
@@ -29,6 +30,18 @@ let package = Package(
                     "-Xlinker", "__info_plist",
                     "-Xlinker", "Sources/bthid/Info.plist",
                 ]),
+            ]
+        ),
+        // 메뉴바 앱. 번들(.app)은 scripts/build-app.sh로 만든다.
+        .executableTarget(
+            name: "EdgeLink",
+            dependencies: ["EdgeLinkCore"],
+            exclude: ["Info.plist"],
+            linkerSettings: [
+                .linkedFramework("IOBluetooth"),
+                .linkedFramework("CoreBluetooth"),
+                .linkedFramework("ApplicationServices"),
+                .linkedFramework("ServiceManagement"),
             ]
         ),
         .testTarget(
