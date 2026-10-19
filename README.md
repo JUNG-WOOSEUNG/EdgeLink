@@ -138,7 +138,7 @@ swift build                # EdgeLinkCore, bthid
 .build/debug/bthid connect <아이폰 주소>
 ```
 
-자세한 설계는 [docs/DESIGN.md](docs/DESIGN.md), 1단계 연결 검증 방법은 [docs/STAGE1.md](docs/STAGE1.md)를 보세요.
+자세한 설계는 [docs/DESIGN.md](docs/DESIGN.md), 1단계 연결 검증 방법은 [docs/STAGE1.md](docs/STAGE1.md), 진행 기록은 [docs/DEVLOG.md](docs/DEVLOG.md)를 보세요.
 
 진행 상황은 [Issues](https://github.com/JUNG-WOOSEUNG/EdgeLink/issues)에서 볼 수 있어요. 버그 제보와 아이디어는 언제든 환영해요.
 
