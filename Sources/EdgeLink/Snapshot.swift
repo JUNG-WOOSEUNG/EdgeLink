@@ -26,6 +26,9 @@ enum Snapshot {
             render(view.frame(height: 560), size: NSSize(width: 720, height: 560), appearance: appearance,
                    to: dir.appendingPathComponent(String(format: "onboarding-%d%@.png", step.rawValue, suffix)))
         }
+        // 담당별 캡처 (설정 창, 팝오버 상태별, 확인 창 등): 각 파일의 extension Snapshot에서 한 줄씩 추가
+        // 예: renderSettings(model: model, dir: dir, appearance: appearance, suffix: suffix)
+
         let popover = PopoverView()
             .environmentObject(model)
             .environmentObject(model.settings)
@@ -34,7 +37,8 @@ enum Snapshot {
         exit(0)
     }
 
-    private static func render<V: View>(_ view: V, size: NSSize?, appearance: NSAppearance?, to url: URL) {
+    /// 담당별 캡처 함수도 이걸 쓴다 (size가 nil이면 내용에 맞춤)
+    static func render<V: View>(_ view: V, size: NSSize?, appearance: NSAppearance?, to url: URL) {
         let host = NSHostingView(rootView: view)
         host.appearance = appearance
         let fit = size ?? host.fittingSize

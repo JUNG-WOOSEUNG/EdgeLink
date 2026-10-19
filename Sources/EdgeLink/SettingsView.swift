@@ -9,4 +9,7 @@ final class SettingsWindowController {
     init(model: AppModel) { self.model = model }
 
     func show(tab: SettingsTab = .general) {}
+
+    /// 아이폰 버튼 등록 도우미 창 (720×560, 캔버스 1-9). AppDialog.gestureSetup이 이걸 부른다.
+    func showGestureSetup() {}
 }

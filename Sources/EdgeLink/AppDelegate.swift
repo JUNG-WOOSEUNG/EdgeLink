@@ -116,6 +116,12 @@ final class AppModel: NSObject, ObservableObject {
 
     var isConnected: Bool { if case .connected = connection { return true } else { return false } }
 
+    /// 개발용 화면 캡처에서만: 연결 상태를 흉내 낸다
+    func debugSetConnection(_ phase: ConnectionPhase) {
+        guard Snapshot.directory != nil else { return }
+        connection = phase
+    }
+
     // MARK: 화면 사이 연결 (Contracts.swift)
 
     func openSettings(_ tab: SettingsTab = .general) { settingsWindow.show(tab: tab) }
