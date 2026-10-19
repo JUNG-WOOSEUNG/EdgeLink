@@ -23,7 +23,7 @@ enum Snapshot {
                 .environmentObject(model.settings)
                 .environmentObject(model.permissions)
                 .environmentObject(model.devices)
-            render(view, size: NSSize(width: 720, height: 560), appearance: appearance,
+            render(view.frame(height: 560), size: NSSize(width: 720, height: 560), appearance: appearance,
                    to: dir.appendingPathComponent(String(format: "onboarding-%d%@.png", step.rawValue, suffix)))
         }
         let popover = PopoverView()

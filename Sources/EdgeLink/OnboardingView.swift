@@ -43,7 +43,9 @@ struct OnboardingView: View {
             page
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(width: 720, height: 560)
+        // 높이를 고정하지 않고 창을 채운다. 고정하면 SwiftUI가 제목 표시줄 높이를 더해 창을 키운다.
+        .frame(width: 720)
+        .frame(maxHeight: .infinity)
         .background(Color.bgWindow)
         .foregroundStyle(Color.textPrimary)
         .ignoresSafeArea()

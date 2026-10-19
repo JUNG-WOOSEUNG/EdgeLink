@@ -114,6 +114,8 @@ final class AppModel: NSObject, ObservableObject {
 
     func launch() {
         if Snapshot.directory != nil { return Snapshot.run(model: self) }
+        // 개발용: 온보딩을 마쳤어도 창을 바로 연다
+        if ProcessInfo.processInfo.environment["EDGELINK_SHOW_ONBOARDING"] != nil { openOnboarding(at: .layout) }
         if settings.onboardingDone {
             startBluetoothIfAllowed()
         } else {
