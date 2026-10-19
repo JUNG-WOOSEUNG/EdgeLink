@@ -220,13 +220,20 @@ struct NumberDot: View {
     var body: some View {
         ZStack {
             switch state {
-            case .done: Circle().fill(Color.success)
+            // 다크에서도 흰 ✓가 보이게 진한 초록 고정
+            case .done: Circle().fill(Color(hex: 0x28A745))
             case .current: Circle().fill(Color.brandFill)
             case .todo: Circle().strokeBorder(Color.textDecor, lineWidth: size > 22 ? 1.5 : 1)
             }
-            Text(state == .done ? "✓" : text)
-                .font(Typo.font(size > 22 ? 12 : 11, .heavy))
-                .foregroundStyle(state == .todo ? Color.textSecondary : .white)
+            if state == .done {
+                Image(systemName: "checkmark")
+                    .font(.system(size: size > 22 ? 12 : 10, weight: .bold))
+                    .foregroundStyle(.white)
+            } else {
+                Text(text)
+                    .font(Typo.font(size > 22 ? 12 : 11, .heavy))
+                    .foregroundStyle(state == .todo ? Color.textSecondary : .white)
+            }
         }
         .frame(width: size, height: size)
     }
