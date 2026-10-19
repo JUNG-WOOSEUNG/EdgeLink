@@ -183,6 +183,7 @@ struct WelcomeArt: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 10).fill(Color(hex: 0x1A1A1A))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.deviceOutline, lineWidth: 1))
                 .overlay(MacScreenArt().clipShape(RoundedRectangle(cornerRadius: 5)).padding(6))
                 .frame(width: 200, height: 126).offset(x: 20, y: 10)
             RoundedRectangle(cornerRadius: 4).fill(Color(hex: 0xB3B3B3))
@@ -422,7 +423,6 @@ struct PairingStep: View {
                         Text(message).font(Typo.secondary).foregroundStyle(Color.dangerText)
                     }
 
-                    Spacer(minLength: 0)
                     VStack(alignment: .leading, spacing: 6) {
                         Button {
                             withAnimation(.easeOut(duration: 0.15)) { showHelp.toggle() }
@@ -568,6 +568,7 @@ struct PhoneBluetoothArt: View {
     let code: Int?
     var body: some View {
         RoundedRectangle(cornerRadius: 22).fill(Color(hex: 0x1A1A1A))
+            .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Color.deviceOutline, lineWidth: 1))
             .frame(width: 132, height: 232)
             .overlay(
                 VStack(alignment: .leading, spacing: 8) {
@@ -623,13 +624,13 @@ struct AssistiveTouchStep: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 20) {
                 StepHeader(title: "아이폰에서 마우스 커서를 켜주세요",
-                           message: "아이폰은 AssistiveTouch를 켜야 마우스 커서가 보여요. 아이패드는 이 단계를 건너뛰어도 돼요.")
+                           message: "아이폰은 AssistiveTouch를 켜야 마우스 커서가 보여요. 키보드는 이 설정 없이도 돼요.")
                 HStack(spacing: 12) {
                     ForEach(path.indices, id: \.self) { i in pathCard(i) }
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    tip("arrow.up.left.and.arrow.down.right", "포인터가 너무 빠르거나 느리면 아이폰 설정 › 손쉬운 사용 › 포인터 제어에서 바꿔요.")
-                    tip("lock.rotation", "화면 회전 잠금도 켜두세요. 아이폰이 가로로 돌면 돌아오는 위치가 어긋나요.")
+                    tip("arrow.up.left.and.arrow.down.right", "포인터가 너무 빠르거나 느리면 아이폰 설정 › 손쉬운 사용 › 포인터 제어에서 바꿔요. 바꾼 뒤엔 EdgeLink에서 보정을 다시 해주세요.")
+                    tip("lock.rotation", "화면 회전 잠금도 켜두세요. 아이폰이 가로로 돌면 돌아오는 위치가 어긋나요. 아이패드는 이 단계를 건너뛰어도 돼요.")
                 }
                 Toggle(isOn: $checked) {
                     Text("아이폰에서 AssistiveTouch를 켰어요").font(Typo.font(14, .semibold))
@@ -672,7 +673,7 @@ struct AssistiveTouchStep: View {
                 .padding(.horizontal, 8).padding(.vertical, 6)
                 .background(RoundedRectangle(cornerRadius: 6).fill(Color.infoBg))
                 .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.infoLine, lineWidth: 1))
-                RoundedRectangle(cornerRadius: 4).fill(Color(hex: 0xF2F2F7)).frame(height: 14)
+                RoundedRectangle(cornerRadius: 4).fill(Color(light: 0xF2F2F7, dark: 0x333336)).frame(height: 14)
             }
             .padding(10)
             .frame(height: 84, alignment: .top)
@@ -714,7 +715,7 @@ struct TestStep: View {
                     StepHeader(title: "아이폰 화면을 보세요",
                                message: "EdgeLink가 아이폰 커서를 원 모양으로 움직이고 있어요. 커서가 보이나요?")
                     if !model.isConnected {
-                        Notice(title: "아이폰 연결이 끊겼어요.", message: "다시 연결하면 커서를 다시 움직여요.")
+                        Notice(title: "아이폰 연결이 끊겼어요.", message: "연결되면 커서를 다시 움직여요.")
                         Button("다시 연결") {
                             if let a = settings.lastDeviceAddress { model.connect(address: a) }
                         }
@@ -754,7 +755,9 @@ struct TestStep: View {
                                     .buttonStyle(PillButtonStyle(kind: .plain, height: 32))
                                 }
                             }
-                            if circlePaused {
+                            if !model.isConnected {
+                                Text("아이폰을 연결하면 쓸 수 있어요.").font(Typo.caption).foregroundStyle(Color.textSecondary)
+                            } else if circlePaused {
                                 Text("입력하는 동안 커서를 멈췄어요.").font(Typo.caption).foregroundStyle(Color.textSecondary)
                             }
                         }
@@ -810,6 +813,7 @@ struct PhoneCircleArt: View {
     @State private var angle = 0.0
     var body: some View {
         RoundedRectangle(cornerRadius: 26).fill(Color(hex: 0x1A1A1A))
+            .overlay(RoundedRectangle(cornerRadius: 26).strokeBorder(Color.deviceOutline, lineWidth: 1))
             .frame(width: 150, height: 290)
             .overlay(
                 ZStack {
@@ -891,6 +895,7 @@ struct LayoutStep: View {
                         Text("가로").tag(true)
                     }
                     .pickerStyle(.segmented)
+                    .controlSize(.large)
                     .labelsHidden()
                     .frame(width: 150)
                 }
@@ -1053,15 +1058,17 @@ struct ArrangementView: View {
                 let x = p.edge == .right ? f.maxX : f.x
                 let a = map(x, p.passage.end), b = map(x, p.passage.start)
                 let c = map(x, mid)
-                let gate = CGRect(x: a.x - 2, y: a.y, width: 4, height: b.y - a.y)
-                let px = p.edge == .right ? c.x + 4 : c.x - 4 - pw
+                let px = p.edge == .right ? c.x + 6 : c.x - 6 - pw
+                let top = max(a.y, c.y - ph / 2) + 4, bottom = min(b.y, c.y + ph / 2) - 4
+                let gate = CGRect(x: a.x - 2, y: top, width: 4, height: max(0, bottom - top))
                 return (gate, CGRect(x: px, y: c.y - ph / 2, width: pw, height: ph))
             case .top, .bottom:
                 let y = p.edge == .top ? f.maxY : f.y
                 let a = map(p.passage.start, y), b = map(p.passage.end, y)
                 let c = map(mid, y)
-                let gate = CGRect(x: a.x, y: a.y - 2, width: b.x - a.x, height: 4)
-                let py = p.edge == .bottom ? c.y + 4 : c.y - 4 - ph
+                let left = max(a.x, c.x - pw / 2) + 4, right = min(b.x, c.x + pw / 2) - 4
+                let gate = CGRect(x: left, y: a.y - 2, width: max(0, right - left), height: 4)
+                let py = p.edge == .bottom ? c.y + 6 : c.y - 6 - ph
                 return (gate, CGRect(x: c.x - pw / 2, y: py, width: pw, height: ph))
             }
         }()
@@ -1104,7 +1111,7 @@ struct PracticeStep: View {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("돌아오는 위치가 어긋나나요?").font(Typo.font(12, .bold))
-                                Text(model.isConnected ? "보정 도우미로 30초면 맞춰져요." : "아이폰을 연결하면 쓸 수 있어요.")
+                                Text("보정 도우미로 30초면 맞춰져요.")
                                     .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                             }
                             Spacer()
@@ -1113,6 +1120,9 @@ struct PracticeStep: View {
                                 .disabled(!model.isConnected)
                         }
                         .padding(.horizontal, 16).padding(.vertical, 10)
+                    }
+                    if !model.isConnected {
+                        Text("보정 도우미는 아이폰을 연결하면 쓸 수 있어요.").font(Typo.caption).foregroundStyle(Color.textSecondary)
                     }
                 }
                 PushArt(mirrored: current?.edge == .left).frame(width: 200)
@@ -1177,6 +1187,7 @@ struct PushArt: View {
         VStack(spacing: 10) {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 8).fill(Color(hex: 0x1A1A1A))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.deviceOutline, lineWidth: 1))
                     .overlay(MacScreenArt(notch: false).clipShape(RoundedRectangle(cornerRadius: 4)).padding(5))
                     .frame(width: 120, height: 140).offset(y: 30)
                 Capsule().fill(Color.brand.opacity(0.25))
@@ -1236,7 +1247,7 @@ struct DoneStep: View {
                 }
                 HStack(spacing: 16) {
                     HStack(spacing: 10) {
-                        Image(systemName: "menubar.rectangle").font(.system(size: 16)).foregroundStyle(Color.brand)
+                        MenuBarMiniArt()
                         Text("설정은 메뉴바의 EdgeLink 아이콘에서 언제든 바꿀 수 있어요.")
                             .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     }
@@ -1285,5 +1296,21 @@ struct DoneStep: View {
             KeyCap(text: keys)
         }
         .frame(minHeight: 40)
+    }
+}
+
+/// 완료 화면의 작은 메뉴바 그림 (메뉴바 아이콘을 가리킨다)
+struct MenuBarMiniArt: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 2).fill(Color(hex: 0xB3B3B3)).frame(width: 14, height: 8)
+            RoundedRectangle(cornerRadius: 4).fill(Color.brand).frame(width: 18, height: 18)
+                .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(.white, lineWidth: 1.5).frame(width: 6, height: 11))
+            RoundedRectangle(cornerRadius: 2).fill(Color(hex: 0xB3B3B3)).frame(width: 14, height: 8)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 26)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.segmentBg))
+        .accessibilityHidden(true)
     }
 }

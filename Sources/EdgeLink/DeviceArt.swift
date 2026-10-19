@@ -14,7 +14,7 @@ struct MacScreenArt: View {
             let bar = max(4, h * 0.07)
             ZStack(alignment: .top) {
                 LinearGradient(colors: dark ? [Color(hex: 0x2B3A4A), Color(hex: 0x12161B)]
-                                            : [Color(hex: 0xE3F2FB), Color(hex: 0xCFE6F6)],
+                                            : [Color(light: 0xE3F2FB, dark: 0x2B3A4A), Color(light: 0xCFE6F6, dark: 0x1F2A35)],
                                startPoint: .top, endPoint: .bottom)
                 // 메뉴 막대
                 HStack(spacing: max(2, w * 0.02)) {
@@ -134,6 +134,7 @@ struct PhoneArt<Screen: View>: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: width * 0.22).fill(Color(hex: 0x1A1A1A))
+            .overlay(RoundedRectangle(cornerRadius: width * 0.22).strokeBorder(Color.deviceOutline, lineWidth: 1))
             .frame(width: width, height: height)
             .overlay(
                 screen
@@ -142,4 +143,9 @@ struct PhoneArt<Screen: View>: View {
             )
             .accessibilityHidden(true)
     }
+}
+
+extension Color {
+    /// 기기 그림 몸체 윤곽. 다크 모드에서 검은 몸체가 창 바탕에 묻히지 않게.
+    static let deviceOutline = Color(light: 0x1A1A1A, dark: 0x48484A)
 }
