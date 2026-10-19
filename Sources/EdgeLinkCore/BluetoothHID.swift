@@ -79,6 +79,12 @@ public final class BluetoothHID: NSObject {
     private var openNotifications: [IOBluetoothUserNotification] = []
     private var userDisconnecting = false
     private var reconnectTimer: Timer?
+    private var openTimer: Timer?
+    private var openAttempt = 0
+
+    /// 채널이 이 시간 안에 열리지 않으면 기본 연결부터 다시 맺는다 (`openRetries`번까지).
+    public var openTimeout: TimeInterval = 30
+    public var openRetries = 1
 
     // 아래는 writeQueue에서만 만진다
     private let writeQueue = DispatchQueue(label: "com.edgelink.hid.write", qos: .userInteractive)
@@ -161,11 +167,54 @@ public final class BluetoothHID: NSObject {
         device = dev
         state = .connecting(address: dev.addressString ?? address)
         HIDLog.info("연결 시작 → \(dev.nameOrAddress)")
+        openAttempt = 0
+        try startBaseband(dev)
+    }
+
+    /// 남아 있는 기본 연결 위에서는 채널이 열리지 않는 일이 있어서, 있으면 끊고 새로 맺는다.
+    private func startBaseband(_ dev: IOBluetoothDevice) throws {
         if dev.isConnected() {
-            try openControlChannel()
-        } else {
+            HIDLog.info("남아 있던 기본 연결을 끊고 새로 연결해요")
+            dev.closeConnection()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                guard let self, self.device === dev, case .connecting = self.state else { return }
+                let r = dev.openConnection(self)
+                if r != kIOReturnSuccess { self.fail(stage: "기기 연결", code: r) }
+            }
+            return
+        }
+        let r = dev.openConnection(self)
+        guard r == kIOReturnSuccess else { throw fail(stage: "기기 연결", code: r) }
+    }
+
+    private func armOpenTimer() {
+        openTimer?.invalidate()
+        openTimer = Timer.scheduledTimer(withTimeInterval: openTimeout, repeats: false) { [weak self] _ in
+            self?.openTimedOut()
+        }
+    }
+
+    private func openTimedOut() {
+        guard case .connecting = state, let dev = device else { return }
+        HIDLog.warn("채널이 \(Int(openTimeout))초 안에 열리지 않았어요")
+        let c = control, i = interrupt
+        control = nil
+        interrupt = nil
+        controlOpen = false
+        interruptOpen = false
+        i?.close()
+        c?.close()
+        guard openAttempt < openRetries else {
+            fail(stage: "채널 열기", code: kIOReturnTimeout)
+            return
+        }
+        openAttempt += 1
+        HIDLog.info("처음부터 다시 연결해요 (\(openAttempt)/\(openRetries))")
+        dev.closeConnection()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self, self.device === dev, case .connecting = self.state else { return }
             let r = dev.openConnection(self)
-            guard r == kIOReturnSuccess else { throw fail(stage: "기기 연결", code: r) }
+            if r != kIOReturnSuccess { self.fail(stage: "기기 연결", code: r) }
         }
     }
 
@@ -185,6 +234,7 @@ public final class BluetoothHID: NSObject {
         let r = dev.openL2CAPChannelAsync(&ch, withPSM: BluetoothHID.controlPSM, delegate: self)
         guard r == kIOReturnSuccess else { throw fail(stage: "제어 채널(0x11)", code: r) }
         control = ch
+        armOpenTimer()
         HIDLog.info("제어 채널(0x11) 여는 중")
     }
 
@@ -272,6 +322,8 @@ public final class BluetoothHID: NSObject {
 
     private func teardown(reason: Reason, reconnect: Bool = true) {
         guard device != nil || control != nil || interrupt != nil else { return }
+        openTimer?.invalidate()
+        openTimer = nil
         writeQueue.sync {
             motionTimer?.cancel()
             motionTimer = nil
@@ -436,6 +488,8 @@ public final class BluetoothHID: NSObject {
         }
         reconnectPolicy.reset()
         let address = device?.addressString ?? ""
+        openTimer?.invalidate()
+        openTimer = nil
         state = .connected(address: address)
         HIDLog.info("HID 연결 성공 (\(device?.nameOrAddress ?? address), MTU \(i.outgoingMTU))")
         sendEmptyReports()
