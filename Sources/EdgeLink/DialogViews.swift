@@ -12,7 +12,7 @@ struct DialogFrame<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) { content }
-            .padding(EdgeInsets(top: 28, leading: 28, bottom: 24, trailing: 28))
+            .padding(24)
             .frame(width: width, alignment: .leading)
             .background(Color.bgWindow)
             .foregroundStyle(Color.textPrimary)
@@ -21,8 +21,39 @@ struct DialogFrame<Content: View>: View {
 }
 
 extension Color {
-    /// 위험한 동작 버튼 바탕 (페어링 초기화)
+    /// 위험한 동작 버튼 바탕 (페어링 초기화). 다크에서는 바탕 없이 테두리만 쓴다.
     static let dangerFill = Color(light: 0xC41818, dark: 0xC41818)
+    /// 다크 위험 버튼 테두리·글자 (캔버스 다크 모드)
+    static let dangerOutlineDark = Color(hex: 0xFF6B6B)
+    static let dangerLabelDark = Color(hex: 0xFF8A8A)
+}
+
+/// 받침에 따라 조사를 고른다 ("‘지민의 iPhone’이", "⌃⌥Space가").
+/// 한글은 마지막 글자의 받침, 영문·숫자는 읽는 소리(엘·엠·엔·알, 영·일·삼·육·칠·팔)로 판단한다.
+enum Josa {
+    static func hasBatchim(_ word: String) -> Bool {
+        guard let last = word.reversed().first(where: { $0.isLetter || $0.isNumber }) else { return false }
+        if let v = last.unicodeScalars.first?.value, (0xAC00...0xD7A3).contains(v) {
+            return (v - 0xAC00) % 28 != 0
+        }
+        let lower = String(last).lowercased()
+        let word = word.lowercased()
+        // 흔한 영어 낱말 끝 (Phone, Pad, Mac, Air, Pro …)
+        for (suffix, batchim) in [("phone", true), ("pad", true), ("mac", true), ("book", true), ("air", false),
+                                  ("pro", false), ("max", false), ("mini", false), ("plus", false), ("space", false)]
+        where word.hasSuffix(suffix) { return batchim }
+        return ["l", "m", "n", "r", "0", "1", "3", "6", "7", "8"].contains(lower)
+    }
+
+    /// 이/가
+    static func iGa(_ word: String) -> String { hasBatchim(word) ? "이" : "가" }
+    /// 과/와
+    static func gwaWa(_ word: String) -> String { hasBatchim(word) ? "과" : "와" }
+}
+
+extension String {
+    /// 줄바꿈되지 않게 띄어쓰기를 U+00A0으로 바꾼다 (짧은 이름·낱말 묶음)
+    var nonBreaking: String { replacingOccurrences(of: " ", with: "\u{00A0}") }
 }
 
 /// 확인 창 버튼 (높이 36, 13pt)
@@ -30,7 +61,13 @@ struct DialogButtonStyle: ButtonStyle {
     enum Kind { case primary, secondary, plain, danger }
     var kind: Kind = .primary
     var height: CGFloat = 36
-    @Environment(\.isEnabled) private var isEnabled
+    /// 꺼졌을 때 회색 대신 원래 모양 그대로 흐리게 (불투명도 0.4). 왜 꺼졌는지 아래에 적어 둘 때 쓴다.
+    var dimWhenDisabled = false
+    @Environment(\.isEnabled) private var isEnabledEnv
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// 흐리게 그릴 때는 켜진 모양으로 색을 고른다
+    private var isEnabled: Bool { isEnabledEnv || dimWhenDisabled }
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -41,16 +78,19 @@ struct DialogButtonStyle: ButtonStyle {
             .foregroundStyle(foreground)
             .background(RoundedRectangle(cornerRadius: height / 2, style: .circular).fill(background))
             .overlay(RoundedRectangle(cornerRadius: height / 2, style: .circular).strokeBorder(border, lineWidth: 1))
-            .opacity(configuration.isPressed ? 0.8 : 1)
+            .opacity(!isEnabledEnv ? 0.4 : configuration.isPressed ? 0.8 : 1)
             .contentShape(RoundedRectangle(cornerRadius: height / 2, style: .circular))
     }
 
-    private var filled: Bool { kind == .primary || kind == .danger }
+    /// 다크의 위험 버튼은 바탕 없이 테두리만 (캔버스 다크 모드 "페어링 초기화")
+    private var darkDanger: Bool { kind == .danger && colorScheme == .dark }
+    private var filled: Bool { kind == .primary || (kind == .danger && !darkDanger) }
 
     private var foreground: Color {
         guard isEnabled else { return .textSecondary }
         switch kind {
-        case .primary, .danger: return .white
+        case .danger: return darkDanger ? .dangerLabelDark : .white
+        case .primary: return .white
         case .secondary: return .brandText
         case .plain: return .textPrimary
         }
@@ -60,7 +100,7 @@ struct DialogButtonStyle: ButtonStyle {
         guard isEnabled else { return .disabledFill }
         switch kind {
         case .primary: return .brandFill
-        case .danger: return .dangerFill
+        case .danger: return darkDanger ? .clear : .dangerFill
         case .secondary, .plain: return .clear
         }
     }
@@ -68,7 +108,8 @@ struct DialogButtonStyle: ButtonStyle {
     private var border: Color {
         guard isEnabled else { return .clear }
         switch kind {
-        case .primary, .danger: return .clear
+        case .primary: return .clear
+        case .danger: return darkDanger ? .dangerOutlineDark : .clear
         case .secondary: return .brand
         case .plain: return .pillBorder
         }
@@ -96,14 +137,14 @@ struct ConnectionRequestView: View {
                         .frame(width: 22, height: 22))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("‘\(name)’에서 연결을 요청했어요").font(Typo.font(16, .bold))
+                    Text("‘\(name)’\(Josa.iGa(name)) 연결하려고 해요").font(Typo.font(16, .bold))
                         .fixedSize(horizontal: false, vertical: true)
                     Text("기본 기기가 아니에요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 }
                 .accessibilityElement(children: .combine)
             }
             (Text("허용하면 아이폰으로 넘어갔을 때 ")
-                + Text("키보드와 트랙패드 입력이 이 기기로 가요.").font(Typo.font(13, .bold))
+                + Text("키보드와 트랙패드 입력이 \("이 기기로 가요.".nonBreaking)").font(Typo.font(13, .bold))
                 + Text(" 새 기본 기기가 되고, 이전 기기는 목록에 남아요. 모르는 기기라면 거절하세요."))
                 .font(Typo.body).lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
@@ -170,8 +211,8 @@ struct ClipboardConfirmView: View {
             VStack(alignment: .leading, spacing: 8) {
                 countRow("보낼 글자", "\(sendable)자", color: .textPrimary)
                 countRow("빼고 보낼 글자 (한글 등)", "\(skipped)자", color: skipped > 0 ? .warningStrong : .textPrimary)
-                Text(preview)
-                    .font(Typo.secondary)
+                ClipboardPreview.styled(preview)
+                    .font(.system(size: 12, design: .monospaced))
                     .lineLimit(1).truncationMode(.tail)
                     .padding(.top, 4)
                     .accessibilityLabel("미리보기: \(preview)")
@@ -220,6 +261,35 @@ struct ClipboardConfirmView: View {
 
 /// 클립보드 미리보기: 앞부분만, 줄바꿈은 한 줄로, 비밀번호처럼 보이는 부분은 가린다.
 enum ClipboardPreview {
+    static let masked = "[가려짐]"
+
+    /// 보낼 글자는 진하게, 빠지는 글자(한글 등)는 흐리게, 가린 곳은 보조 색으로
+    static func styled(_ preview: String) -> Text {
+        var result = Text("")
+        var run = "", runKind = 0   // 0 보냄, 1 빠짐
+        func flush() {
+            guard !run.isEmpty else { return }
+            result = result + Text(verbatim: run).foregroundColor(runKind == 0 ? .textPrimary : .textDecor)
+            run = ""
+        }
+        var rest = Substring(preview)
+        while let ch = rest.first {
+            if rest.hasPrefix(masked) {
+                flush()
+                result = result + Text(verbatim: masked).foregroundColor(.textSecondary)
+                rest = rest.dropFirst(masked.count)
+                continue
+            }
+            // "…"는 잘렸다는 표시라 보내는 글자처럼 둔다
+            let kind = (ch == "…" || HIDUsage.fromASCII(ch) != nil) ? 0 : 1
+            if kind != runKind { flush(); runKind = kind }
+            run.append(ch)
+            rest = rest.dropFirst()
+        }
+        flush()
+        return result
+    }
+
     static func make(_ text: String, limit: Int = 60) -> String {
         var s = String(text.prefix(400))
         s = s.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
@@ -243,6 +313,7 @@ enum ClipboardPreview {
 
 // MARK: - 단축키 겹침
 
+/// 기록기는 겹치는 조합을 저장하지 않고 이 창을 부른다. "그래도 쓰기"를 눌러야 저장한다.
 struct ShortcutConflictView: View {
     @EnvironmentObject var settings: AppSettings
     let action: HotkeyAction
@@ -251,65 +322,64 @@ struct ShortcutConflictView: View {
     let handle: DialogHandle
 
     var body: some View {
-        DialogFrame(spacing: 14) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.warningStrong)
-                    .padding(.top, 1)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 6) {
-                    (Text("방금 기록한 ") + Text(hotkey.display).font(Typo.font(14, .heavy)) + Text(" 단축키가 겹쳐요"))
-                        .font(Typo.font(14, .bold))
-                    Text("‘\(conflictsWith)’에서 이미 쓰는 조합이에요. 이대로 쓰면 Mac에서 그 기능이 안 될 수 있어요.\(voiceOverNote)")
-                        .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            if let recommended {
-                HStack(spacing: 8) {
-                    Text("추천 조합").font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                    KeyCap(text: recommended.display)
-                }
-                .padding(.leading, 26)
-                .accessibilityElement(children: .combine)
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Button("추천으로 바꾸기") {
-                        if let recommended { settings.hotkeys[action] = recommended }
-                        handle.close()
+        DialogFrame(spacing: 0) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.warningStrong)
+                        .padding(.top, 1)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title).font(Typo.font(13, .bold))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(message)
+                            .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .buttonStyle(DialogButtonStyle(kind: .primary, height: 32))
-                    .disabled(recommendBlocked != nil)
-                    .keyboardShortcut(.defaultAction)
-                    Button("그대로 두기") { handle.close() }
+                    .accessibilityElement(children: .combine)
+                }
+                HStack(spacing: 8) {
+                    Button("다른 조합 고르기") { handle.close() }
+                        .buttonStyle(DialogButtonStyle(kind: .primary, height: 32))
+                        .keyboardShortcut(.defaultAction)
+                        .accessibilityHint("저장하지 않고 닫아요. 단축키를 다시 기록하세요.")
+                    Button("그래도 쓰기") { useAnyway() }
                         .buttonStyle(DialogButtonStyle(kind: .plain, height: 32))
+                        .accessibilityHint("\(hotkey.display)를 저장해요")
                 }
-                if let recommendBlocked {
-                    Text(recommendBlocked).font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                }
+                .padding(.leading, 25)
             }
-            .padding(.leading, 26)
-            .padding(.top, 4)
+            .padding(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.bgWindow))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.warningLine, lineWidth: 1))
         }
     }
 
-    private var recommended: Hotkey? { Hotkey.defaults[action] }
+    /// "방금 기록한 ⌃⌥Space가 입력 소스 전환과 겹쳐요"
+    private var title: String {
+        let key = hotkey.display
+        return "방금 기록한 \(key)\(Josa.iGa(key)) \(conflictsWith.nonBreaking)\(Josa.gwaWa(conflictsWith)) 겹쳐요"
+    }
 
-    /// 추천 조합을 쓸 수 없는 이유
-    private var recommendBlocked: String? {
-        guard let r = recommended else { return "이 동작은 추천 조합이 없어요" }
-        if r == hotkey { return "지금 조합이 이미 추천 조합이에요" }
-        if let other = settings.hotkeys.first(where: { $0.key != action && $0.value == r })?.key {
-            return "추천 조합을 ‘\(other.label)’에서 쓰고 있어요"
+    private var message: String {
+        "이대로 쓰면 Mac에서 \(conflictsWith.nonBreaking)\(Josa.iGa(conflictsWith)) 안 될 수 있어요.\(voiceOverNote)"
+    }
+
+    private func useAnyway() {
+        settings.hotkeys[action] = hotkey
+        // 제스처를 대신하는 단축키는 저장하면서 켠다
+        if let g = action.gesture, var s = settings.gestureMap[g] {
+            s.hotkeyEnabled = true
+            settings.gestureMap[g] = s
         }
-        return nil
+        handle.close()
     }
 
     private var voiceOverNote: String {
         let onlyCtrlOpt = hotkey.modifiers & Hotkey.all == Hotkey.control | Hotkey.option
-        return onlyCtrlOpt ? " VoiceOver를 쓰고 있다면 ⌃⌥만 쓰는 조합도 피해주세요." : ""
+        return onlyCtrlOpt ? " VoiceOver를 쓰고 있다면 ⌃⌥만 쓰는 조합도 피해 주세요." : ""
     }
 }
 
@@ -325,9 +395,9 @@ struct ResetPairingView: View {
             Text("페어링을 초기화할까요?").font(Typo.font(16, .bold))
             VStack(alignment: .leading, spacing: 8) {
                 (Text("지워지는 것: ").font(Typo.bodyBold)
-                    + Text("기본 기기(\(settings.lastDeviceName ?? "없음")), 기기별 모델·방향, 버튼 등록 기록"))
+                    + Text("기본 기기(\((settings.lastDeviceName ?? "없음").nonBreaking)), \("기기별 모델·방향".nonBreaking), \("버튼 등록 기록".nonBreaking)"))
                     .fixedSize(horizontal: false, vertical: true)
-                (Text("남는 것: ").font(Typo.bodyBold) + Text("단축키, 배치, 보정값 등 다른 설정"))
+                (Text("남는 것: ").font(Typo.bodyBold) + Text("단축키, 배치, 보정값 등 \("다른 설정".nonBreaking)"))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .font(Typo.body).lineSpacing(4)
