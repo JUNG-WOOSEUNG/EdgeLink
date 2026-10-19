@@ -295,7 +295,17 @@ final class InputRouter {
         restoreCapsLock(info.capsLockAtEntry)
 
         if info.wasCalibrating {
-            let result = info.calibration ?? .cancelled
+            var result = info.calibration ?? .cancelled
+            // 사용자가 멈춘 게 아니라 연결이 끊기거나 권한·화면이 바뀌어서 끝났으면 실패로 알린다
+            if result == .cancelled {
+                switch info.reason {
+                case .disconnected: result = .failed(reason: "아이폰 연결이 끊겼어요")
+                case .permissionLost: result = .failed(reason: "권한이 꺼졌어요")
+                case .screensChanged: result = .failed(reason: "모니터 구성이 바뀌었어요")
+                case .transportStalled, .tapDisabled: result = .failed(reason: "잠깐 멈춰서 보정을 끝냈어요")
+                default: break
+                }
+            }
             if case let .finished(v) = result {
                 model.settings.unitsPerPointValue = v
                 HIDLog.info(String(format: "보정 완료 (%.2f)", v))

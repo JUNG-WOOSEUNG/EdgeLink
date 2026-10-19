@@ -32,6 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: mine)
             .filter { $0 != NSRunningApplication.current }
         if !mine.isEmpty, let first = others.first, Snapshot.directory == nil {
+            // 나중에 켠 쪽은 정리 절차 없이 끈다 (먼저 켠 앱의 충돌 복구 표시를 건드리지 않게)
+            isDuplicate = true
             first.activate()
             NSApp.terminate(nil)
             return
@@ -39,7 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.launch()
     }
 
+    private var isDuplicate = false
+
     func applicationWillTerminate(_ notification: Notification) {
+        guard !isDuplicate else { return }
         model.shutdown()
     }
 }
@@ -97,6 +102,20 @@ final class AppModel: NSObject, ObservableObject {
         placements = Layout.placements(screens)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in self?.reloadScreens() }.store(in: &bag)
+        // 잠자기: 설정에 따라 끊기 / 깨어남: 2초 뒤 기본 기기에 다시 연결 (설계 문서 › 상태와 예외 처리)
+        let ws = NSWorkspace.shared.notificationCenter
+        ws.publisher(for: NSWorkspace.willSleepNotification).sink { [weak self] _ in
+            guard let self, self.settings.disconnectOnSleep else { return }
+            self.router.returnToMac(.sleep)
+            self.disconnect()
+        }.store(in: &bag)
+        ws.publisher(for: NSWorkspace.didWakeNotification).sink { [weak self] _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                guard let self, self.settings.onboardingDone, self.settings.autoReconnect, !self.isConnected,
+                      let a = self.settings.lastDeviceAddress else { return }
+                self.connect(address: a)
+            }
+        }.store(in: &bag)
         permissions.$bluetooth.removeDuplicates().sink { [weak self] state in
             DispatchQueue.main.async {
                 guard let self else { return }
@@ -128,7 +147,11 @@ final class AppModel: NSObject, ObservableObject {
 
     func openSettings(_ tab: SettingsTab = .general) { settingsWindow.show(tab: tab) }
     func showToast(_ text: String, systemImage: String? = nil) { toasts.show(text, systemImage: systemImage) }
-    func present(_ dialog: AppDialog) { dialogs.present(dialog) }
+    /// 확인 창은 Mac에서 눌러야 하므로, 아이폰 조작 중이면 먼저 Mac으로 돌아온다
+    func present(_ dialog: AppDialog) {
+        if controlMode != .mac { router.returnToMac(.menu) }
+        dialogs.present(dialog)
+    }
 
     /// 클립보드 보내기 (팝오버 버튼, ⌃⌥⌘V). 첫 사용이거나 영문 외 글자가 섞이면 확인 창부터.
     func requestClipboardSend() {
@@ -139,6 +162,7 @@ final class AppModel: NSObject, ObservableObject {
         let sendable = text.filter { HIDUsage.fromASCII($0) != nil }.count
         let skipped = text.count - sendable
         if !settings.clipboardConfirmSkip || skipped > 0 {
+            confirmedClipboardChange = NSPasteboard.general.changeCount
             present(.clipboardConfirm(sendable: sendable, skipped: skipped))
         } else {
             router.typeClipboard()
@@ -148,11 +172,21 @@ final class AppModel: NSObject, ObservableObject {
     /// 확인 창에서 "보내기"를 눌렀을 때
     func confirmClipboardSend(dontAskAgain: Bool) {
         if dontAskAgain { settings.clipboardConfirmSkip = true }
+        // 확인 창을 띄운 뒤 클립보드가 바뀌었으면 확인하지 않은 내용을 보내지 않는다
+        guard NSPasteboard.general.changeCount == confirmedClipboardChange else {
+            showToast("클립보드가 바뀌어서 보내지 않았어요")
+            return
+        }
         router.typeClipboard()
     }
 
+    private var confirmedClipboardChange = -1
+    /// 연결 요청 확인 창을 띄운 시각 (같은 기기가 5분 안에 다시 시도하면 묻지 않고 거절)
+    private var connectionPrompts: [String: Date] = [:]
+
     /// 연결 요청 확인 창에서 허용: 그 기기를 새 기본 기기로 정하고 연결한다
     func acceptConnectionRequest(address: String, name: String) {
+        connectionPrompts[address] = nil
         settings.lastDeviceAddress = address
         settings.lastDeviceName = name
         hid.defaultAddress = address
@@ -169,6 +203,10 @@ final class AppModel: NSObject, ObservableObject {
             d.perform(Selector(("remove")))
         }
         settings.resetPairing()
+        // 지운 기기로 다시 연결하지 않게: 재연결 예약 취소, 기본 주소 지우기, 연결 기다리기 멈춤
+        hid.defaultAddress = nil
+        hid.cancelReconnect()
+        stopBluetooth()
         openOnboarding(at: .welcome)
     }
     var connectedName: String? { if case let .connected(name) = connection { return name } else { return nil } }
@@ -472,6 +510,7 @@ extension AppModel: BluetoothHIDDelegate {
         case let .disconnected(reason):
             stopCircleIfNeeded()
             router.returnToMac(.disconnected)
+            if reason == .rejected { return }  // 기본 기기 상태와 상관없는 거절
             if reason != .user { disconnectedAt = Date() }
             switch reason {
             case .user: connection = .idle
@@ -493,6 +532,11 @@ extension AppModel: BluetoothHIDDelegate {
         // 채널은 닫고 확인 창을 띄운다. 허용하면 그 기기로 Mac이 먼저 연결한다.
         let name = device.name ?? device.addressString ?? "이름 없는 기기"
         let address = device.addressString ?? ""
+        if let asked = connectionPrompts[address], Date().timeIntervalSince(asked) < 300 {
+            HIDLog.info("최근에 물어본 기기라 조용히 거절")
+            return false
+        }
+        connectionPrompts[address] = Date()
         DispatchQueue.main.async { self.present(.connectionRequest(name: name, address: address)) }
         return false
     }
@@ -543,8 +587,13 @@ struct MenuBarIcon: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
-        Image(nsImage: Self.image(symbol: symbol, warning: warning))
-            .accessibilityLabel(label)
+        HStack(spacing: 4) {
+            Image(nsImage: Self.image(symbol: symbol, warning: warning))
+            if settings.showDeviceNameInMenuBar, let name = model.connectedName {
+                Text(name)
+            }
+        }
+        .accessibilityLabel(label)
     }
 
     private var warning: Bool {

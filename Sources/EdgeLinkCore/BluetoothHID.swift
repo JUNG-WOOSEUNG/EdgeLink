@@ -312,25 +312,35 @@ public final class BluetoothHID: NSObject {
     // MARK: 끊기
 
     public func disconnect() {
+        // 끊긴 뒤 예약된 재연결도 취소한다 (device가 nil이어도)
+        cancelReconnect()
         guard device != nil else { return }
         userDisconnecting = true
-        cancelReconnect()
         sendEmptyReports()
-        writeQueue.sync {}  // 빈 리포트가 나간 뒤 닫는다
+        waitForWrites(timeout: 0.2)  // 빈 리포트가 나간 뒤 닫는다 (전송이 막혀도 오래 기다리지 않음)
         teardown(reason: .user)
+    }
+
+    /// 쓰기 큐가 비기를 최대 timeout초 기다린다. 메인 스레드가 블루투스 전송 지연에 묶이지 않게.
+    @discardableResult
+    private func waitForWrites(timeout: TimeInterval) -> Bool {
+        let done = DispatchSemaphore(value: 0)
+        writeQueue.async { done.signal() }
+        return done.wait(timeout: .now() + timeout) == .success
     }
 
     private func teardown(reason: Reason, reconnect: Bool = true) {
         guard device != nil || control != nil || interrupt != nil else { return }
         openTimer?.invalidate()
         openTimer = nil
-        writeQueue.sync {
-            motionTimer?.cancel()
-            motionTimer = nil
-            writeChannel = nil
-            pending = PendingMotion()
-            buttons = 0
-            slowWriteStreak = 0
+        // 기다리지 않는다. 직렬 큐라 이후의 채널 열기보다 먼저 실행된다.
+        writeQueue.async {
+            self.motionTimer?.cancel()
+            self.motionTimer = nil
+            self.writeChannel = nil
+            self.pending = PendingMotion()
+            self.buttons = 0
+            self.slowWriteStreak = 0
         }
         // HID 규격: 인터럽트 먼저, 그다음 제어
         let i = interrupt, c = control, d = device
@@ -427,8 +437,14 @@ public final class BluetoothHID: NSObject {
     }
 
     /// 지금까지의 쓰기 시간 통계.
-    public func writeStatistics() -> WriteStats { writeQueue.sync { stats } }
-    public func resetWriteStatistics() { writeQueue.sync { stats = WriteStats() } }
+    /// 지금까지의 쓰기 시간 통계. 전송이 막혀 있으면 최대 0.2초만 기다리고 빈 통계를 돌려준다.
+    public func writeStatistics() -> WriteStats {
+        var result = WriteStats()
+        let done = DispatchSemaphore(value: 0)
+        writeQueue.async { result = self.stats; done.signal() }
+        return done.wait(timeout: .now() + 0.2) == .success ? result : WriteStats()
+    }
+    public func resetWriteStatistics() { writeQueue.async { self.stats = WriteStats() } }
 
     private func enqueue(_ bytes: [UInt8], flushMotionFirst: Bool) {
         writeQueue.async {
@@ -481,10 +497,10 @@ public final class BluetoothHID: NSObject {
             HIDLog.info("인터럽트 채널(0x13) 열림")
         }
         guard controlOpen, interruptOpen, let i = interrupt else { return }
-        writeQueue.sync {
-            writeChannel = i
-            pending = PendingMotion()
-            startMotionTimer()
+        writeQueue.async {
+            self.writeChannel = i
+            self.pending = PendingMotion()
+            self.startMotionTimer()
         }
         reconnectPolicy.reset()
         let address = device?.addressString ?? ""

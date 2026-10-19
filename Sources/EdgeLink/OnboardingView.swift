@@ -1236,11 +1236,11 @@ struct DoneStep: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("기억해두면 좋은 단축키").font(Typo.font(12, .semibold)).foregroundStyle(Color.textSecondary)
                     VStack(spacing: 0) {
-                        shortcut("Mac ↔ 아이폰 전환", "⌃⌥⌘Space")
+                        shortcut("Mac ↔ 아이폰 전환", keys(.toggleRemote))
                         Rectangle().fill(Color.lineSoft).frame(height: 1)
-                        shortcut("클립보드 보내기", "⌃⌥⌘V")
+                        shortcut("클립보드 보내기", keys(.sendClipboard))
                         Rectangle().fill(Color.lineSoft).frame(height: 1)
-                        shortcut("모서리 전환 켜기/끄기", "⌃⌥⌘E")
+                        shortcut("모서리 전환 켜기/끄기", keys(.toggleEdge))
                     }
                     .padding(.horizontal, 16)
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
@@ -1287,6 +1287,11 @@ struct DoneStep: View {
                 Text(value).font(Typo.bodyBold).lineLimit(1)
             }
         }
+    }
+
+    /// 사용자가 바꾼 단축키를 따른다
+    private func keys(_ action: HotkeyAction) -> String {
+        (settings.hotkeys[action] ?? Hotkey.defaults[action]!).display
     }
 
     private func shortcut(_ name: String, _ keys: String) -> some View {

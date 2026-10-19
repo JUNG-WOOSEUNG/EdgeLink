@@ -491,10 +491,12 @@ public enum HIDLog {
 
     public static func write(_ level: Level, _ message: String) {
         let line = "\(timestamp()) [\(level.rawValue)] \(message)"
+        // 시스템 로그에는 블루투스 주소 뒷자리를 가려서 남긴다
+        let masked = maskAddress(message)
         switch level {
-        case .error: logger.error("\(message, privacy: .public)")
-        case .warn: logger.warning("\(message, privacy: .public)")
-        default: logger.info("\(message, privacy: .public)")
+        case .error: logger.error("\(masked, privacy: .public)")
+        case .warn: logger.warning("\(masked, privacy: .public)")
+        default: logger.info("\(masked, privacy: .public)")
         }
         lock.lock()
         buffer.append(line)
