@@ -9,9 +9,10 @@ struct PopoverView: View {
     @EnvironmentObject var permissions: Permissions
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            content
+        let mode = self.mode
+        return VStack(alignment: .leading, spacing: 0) {
+            header(mode)
+            content(mode)
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 16)
@@ -38,7 +39,7 @@ struct PopoverView: View {
 
     // MARK: 머리
 
-    private var header: some View {
+    private func header(_ mode: Mode) -> some View {
         HStack(spacing: 12) {
             Image(systemName: model.isConnected ? "iphone" : "iphone.slash")
                 .font(.system(size: 17))
@@ -48,8 +49,8 @@ struct PopoverView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("EdgeLink").font(Typo.font(15, .bold))
                 HStack(spacing: 6) {
-                    Circle().fill(statusColor).frame(width: 8, height: 8)
-                    Text(statusText).font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                    Circle().fill(statusColor(mode)).frame(width: 8, height: 8)
+                    Text(statusText(mode)).font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 }
             }
             Spacer()
@@ -57,7 +58,7 @@ struct PopoverView: View {
         .padding(EdgeInsets(top: 16, leading: 16, bottom: 12, trailing: 16))
     }
 
-    private var statusText: String {
+    private func statusText(_ mode: Mode) -> String {
         switch mode {
         case .setup: return "설정 중 · 연결된 기기 없음"
         case .problem(.permission): return "권한이 꺼져 있어요"
@@ -70,7 +71,7 @@ struct PopoverView: View {
         }
     }
 
-    private var statusColor: Color {
+    private func statusColor(_ mode: Mode) -> Color {
         switch mode {
         case .connected: return .success
         case .problem: return Color(hex: 0xFF9500)
@@ -80,7 +81,7 @@ struct PopoverView: View {
 
     // MARK: 본문
 
-    @ViewBuilder private var content: some View {
+    @ViewBuilder private func content(_ mode: Mode) -> some View {
         switch mode {
         case .setup: SetupCard()
         case let .problem(p): ProblemCard(problem: p)

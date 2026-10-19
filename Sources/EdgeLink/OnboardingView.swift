@@ -817,7 +817,7 @@ struct LayoutStep: View {
                     Text("아이폰을 어디에 두셨나요?").font(Typo.onboardingTitle)
                     Text("실제로 놓은 위치를 골라주세요.").font(Typo.body).foregroundStyle(Color.textSecondary)
                 }
-                ArrangementView(placements: placements, selected: selected, landscape: settings.profile.landscape)
+                ArrangementView(screens: model.screens, placements: placements, selected: selected, landscape: settings.profile.landscape)
                     .frame(height: 196)
 
                 if placements.isEmpty {
@@ -879,7 +879,10 @@ struct LayoutStep: View {
             }
         }
         .onAppear(perform: reload)
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in reload() }
+        .onReceive(model.$placements) { _ in
+            placements = model.placements
+            if let s = selected, !placements.contains(s) { selected = Layout.find(settings.phoneLayout, in: placements) ?? Layout.defaultPlacement(placements) }
+        }
     }
 
     /// 모니터가 하나면 "오른쪽"처럼 모서리만
@@ -888,7 +891,8 @@ struct LayoutStep: View {
     }
 
     private func reload() {
-        placements = Layout.placements()
+        model.reloadScreens()
+        placements = model.placements
         selected = Layout.find(settings.phoneLayout, in: placements)
             ?? selected.flatMap { s in placements.first { $0.id == s.id } }
             ?? Layout.defaultPlacement(placements)
@@ -940,6 +944,7 @@ struct FlowRow: SwiftUI.Layout {
 
 /// 모니터 배치도 + 아이폰 + 파란 구간
 struct ArrangementView: View {
+    let screens: [ScreenInfo]
     let placements: [Placement]
     let selected: Placement?
     let landscape: Bool
@@ -992,7 +997,7 @@ struct ArrangementView: View {
     private var uniqueScreens: [ScreenInfo] {
         var seen = Set<String>()
         let fromPlacements = placements.map(\.screen).filter { seen.insert($0.id).inserted }
-        let all = Layout.screens().filter { seen.insert($0.id).inserted }
+        let all = screens.filter { seen.insert($0.id).inserted }
         return fromPlacements + all
     }
 
@@ -1095,7 +1100,7 @@ struct PracticeStep: View {
         }
     }
 
-    private var current: Placement? { Layout.find(settings.phoneLayout, in: Layout.placements()) }
+    private var current: Placement? { model.currentPlacement }
     private var placementLabel: String { current?.label ?? "모니터 오른쪽" }
     private var returnEdge: String {
         switch current?.edge ?? .right {
@@ -1166,7 +1171,7 @@ struct DoneStep: View {
                 HStack(spacing: 12) {
                     summary("권한", "3가지 모두 허용")
                     summary("기기", settings.lastDeviceName ?? "연결된 기기 없음")
-                    summary("위치", Layout.find(settings.phoneLayout, in: Layout.placements())?.label ?? "정하지 않음")
+                    summary("위치", model.currentPlacement?.label ?? "정하지 않음")
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Text("기억해두면 좋은 단축키").font(Typo.font(12, .semibold)).foregroundStyle(Color.textSecondary)

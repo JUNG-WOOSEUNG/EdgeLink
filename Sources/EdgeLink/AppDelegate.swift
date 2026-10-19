@@ -17,7 +17,7 @@ struct EdgeLinkApp: App {
                 .environmentObject(delegate.model.settings)
                 .environmentObject(delegate.model.permissions)
         } label: {
-            MenuBarIcon(model: delegate.model)
+            MenuBarIcon(model: delegate.model, permissions: delegate.model.permissions, settings: delegate.model.settings)
         }
         .menuBarExtraStyle(.window)
     }
@@ -68,6 +68,9 @@ final class AppModel: NSObject, ObservableObject {
     }
     /// Mac 블루투스 전원
     @Published private(set) var bluetoothPoweredOn = BluetoothHID.hostInfo()?.poweredOn ?? true
+    /// 모니터 목록과 놓을 수 있는 자리. 모니터 구성이 바뀔 때만 다시 계산한다.
+    @Published private(set) var screens: [ScreenInfo] = Layout.screens()
+    @Published private(set) var placements: [Placement] = []
     /// 페어링 화면이 보이는 동안만 새 기기의 연결을 받는다
     var acceptingNewDevice = false
 
@@ -82,8 +85,9 @@ final class AppModel: NSObject, ObservableObject {
         super.init()
         hid.delegate = self
         // 하위 객체가 바뀌면 메뉴바 아이콘도 다시 그린다
-        permissions.objectWillChange.sink { [weak self] in self?.objectWillChange.send() }.store(in: &bag)
-        settings.objectWillChange.sink { [weak self] in self?.objectWillChange.send() }.store(in: &bag)
+        placements = Layout.placements(screens)
+        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+            .sink { [weak self] _ in self?.reloadScreens() }.store(in: &bag)
         permissions.$bluetooth.removeDuplicates().sink { [weak self] state in
             DispatchQueue.main.async {
                 guard let self else { return }
@@ -143,6 +147,14 @@ final class AppModel: NSObject, ObservableObject {
             connect(address: address)
         }
     }
+
+    func reloadScreens() {
+        screens = Layout.screens()
+        placements = Layout.placements(screens)
+    }
+
+    /// 저장한 아이폰 자리 (모니터가 없으면 nil)
+    var currentPlacement: Placement? { Layout.find(settings.phoneLayout, in: placements) }
 
     /// 권한이 있을 때만 만든다 (만들어도 권한 창이 뜨지 않음). 전원이 켜지면 다시 시작한다.
     private func watchBluetoothPower() {
@@ -272,12 +284,18 @@ final class AppModel: NSObject, ObservableObject {
                 .environmentObject(settings)
                 .environmentObject(permissions)
                 .environmentObject(devices))
+            // 창 크기를 SwiftUI가 다시 맞추지 않게 한다 (제목 표시줄 높이만큼 아래에 빈 띠가 생겼음)
+            host.sizingOptions = []
             let w = NSWindow(contentViewController: host)
             w.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
             w.titlebarAppearsTransparent = true
             w.titleVisibility = .hidden
             w.title = "EdgeLink 시작하기"
-            w.setContentSize(NSSize(width: 720, height: 560))
+            // 제목 표시줄이 내용 위에 겹치는 창이라, 내용 크기가 아니라 창 전체 크기를 720×560으로 둔다
+            let size = NSSize(width: 720, height: 560)
+            w.setFrame(NSRect(origin: .zero, size: size), display: false)
+            w.minSize = size
+            w.maxSize = size
             w.isReleasedWhenClosed = false
             w.delegate = self
             w.center()
@@ -399,6 +417,8 @@ extension AppModel: CBCentralManagerDelegate {
 
 struct MenuBarIcon: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var permissions: Permissions
+    @ObservedObject var settings: AppSettings
 
     var body: some View {
         Image(nsImage: Self.image(symbol: symbol, warning: warning))
@@ -423,8 +443,18 @@ struct MenuBarIcon: View {
         return model.isConnected ? "EdgeLink · 연결됨" : "EdgeLink · 연결 안 됨"
     }
 
-    /// 18pt 템플릿 아이콘. 경고일 땐 주황 점을 덧그린다.
+    private static var cache: [String: NSImage] = [:]
+
+    /// 18pt 템플릿 아이콘. 경고일 땐 주황 점을 덧그린다. 만든 이미지는 다시 쓴다.
     static func image(symbol: String, warning: Bool) -> NSImage {
+        let key = "\(symbol)-\(warning)"
+        if let img = cache[key] { return img }
+        let img = makeImage(symbol: symbol, warning: warning)
+        cache[key] = img
+        return img
+    }
+
+    private static func makeImage(symbol: String, warning: Bool) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
         let base = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?.withSymbolConfiguration(config) ?? NSImage()
         guard warning else {
