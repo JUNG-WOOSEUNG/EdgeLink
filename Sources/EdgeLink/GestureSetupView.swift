@@ -33,6 +33,7 @@ struct GestureSetupView: View {
             }
             .padding(.horizontal, 40)
             .padding(.top, 4)
+            .padding(.bottom, 24) // 바닥 줄까지 최소 24
             .frame(maxHeight: .infinity, alignment: .top)
             footer
         }
@@ -51,9 +52,8 @@ struct GestureSetupView: View {
 
     private var phoneColumn: some View {
         VStack(spacing: 10) {
+            // 윤곽은 PhoneArt가 Color.deviceOutline으로 그린다 (다크에서도 바탕과 구분)
             PhoneArt(width: 150, height: 300, bezel: 7) { phoneScreen }
-                // 다크 모드에서 검은 테두리가 바탕에 묻히지 않게
-                .overlay(RoundedRectangle(cornerRadius: 150 * 0.22).strokeBorder(Color.line, lineWidth: 1))
             Text("아이폰 화면").font(Typo.caption).foregroundStyle(Color.textSecondary)
         }
         .frame(width: 168)
@@ -130,7 +130,7 @@ struct GestureSetupView: View {
                 Text("아이폰에 버튼을 등록해요").font(Typo.onboardingTitle)
                     .accessibilityAddTraits(.isHeader)
                 (Text("아이폰에서 ")
-                 + Text("설정 › 손쉬운 사용 › 터치 › AssistiveTouch › 장치 › \(hostName)(이 Mac의 이름) › 추가 버튼 사용자화").fontWeight(.bold).foregroundColor(.textPrimary)
+                 + Text("설정 › 손쉬운 사용 › 터치 › AssistiveTouch › 장치 › \(hostName)(이\u{00A0}Mac의\u{00A0}이름) › 추가 버튼 사용자화").fontWeight(.bold).foregroundColor(.textPrimary)
                  + Text("를 열고, ‘버튼을 누르세요’가 뜨면 아래 버튼을 누르세요."))
                     .font(Typo.secondary)
                     .foregroundStyle(Color.textSecondary)
@@ -147,12 +147,6 @@ struct GestureSetupView: View {
                 }
                 .background(RoundedRectangle(cornerRadius: 8).fill(Color.settingsCard))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
-                if !model.isConnected && !allDone {
-                    HStack {
-                        Spacer()
-                        DisabledReason(text: "아이폰을 연결하면 버튼을 보낼 수 있어요")
-                    }
-                }
             }
 
             Text("아이폰에서 다른 동작을 골라도 괜찮아요. Mac은 버튼 번호만 보내고, 동작은 아이폰 설정을 따라요.")
@@ -170,8 +164,7 @@ struct GestureSetupView: View {
         let hotkey = settings.hotkeys[step.gesture.hotkeyAction] ?? Hotkey.defaults[step.gesture.hotkeyAction]!
         let hint = step.gesture == .lockOnly ? "단축키 \(hotkey.display)" : "\(step.gesture.label) · \(hotkey.display)"
         return HStack(spacing: 12) {
-            NumberDot(text: "\(n)", state: done ? .done : isCurrent ? .current : .todo, size: 26)
-                .accessibilityHidden(true)
+            stepDot(n, done: done, current: isCurrent)
             VStack(alignment: .leading, spacing: 2) {
                 Text("버튼 \(n) → \(step.action)").font(Typo.bodyBold)
                 Text(hint).font(Typo.caption).foregroundStyle(Color.textSecondary)
@@ -180,18 +173,23 @@ struct GestureSetupView: View {
             .accessibilityElement(children: .combine)
             .accessibilityValue(done ? "등록함" : isCurrent ? "지금 할 차례" : "")
             if isCurrent && !sent {
-                Button("버튼 \(n) 보내기") {
-                    model.router.sendButton(n)
-                    sent = true
+                VStack(alignment: .trailing, spacing: 4) {
+                    Button("버튼 \(n) 보내기") {
+                        model.router.sendButton(n)
+                        sent = true
+                    }
+                    .buttonStyle(DimmablePillStyle(height: 32))
+                    .disabled(!model.isConnected)
+                    // 흐린 버튼 바로 아래 이유 한 줄
+                    if !model.isConnected { DisabledReason(text: "아이폰을 연결하면 보낼 수 있어요") }
                 }
-                .buttonStyle(PillButtonStyle(height: 32))
                 .fixedSize()
-                .disabled(!model.isConnected)
             } else if isCurrent && sent {
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    // 아이폰이 신호를 놓쳤을 때만 쓰는 보조 동작이라 작고 흐리게 둔다
                     Button("다시 보내기") { model.router.sendButton(n) }
-                        .buttonStyle(TextLinkStyle(color: .brandText))
-                        .font(Typo.font(12, .semibold))
+                        .buttonStyle(TextLinkStyle(color: .textSecondary))
+                        .font(Typo.font(12, .regular))
                         .disabled(!model.isConnected)
                     Button("등록했어요") { confirm() }
                         .buttonStyle(PillButtonStyle(kind: .secondary, height: 32))
@@ -200,7 +198,33 @@ struct GestureSetupView: View {
             }
         }
         .padding(.horizontal, 14)
+        .padding(.vertical, 8)
         .frame(minHeight: 52)
+    }
+
+    /// 번호 원. 끝낸 단계는 진한 초록(#28A745) 위 흰 ✓ 12pt bold — 다크에서도 연초록으로 바꾸지 않는다 (대비).
+    private func stepDot(_ n: Int, done: Bool, current: Bool) -> some View {
+        ZStack {
+            if done {
+                Circle().fill(Color(hex: 0x28A745))
+            } else if current {
+                Circle().fill(Color.brandFill)
+            } else {
+                Circle().strokeBorder(Color.textDecor, lineWidth: 1.5)
+            }
+            // ✓는 SUIT에 글리프가 없어 가는 대체 글꼴로 그려지므로 SF Symbol을 쓴다
+            if done {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Color.white)
+            } else {
+                Text("\(n)")
+                    .font(Typo.font(12, .heavy))
+                    .foregroundStyle(current ? Color.white : .textSecondary)
+            }
+        }
+        .frame(width: 26, height: 26)
+        .accessibilityHidden(true)
     }
 
     private func confirm() {
@@ -214,9 +238,9 @@ struct GestureSetupView: View {
     private var testPane: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("제스처를 해보세요").font(Typo.onboardingTitle)
+                Text("제스처를 해봐요").font(Typo.onboardingTitle)
                     .accessibilityAddTraits(.isHeader)
-                Text("아이폰 조작 중에 트랙패드로 아래 제스처를 해보세요. 아이폰에서 그 동작이 열리면 성공이에요. 단축키로도 해볼 수 있어요.")
+                Text("아이폰 조작 중에 트랙패드로 아래 제스처를 해봐요. 아이폰에서 그 동작이 열리면 성공이에요. 단축키로도 해볼 수 있어요.")
                     .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -232,7 +256,13 @@ struct GestureSetupView: View {
                                 .font(Typo.caption).foregroundStyle(Color.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        KeyCap(text: hotkey.display)
+                        // 키 캡 최소 너비 60, 글자는 가운데
+                        Text(hotkey.display)
+                            .font(Typo.bodyBold)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .frame(minWidth: 60)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.segmentBg))
                     }
                     .padding(.horizontal, 14)
                     .frame(minHeight: 50)
@@ -241,7 +271,7 @@ struct GestureSetupView: View {
             }
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.settingsCard))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
-            Text("동작하지 않으면 아이폰 AssistiveTouch가 켜져 있는지, 아이폰에 등록한 버튼 번호가 맞는지 확인하세요.")
+            Text("동작하지 않으면 아이폰 AssistiveTouch가 켜져 있는지, 아이폰에 등록한 버튼 번호가 맞는지 확인해요.")
                 .font(Typo.caption).foregroundStyle(Color.textSecondary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -274,7 +304,7 @@ struct GestureSetupView: View {
                     Text("\(min(index, steps.count)) / \(steps.count) 등록")
                         .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     Button("시험해보기") { testing = true }
-                        .buttonStyle(PillButtonStyle(height: 40))
+                        .buttonStyle(DimmablePillStyle(height: 40))
                         .disabled(!allDone)
                 }
             }

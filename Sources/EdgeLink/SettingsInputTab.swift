@@ -42,7 +42,7 @@ struct InputTab: View {
                                       initialPhase: previewPhases[action] ?? .idle)
                 }
             }
-            Text("버튼을 누르고 새 조합을 입력하면 바뀌어요. 다른 동작이나 macOS 단축키와 겹치면 저장하지 않아요. 오른쪽 클릭으로 기본값으로 되돌릴 수 있어요.")
+            Text("버튼을 누르고 새 조합을 입력하면 바뀌어요. 다른 동작이나 macOS 단축키와 겹치면 저장하지 않아요. 오른쪽 클릭하면 기본값으로 돌아가요.")
                 .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -53,6 +53,8 @@ struct InputTab: View {
 
     private var phoneToggles: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // 막을 수 없는 단축키 안내는 제목 위 (캔버스 3-1)
+            blockedHelp
             SectionLabel(text: "아이폰으로 보낼 때")
             SettingsGroup {
                 ToggleRow(title: "스크롤 방향 반전", hint: "아이폰에서만 반대로 스크롤해요", isOn: $settings.invertScroll)
@@ -61,9 +63,8 @@ struct InputTab: View {
                 RowDivider()
                 ToggleRow(title: "드래그 중엔 넘어가지 않기", hint: "파일이나 창을 끌다 실수로 넘어가는 걸 막아요", isOn: $settings.dragLock)
                 RowDivider()
-                ToggleRow(title: "미디어 키를 아이폰으로", hint: "아이폰 조작 중엔 볼륨·재생 키를 아이폰에 보내요. 밝기는 Mac에 남아요", isOn: $settings.mediaKeysToPhone)
+                ToggleRow(title: "미디어 키를 아이폰으로", hint: "아이폰 조작 중엔 볼륨·재생 키를 아이폰에 보내요. 밝기 키는 Mac에서 동작해요", isOn: $settings.mediaKeysToPhone)
             }
-            blockedHelp
         }
     }
 
@@ -146,7 +147,8 @@ struct InputTab: View {
         let setting = settings.gestureMap[g] ?? GestureSetting.defaults[g]!
         let hotkey = settings.hotkeys[g.hotkeyAction] ?? Hotkey.defaults[g.hotkeyAction]!
         var hint = setting.hotkeyEnabled ? "단축키 \(hotkey.display)" : "단축키 꺼짐"
-        if macGestures.contains(g) { hint += " · Mac이 먼저 써요 · 단축키를 쓰세요" }
+        // 시스템 설정 › 트랙패드에서 같은 제스처가 켜져 있는 줄에만 덧붙인다
+        if macGestures.contains(g) { hint += " · Mac이 먼저 쓸 수 있어요" }
         return ToggleRow(title: g.label, hint: hint, isOn: Binding(get: { setting.gestureEnabled }, set: { on in
             var s = setting
             s.gestureEnabled = on

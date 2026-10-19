@@ -59,7 +59,17 @@ struct LayoutTab: View {
     var previewPlacements: [Placement]?
     @State private var dismissedConflict: String?
 
-    private var placements: [Placement] { previewPlacements ?? model.placements }
+    /// 놓을 수 있는 자리. 모니터 순서는 그대로 두고, 모니터 안에선 왼쪽·오른쪽·위·아래 순.
+    private var placements: [Placement] {
+        let all = previewPlacements ?? model.placements
+        var screenOrder: [String: Int] = [:]
+        for p in all where screenOrder[p.screen.id] == nil { screenOrder[p.screen.id] = screenOrder.count }
+        let edgeOrder: [ScreenEdge: Int] = [.left: 0, .right: 1, .top: 2, .bottom: 3]
+        return all.enumerated().sorted { a, b in
+            (screenOrder[a.element.screen.id] ?? 0, edgeOrder[a.element.edge] ?? 0, a.offset)
+                < (screenOrder[b.element.screen.id] ?? 0, edgeOrder[b.element.edge] ?? 0, b.offset)
+        }.map(\.element)
+    }
     /// 저장한 자리. 저장한 모니터가 없으면 nil.
     private var saved: Placement? { Layout.find(settings.phoneLayout, in: placements) }
     /// 배치도에 보여줄 자리 (저장한 자리가 없으면 임시로 쓰는 기본 위치)
@@ -175,7 +185,7 @@ struct LayoutTab: View {
     /// 놓을 모서리가 없을 때 (캔버스 4-3)
     private var emptyState: some View {
         SettingsCard(spacing: 16) {
-            ArrangementView(screens: model.screens, placements: [], selected: nil, landscape: false)
+            BlockedArrangementView(screens: model.screens)
                 .frame(height: 140)
             HStack(alignment: .top, spacing: 10) {
                 StatusDot(color: .danger).padding(.top, 6)
@@ -201,20 +211,52 @@ struct LayoutTab: View {
             RowText(title: "기기", hint: "배치도의 아이폰 크기와 돌아오는 위치 계산에 쓰여요. 기기마다 따로 저장돼요. 아이폰 화면 회전 잠금을 켜두면 위치가 어긋나지 않아요.")
             HStack(spacing: 12) {
                 Text("모델").font(Typo.body).foregroundStyle(Color.textSecondary)
-                Picker("모델", selection: modelBinding) {
-                    Text("자동 (\(inferred.label))").tag(DeviceProfile.Model?.none)
-                    Divider()
-                    ForEach(DeviceProfile.Model.allCases) { Text($0.label).tag(DeviceProfile.Model?.some($0)) }
-                }
-                .labelsHidden()
-                .frame(width: 220)
-                .accessibilityLabel("기기 모델")
-                Spacer(minLength: 12)
+                modelField
+                // 세로/가로는 선택 칸 바로 옆 (캔버스 3-1)
                 SegmentedChoice(label: "아이폰 방향", options: [(false, "세로"), (true, "가로")], selection: $settings.profile.landscape)
                     .frame(width: 160)
+                Spacer(minLength: 0)
             }
             .padding(.top, 2)
         }
+    }
+
+    /// 모델 선택 칸 (캔버스 3-1: 높이 32, 최소 너비 220, 바탕 흰색, 테두리 1, 둥글기 6).
+    /// 시스템 팝업 버튼의 테두리를 없애고 디자인 모양으로 감싼다.
+    private var modelField: some View {
+        let title = settings.profile.manual ? settings.profile.model.label : "자동 (\(inferred.label))"
+        return Menu {
+            Picker("모델", selection: modelBinding) {
+                Text("자동 (\(inferred.label))").tag(DeviceProfile.Model?.none)
+                Divider()
+                ForEach(DeviceProfile.Model.allCases) { Text($0.label).tag(DeviceProfile.Model?.some($0)) }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        } label: {
+            Text(title)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .font(Typo.font(13, .regular))
+        .foregroundStyle(Color.textPrimary)
+        .padding(.leading, 10)
+        .padding(.trailing, 28)
+        .frame(minWidth: 220, alignment: .leading)
+        .frame(height: 32)
+        .fixedSize()
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.bgWindow))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.control, lineWidth: 1))
+        .overlay(alignment: .trailing) {
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Color.textSecondary)
+                .padding(.trailing, 10)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        .accessibilityLabel("기기 모델")
+        .accessibilityValue(title)
     }
 
     /// 이름으로 고른 모델 (모르면 지금 값)
@@ -247,7 +289,7 @@ struct LayoutTab: View {
                     .accessibilityValue(String(format: "%.2f", settings.unitsPerPoint))
                 Text("크게").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 Button("보정 도우미") { model.present(.calibration) }
-                    .buttonStyle(PillButtonStyle(kind: .secondary))
+                    .buttonStyle(DimmablePillStyle(kind: .secondary))
                     .disabled(!model.isConnected)
                     .padding(.leading, 4)
             }
@@ -268,6 +310,46 @@ struct LayoutTab: View {
     /// 모니터가 하나면 "화면 오른쪽"처럼 모서리만
     private func label(_ p: Placement) -> String {
         Set(placements.map(\.screen.id)).count > 1 ? p.label : "화면 \(p.edge.label)"
+    }
+}
+
+/// 놓을 모서리가 없을 때의 배치도 (캔버스 4-3). 모니터마다 회색 점선을 둘러 놓을 수 없는 변임을 보인다.
+/// 다크에서도 카드 바탕과 구분되게 한 단계 어두운 바탕을 쓴다.
+struct BlockedArrangementView: View {
+    let screens: [ScreenInfo]
+
+    var body: some View {
+        GeometryReader { geo in
+            let box = bounds
+            let margin: CGFloat = 20
+            let scale = min((geo.size.width - margin * 2) / max(box.width, 1),
+                            (geo.size.height - margin * 2) / max(box.height, 1))
+            let originX = (geo.size.width - box.width * scale) / 2
+            let originY = (geo.size.height - box.height * scale) / 2
+            ZStack(alignment: .topLeading) {
+                ForEach(screens) { s in
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(light: 0xE3F2FB, dark: 0x2B3A4A))
+                        .overlay(RoundedRectangle(cornerRadius: 4)
+                            .strokeBorder(Color.textDecor, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])))
+                        .frame(width: s.frame.width * scale, height: s.frame.height * scale)
+                        .offset(x: originX + (s.frame.x - box.minX) * scale,
+                                y: originY + (box.maxY - s.frame.maxY) * scale)
+                }
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color(light: 0xF5F5F7, dark: 0x1A1A1C)))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement()
+        .accessibilityLabel("배치도: 아이폰을 놓을 수 있는 모서리 없음")
+    }
+
+    private var bounds: (minX: Double, maxY: Double, width: Double, height: Double) {
+        guard !screens.isEmpty else { return (0, 1, 1, 1) }
+        let minX = screens.map(\.frame.x).min()!, maxX = screens.map(\.frame.maxX).max()!
+        let minY = screens.map(\.frame.y).min()!, maxY = screens.map(\.frame.maxY).max()!
+        return (minX, maxY, maxX - minX, maxY - minY)
     }
 }
 
@@ -347,11 +429,15 @@ struct ConnectionTab: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: "문제 해결")
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                     Button("연결 로그 보기") { model.present(.connectionLog) }
                         .buttonStyle(PillButtonStyle(kind: .plain))
-                    Button("페어링 초기화") { model.present(.resetPairing) }
-                        .buttonStyle(PillButtonStyle(kind: .danger))
+                    VStack(alignment: .leading, spacing: 6) {
+                        Button("페어링 초기화") { model.present(.resetPairing) }
+                            .buttonStyle(DimmablePillStyle(kind: .danger))
+                            .disabled(items.isEmpty)
+                        if items.isEmpty { DisabledReason(text: "페어링한 기기가 없어서 지울 게 없어요") }
+                    }
                 }
             }
         }
@@ -413,7 +499,7 @@ struct ConnectionTab: View {
                     .accessibilityLabel("\(item.name) 연결 취소")
             case .failed, .idle:
                 Button("연결") { model.connect(address: item.address) }
-                    .buttonStyle(PillButtonStyle(kind: .primary, height: 32))
+                    .buttonStyle(DimmablePillStyle(kind: .primary, height: 32))
                     .disabled(!model.bluetoothPoweredOn)
                     .accessibilityLabel("\(item.name) 연결")
             }
@@ -439,15 +525,18 @@ struct ConnectionTab: View {
                 .background(Circle().fill(Color.segmentBg))
                 .accessibilityHidden(true)
             Text("아직 페어링한 기기가 없어요").font(Typo.sectionTitle)
-            Text("아이폰에서 설정 › Bluetooth 화면을 열어두고 아래 버튼을 누르세요.")
+            Text("아이폰에서 설정\u{00A0}›\u{00A0}Bluetooth 화면을 열어두고 아래 버튼을 눌러 주세요.")
                 .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 300)
+                .lineSpacing(2)
+                .frame(maxWidth: 340)
+                .fixedSize(horizontal: false, vertical: true)
             Button("새 기기 페어링") { model.openOnboarding(at: .pairing) }
                 .buttonStyle(PillButtonStyle())
                 .padding(.top, 4)
         }
-        .padding(.vertical, 32)
+        .padding(.vertical, 24)
+        .padding(.horizontal, 24)
         .frame(maxWidth: .infinity)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.settingsCard))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
@@ -458,6 +547,7 @@ struct ConnectionTab: View {
 
 struct AboutTab: View {
     @EnvironmentObject var settings: AppSettings
+    private static let notYet = "다음 버전부터 쓸 수 있어요"
     @EnvironmentObject var permissions: Permissions
 
     private var version: String {
@@ -485,7 +575,7 @@ struct AboutTab: View {
                 Text("EdgeLink").font(Typo.font(20, .bold)).padding(.top, 4)
                 Text("버전 \(version) · Mac 하나로 아이폰까지").font(Typo.body).foregroundStyle(Color.textSecondary)
             }
-            .padding(.top, 8)
+            .padding(.top, 24) // 스크롤 내용 위 여백 24와 합쳐 48 (캔버스 3-1)
 
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: "권한")
@@ -501,19 +591,34 @@ struct AboutTab: View {
                 SectionLabel(text: "업데이트")
                 SettingsGroup {
                     VStack(alignment: .leading, spacing: 0) {
-                        ToggleRow(title: "자동으로 업데이트 확인",
-                                  hint: settings.autoUpdateAllowed ? "하루 한 번 확인해요. 정해진 주소 한 곳만 써요" : "회사 정책으로 꺼져 있어요",
-                                  isOn: $settings.autoUpdateCheck)
-                            .disabled(!settings.autoUpdateAllowed)
-                            .opacity(settings.autoUpdateAllowed ? 1 : 0.6)
+                        // 업데이트 기능은 아직 없다: 스위치와 버튼 모두 흐리게, 이유는 바로 아래 한 줄
+                        HStack(spacing: 12) {
+                            RowText(title: "자동으로 업데이트 확인",
+                                    hint: settings.autoUpdateAllowed ? "하루 한 번, 정해진 주소 한 곳에서만 확인해요" : "회사 정책으로 꺼져 있어요")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            VStack(alignment: .trailing, spacing: 6) {
+                                Toggle("자동으로 업데이트 확인", isOn: $settings.autoUpdateCheck)
+                                    .toggleStyle(SettingsSwitchStyle())
+                                    .labelsHidden()
+                                    .disabled(true)
+                                    .accessibilityLabel("자동으로 업데이트 확인")
+                                    .accessibilityHint(Self.notYet)
+                                DisabledReason(text: Self.notYet)
+                            }
+                        }
+                        .padding(.vertical, 12)
+                        .frame(minHeight: 60)
                         RowDivider()
                         HStack(spacing: 12) {
-                            RowText(title: "지금 확인", hint: "업데이트 확인은 다음 버전부터 쓸 수 있어요")
+                            RowText(title: "업데이트 확인", hint: "새 버전이 있는지 바로 알아봐요")
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            Button("지금 확인") {}
-                                .buttonStyle(PillButtonStyle(kind: .plain, height: 32))
-                                .disabled(true)
-                                .accessibilityHint("업데이트 확인은 다음 버전부터 쓸 수 있어요")
+                            VStack(alignment: .trailing, spacing: 6) {
+                                Button("지금 확인") {}
+                                    .buttonStyle(DimmablePillStyle(kind: .plain, height: 32))
+                                    .disabled(true)
+                                    .accessibilityHint(Self.notYet)
+                                DisabledReason(text: Self.notYet)
+                            }
                         }
                         .padding(.vertical, 12)
                         .frame(minHeight: 60)

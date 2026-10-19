@@ -76,6 +76,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         guard let w = notification.object as? NSWindow else { return }
+        // 단축키를 기록하던 중이면 끝낸다. 로컬 키 모니터가 남으면 앱 전체 keyDown을 삼키고,
+        // isRecording이 남으면 InputRouter가 Mac 조작 단축키를 계속 무시한다.
+        if w === window { HotkeyRecorderState.end() }
         // 다음에 열 때 새로 만들어서 각 화면의 onAppear가 다시 불리게 한다
         if w === window { DispatchQueue.main.async { self.window = nil } }
         if w === gestureWindow { DispatchQueue.main.async { self.gestureWindow = nil } }
@@ -324,7 +327,7 @@ struct SettingsSwitchStyle: ToggleStyle {
                 .padding(2)
         }
         .frame(width: 40, height: 24)
-        .opacity(isEnabled ? 1 : 0.45)
+        .opacity(isEnabled ? 1 : 0.4)
         .contentShape(Capsule())
         .onTapGesture {
             guard isEnabled else { return }
@@ -367,6 +370,44 @@ struct SegmentedChoice<T: Hashable>: View {
         }
         .padding(4)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.segmentBg))
+    }
+}
+
+/// 설정 창 알약 버튼. 누를 수 없을 때도 원래 모양(테두리·색)을 그대로 두고 불투명도만 0.4로 낮춘다.
+/// (PillButtonStyle은 회색 채움으로 바뀌어서 어떤 버튼인지 알아보기 어렵다)
+struct DimmablePillStyle: ButtonStyle {
+    var kind: PillKind = .primary
+    var height: CGFloat = 36
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(Typo.font(height >= 40 ? 14 : 13, .bold))
+            .padding(.horizontal, height >= 40 ? 28 : 16)
+            .frame(height: height)
+            .foregroundStyle(foreground)
+            .background(Capsule().fill(kind == .primary ? Color.brandFill : .bgWindow))
+            .overlay(Capsule().strokeBorder(border, lineWidth: 1))
+            .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+            .contentShape(Capsule())
+    }
+
+    private var foreground: Color {
+        switch kind {
+        case .primary: return .white
+        case .secondary: return .brandText
+        case .plain: return .textPrimary
+        case .danger: return .dangerText
+        }
+    }
+
+    private var border: Color {
+        switch kind {
+        case .primary: return .clear
+        case .secondary: return .brand
+        case .plain: return .control
+        case .danger: return .danger
+        }
     }
 }
 
