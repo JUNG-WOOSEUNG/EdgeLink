@@ -105,14 +105,19 @@ final class AppModel: NSObject, ObservableObject {
         // 잠자기: 설정에 따라 끊기 / 깨어남: 2초 뒤 기본 기기에 다시 연결 (설계 문서 › 상태와 예외 처리)
         let ws = NSWorkspace.shared.notificationCenter
         ws.publisher(for: NSWorkspace.willSleepNotification).sink { [weak self] _ in
-            guard let self, self.settings.disconnectOnSleep else { return }
+            guard let self else { return }
+            // 사용자가 직접 끊어둔 상태면 깨어나도 다시 연결하지 않는다
+            self.reconnectAfterWake = self.isConnected || self.connectingAddress != nil
+            guard self.settings.disconnectOnSleep else { return }
             self.router.returnToMac(.sleep)
             self.disconnect()
         }.store(in: &bag)
         ws.publisher(for: NSWorkspace.didWakeNotification).sink { [weak self] _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                guard let self, self.settings.onboardingDone, self.settings.autoReconnect, !self.isConnected,
-                      let a = self.settings.lastDeviceAddress else { return }
+                guard let self, self.reconnectAfterWake, self.settings.onboardingDone, self.settings.autoReconnect,
+                      !self.isConnected, let a = self.settings.lastDeviceAddress else { return }
+                self.reconnectAfterWake = false
+                if case .connecting = self.connection { return }
                 self.connect(address: a)
             }
         }.store(in: &bag)
@@ -181,6 +186,7 @@ final class AppModel: NSObject, ObservableObject {
     }
 
     private var confirmedClipboardChange = -1
+    private var reconnectAfterWake = false
     /// 연결 요청 확인 창을 띄운 시각 (같은 기기가 5분 안에 다시 시도하면 묻지 않고 거절)
     private var connectionPrompts: [String: Date] = [:]
 
@@ -517,9 +523,7 @@ extension AppModel: BluetoothHIDDelegate {
             case .user: connection = .idle
             case let .openFailed(stage, code):
                 connection = .failed(message: "\(stage) 실패 (\(BluetoothHID.describe(code)))")
-            case .rejected:
-                if case .pairing = connection { return }
-                connection = .failed(message: "허용하지 않은 기기라 연결을 막았어요")
+            case .rejected: break  // 위에서 이미 처리
             case .virtualCableUnplug: connection = .failed(message: "아이폰에서 연결을 해제했어요")
             case .channelClosed, .stalled: connection = .failed(message: "연결이 끊겼어요")
             }

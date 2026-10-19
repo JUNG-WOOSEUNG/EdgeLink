@@ -23,9 +23,10 @@ enum HotkeyRecorderState {
         }
         let center = NotificationCenter.default
         // 다른 앱으로 가거나 설정 창이 키 창이 아니게 되면 기록을 끝낸다
-        for name in [NSApplication.didResignActiveNotification, NSWindow.didResignKeyNotification] {
-            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { _ in end() })
-        }
+        observers.append(center.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { _ in end() })
+        // 기록을 시작한 창(설정 창)이 키 창에서 내려갈 때만. 다른 창이 열렸다 닫히는 건 상관없음.
+        let recordingWindow = NSApp.keyWindow
+        observers.append(center.addObserver(forName: NSWindow.didResignKeyNotification, object: recordingWindow, queue: .main) { _ in end() })
     }
 
     /// 기록 끝. 모니터와 관찰자를 모두 지운다. notify면 기록 줄에 알린다.

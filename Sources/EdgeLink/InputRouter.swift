@@ -303,6 +303,8 @@ final class InputRouter {
                 case .permissionLost: result = .failed(reason: "권한이 꺼졌어요")
                 case .screensChanged: result = .failed(reason: "모니터 구성이 바뀌었어요")
                 case .transportStalled, .tapDisabled: result = .failed(reason: "잠깐 멈춰서 보정을 끝냈어요")
+                case .screenLocked, .sleep: result = .failed(reason: "화면이 잠겨서 보정을 끝냈어요")
+                case .secureInput: result = .failed(reason: "비밀번호 입력이 시작돼서 보정을 끝냈어요")
                 default: break
                 }
             }

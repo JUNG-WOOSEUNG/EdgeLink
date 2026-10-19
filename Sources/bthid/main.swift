@@ -219,7 +219,7 @@ final class Session: NSObject, BluetoothHIDDelegate {
         hid.disconnect()
         hid.stopListening()
         hid.removeServiceRecord()
-        let stats = hid.writeStatistics()
+        guard let stats = hid.writeStatistics(timeout: 2) else { return out("통계를 읽지 못했어요 (전송이 막혀 있음)") }
         if stats.count > 0 { out(stats.summary) }
     }
 
@@ -275,7 +275,7 @@ final class Session: NSObject, BluetoothHIDDelegate {
             out("시험 2/2: 아이폰 메모 앱을 열고 입력 칸을 눌러두세요. 3초 뒤 \"\(self.options.text)\"를 입력해요")
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 self.type(self.options.text) {
-                    out(self.hid.writeStatistics().summary)
+                    out(self.hid.writeStatistics(timeout: 2)?.summary ?? "통계를 읽지 못했어요 (전송이 막혀 있음)")
                     self.afterDemo()
                 }
             }

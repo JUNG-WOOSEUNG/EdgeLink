@@ -321,6 +321,12 @@ public final class BluetoothHID: NSObject {
         teardown(reason: .user)
     }
 
+    /// 채널을 닫는 중엔 큐에 남은 리포트를 버린다 (메인에서 바꾸고 쓰기 큐에서 읽음)
+    private let acceptLock = NSLock()
+    private var accepting = false
+    private func setAccepting(_ v: Bool) { acceptLock.lock(); accepting = v; acceptLock.unlock() }
+    private var isAccepting: Bool { acceptLock.lock(); defer { acceptLock.unlock() }; return accepting }
+
     /// 쓰기 큐가 비기를 최대 timeout초 기다린다. 메인 스레드가 블루투스 전송 지연에 묶이지 않게.
     @discardableResult
     private func waitForWrites(timeout: TimeInterval) -> Bool {
@@ -333,6 +339,8 @@ public final class BluetoothHID: NSObject {
         guard device != nil || control != nil || interrupt != nil else { return }
         openTimer?.invalidate()
         openTimer = nil
+        // 큐에 남은 쓰기가 닫히는 채널로 가지 않게 먼저 막는다
+        setAccepting(false)
         // 기다리지 않는다. 직렬 큐라 이후의 채널 열기보다 먼저 실행된다.
         writeQueue.async {
             self.motionTimer?.cancel()
@@ -349,6 +357,7 @@ public final class BluetoothHID: NSObject {
         controlOpen = false
         interruptOpen = false
         device = nil
+        waitForWrites(timeout: 0.1)  // 지금 쓰는 중인 리포트가 끝나기를 잠깐 기다린 뒤 닫는다
         i?.close()
         c?.close()
         if reason == .user || reason == .virtualCableUnplug { d?.closeConnection() }
@@ -444,12 +453,12 @@ public final class BluetoothHID: NSObject {
     }
 
     /// 지금까지의 쓰기 시간 통계.
-    /// 지금까지의 쓰기 시간 통계. 전송이 막혀 있으면 최대 0.2초만 기다리고 빈 통계를 돌려준다.
-    public func writeStatistics() -> WriteStats {
+    /// 지금까지의 쓰기 시간 통계. 전송이 막혀 timeout 안에 못 읽으면 nil.
+    public func writeStatistics(timeout: TimeInterval = 0.2) -> WriteStats? {
         var result = WriteStats()
         let done = DispatchSemaphore(value: 0)
         writeQueue.async { result = self.stats; done.signal() }
-        return done.wait(timeout: .now() + 0.2) == .success ? result : WriteStats()
+        return done.wait(timeout: .now() + timeout) == .success ? result : nil
     }
     public func resetWriteStatistics() { writeQueue.async { self.stats = WriteStats() } }
 
@@ -470,7 +479,7 @@ public final class BluetoothHID: NSObject {
 
     // writeQueue에서만
     private func write(_ bytes: [UInt8]) {
-        guard let channel = writeChannel else { return }
+        guard let channel = writeChannel, isAccepting else { return }
         var buf = bytes
         let start = DispatchTime.now().uptimeNanoseconds
         let r = buf.withUnsafeMutableBytes { channel.writeSync($0.baseAddress, length: UInt16($0.count)) }
@@ -509,6 +518,7 @@ public final class BluetoothHID: NSObject {
             self.pending = PendingMotion()
             self.startMotionTimer()
         }
+        setAccepting(true)
         reconnectPolicy.reset()
         let address = device?.addressString ?? ""
         openTimer?.invalidate()
