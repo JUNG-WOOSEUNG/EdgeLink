@@ -1007,13 +1007,13 @@ struct ArrangementView: View {
                     let tl = map(s.frame.x, s.frame.maxY)
                     let w = s.frame.width * scale, h = s.frame.height * scale
                     VStack(spacing: 0) {
-                        if s.isMain { Rectangle().fill(Color(hex: 0x4D4D4D)).frame(height: 5) }
-                        Text(s.name).font(Typo.font(12, .semibold)).foregroundStyle(Color(hex: 0x1A1A1A))
+                        if s.isMain { Rectangle().fill(Color(light: 0x4D4D4D, dark: 0x8C8C8C)).frame(height: 5) }
+                        Text(s.name).font(Typo.font(12, .semibold)).foregroundStyle(Color.textPrimary)
                             .lineLimit(1).minimumScaleFactor(0.6).padding(.horizontal, 4)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     .frame(width: w, height: h)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(Color(hex: 0xE3F2FB)))
+                    .background(RoundedRectangle(cornerRadius: 5).fill(Color(light: 0xE3F2FB, dark: 0x2B3A4A)))
                     .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.textDecor, lineWidth: 1))
                     .clipShape(RoundedRectangle(cornerRadius: 5))
                     .offset(x: tl.x, y: tl.y)
