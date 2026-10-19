@@ -74,6 +74,13 @@ final class AppModel: NSObject, ObservableObject {
     /// 페어링 화면이 보이는 동안만 새 기기의 연결을 받는다
     var acceptingNewDevice = false
 
+    /// Mac 조작 / 아이폰 조작 / 보정 중. InputRouter가 바꾼다.
+    @Published var controlMode: ControlMode = .mac
+    lazy var router = InputRouter(model: self)
+    lazy var toasts = ToastCenter()
+    lazy var dialogs = DialogPresenter(model: self)
+    lazy var settingsWindow = SettingsWindowController(model: self)
+
     private var bluetoothStarted = false
     private var pairer: Pairer?
     private var circleTimer: Timer?
@@ -108,6 +115,54 @@ final class AppModel: NSObject, ObservableObject {
     }
 
     var isConnected: Bool { if case .connected = connection { return true } else { return false } }
+
+    // MARK: 화면 사이 연결 (Contracts.swift)
+
+    func openSettings(_ tab: SettingsTab = .general) { settingsWindow.show(tab: tab) }
+    func showToast(_ text: String, systemImage: String? = nil) { toasts.show(text, systemImage: systemImage) }
+    func present(_ dialog: AppDialog) { dialogs.present(dialog) }
+
+    /// 클립보드 보내기 (팝오버 버튼, ⌃⌥⌘V). 첫 사용이거나 영문 외 글자가 섞이면 확인 창부터.
+    func requestClipboardSend() {
+        guard settings.clipboardTypingAllowed else { return showToast("회사 정책으로 클립보드 보내기가 꺼져 있어요") }
+        guard isConnected else { return showToast("아이폰을 연결하면 쓸 수 있어요") }
+        let text = NSPasteboard.general.string(forType: .string) ?? ""
+        guard !text.isEmpty else { return showToast("클립보드가 비어 있어요") }
+        let sendable = text.filter { HIDUsage.fromASCII($0) != nil }.count
+        let skipped = text.count - sendable
+        if !settings.clipboardConfirmSkip || skipped > 0 {
+            present(.clipboardConfirm(sendable: sendable, skipped: skipped))
+        } else {
+            router.typeClipboard()
+        }
+    }
+
+    /// 확인 창에서 "보내기"를 눌렀을 때
+    func confirmClipboardSend(dontAskAgain: Bool) {
+        if dontAskAgain { settings.clipboardConfirmSkip = true }
+        router.typeClipboard()
+    }
+
+    /// 연결 요청 확인 창에서 허용: 그 기기를 새 기본 기기로 정하고 연결한다
+    func acceptConnectionRequest(address: String, name: String) {
+        settings.lastDeviceAddress = address
+        settings.lastDeviceName = name
+        hid.defaultAddress = address
+        connect(address: address)
+    }
+
+    /// 설정 › 연결 › 페어링 초기화 확인 창에서 "초기화"
+    func resetPairing() {
+        router.returnToMac(.menu)
+        disconnect()
+        if let address = settings.lastDeviceAddress, let d = IOBluetoothDevice(addressString: address),
+           d.responds(to: Selector(("remove"))) {
+            // 비공개 API라 있을 때만 (Mac 쪽 페어링 삭제)
+            d.perform(Selector(("remove")))
+        }
+        settings.resetPairing()
+        openOnboarding(at: .welcome)
+    }
     var connectedName: String? { if case let .connected(name) = connection { return name } else { return nil } }
 
     // MARK: 시작 · 종료
@@ -123,9 +178,26 @@ final class AppModel: NSObject, ObservableObject {
         } else {
             openOnboarding()
         }
+        startRouterIfAllowed()
+        permissions.$accessibility.combineLatest(permissions.$inputMonitoring)
+            .removeDuplicates { $0 == $1 }
+            .sink { [weak self] _ in DispatchQueue.main.async { self?.startRouterIfAllowed() } }
+            .store(in: &bag)
+    }
+
+    /// 이벤트 탭은 손쉬운 사용·입력 모니터링이 있을 때만. 꺼지면 InputRouter가 Mac으로 돌아온다.
+    func startRouterIfAllowed() {
+        if permissions.accessibility && permissions.inputMonitoring {
+            router.start()
+        } else {
+            router.returnToMac(.permissionLost)
+            router.stop()
+        }
     }
 
     func shutdown() {
+        router.returnToMac(.menu)
+        router.stop()
         stopCircle()
         hid.disconnect()
         hid.stopListening()
@@ -386,6 +458,7 @@ extension AppModel: BluetoothHIDDelegate {
             connection = .connected(name: name)
         case let .disconnected(reason):
             stopCircleIfNeeded()
+            router.returnToMac(.disconnected)
             switch reason {
             case .user: connection = .idle
             case let .openFailed(stage, code):
@@ -402,8 +475,20 @@ extension AppModel: BluetoothHIDDelegate {
     /// 기본 기기만 연결 허용. 확인 창(캔버스 4-1)은 4단계에서 붙인다. 지금은 페어링 단계에서만 새 기기를 받는다.
     func hid(_ hid: BluetoothHID, shouldAccept device: IOBluetoothDevice) -> Bool {
         if device.addressString?.lowercased() == settings.lastDeviceAddress?.lowercased() { return true }
-        return acceptingNewDevice
+        if acceptingNewDevice || !settings.onlyDefaultDevice { return true }
+        // 채널은 닫고 확인 창을 띄운다. 허용하면 그 기기로 Mac이 먼저 연결한다.
+        let name = device.name ?? device.addressString ?? "이름 없는 기기"
+        let address = device.addressString ?? ""
+        DispatchQueue.main.async { self.present(.connectionRequest(name: name, address: address)) }
+        return false
     }
+
+    /// 블루투스 쓰기가 3번 연속 50ms를 넘으면 Mac으로 돌아온다
+    func hidTransportStalled(_ hid: BluetoothHID) {
+        router.returnToMac(.transportStalled)
+    }
+
+    func hid(_ hid: BluetoothHID, didReceive leds: KeyboardLEDs) {}
 
     private func stopCircleIfNeeded() {
         if onboardingPage != .test { stopCircle() }
