@@ -787,6 +787,8 @@ final class InputRouter {
     private func matchHotkeyLocked(_ code: UInt16, _ flags: UInt64, gestures: Bool) -> HotkeyAction? {
         let c = st.config
         if st.mode != .mac, Self.safetyCombo.matches(keyCode: code, flags: flags) { return .toggleRemote }
+        // 설정 창에서 단축키를 기록하는 중엔 Mac 조작 단축키를 처리하지 않는다 (안전 조합은 위에서 이미 처리)
+        if HotkeyRecorderState.isRecording { return nil }
         for action in [HotkeyAction.toggleRemote, .sendClipboard, .toggleEdge] {
             if c.hotkeys[action]?.matches(keyCode: code, flags: flags) == true { return action }
         }
