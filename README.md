@@ -119,12 +119,12 @@ EdgeLink는 키 입력을 다루는 앱이라, 입력이 허락한 기기에만 
 
 ## 개발 현황
 
-EdgeLink는 지금 개발 중이에요. 설계와 디자인을 마쳤고, Mac이 블루투스 키보드·마우스로 아이폰에 붙는 것까지 확인했어요.
+EdgeLink는 지금 개발 중이에요. 설계와 디자인을 마쳤고, Mac이 블루투스 키보드·마우스로 아이폰에 붙는 것을 확인했어요. 모서리 전환과 설정 화면까지 구현했고 실기기로 확인하고 있어요.
 
 - [x] 설계 문서 · 디자인
 - [x] 블루투스 HID 연결 검증 (아이폰에서 커서·글자 입력 확인)
-- [ ] 첫 실행 설정과 모서리 전환
-- [ ] 제스처, 클립보드 보내기
+- [x] 첫 실행 설정과 모서리 전환 (구현 완료, 실기기 확인 중)
+- [x] 제스처, 클립보드 보내기 (구현 완료, 실기기 확인 중)
 - [ ] 첫 공개 버전
 
 ### 직접 빌드하기
@@ -138,7 +138,7 @@ swift build                # EdgeLinkCore, bthid
 .build/debug/bthid connect <아이폰 주소>
 ```
 
-자세한 설계는 [docs/DESIGN.md](docs/DESIGN.md), 1단계 연결 검증 방법은 [docs/STAGE1.md](docs/STAGE1.md), 진행 기록은 [docs/DEVLOG.md](docs/DEVLOG.md)를 보세요.
+자세한 설계는 [docs/DESIGN.md](docs/DESIGN.md), 1단계 연결 검증 방법은 [docs/STAGE1.md](docs/STAGE1.md), 진행 기록은 [docs/DEVLOG.md](docs/DEVLOG.md), 화면은 [docs/screens](docs/screens/README.md)를 보세요.
 
 진행 상황은 [Issues](https://github.com/JUNG-WOOSEUNG/EdgeLink/issues)에서 볼 수 있어요. 버그 제보와 아이디어는 언제든 환영해요.
 
