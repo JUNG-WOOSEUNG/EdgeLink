@@ -115,7 +115,9 @@ final class AppModel: NSObject, ObservableObject {
     func launch() {
         if Snapshot.directory != nil { return Snapshot.run(model: self) }
         // 개발용: 온보딩을 마쳤어도 창을 바로 연다
-        if ProcessInfo.processInfo.environment["EDGELINK_SHOW_ONBOARDING"] != nil { openOnboarding(at: .layout) }
+        if let v = ProcessInfo.processInfo.environment["EDGELINK_SHOW_ONBOARDING"] {
+            openOnboarding(at: Int(v).flatMap(OnboardingStep.init(rawValue:)) ?? .layout)
+        }
         if settings.onboardingDone {
             startBluetoothIfAllowed()
         } else {
@@ -225,15 +227,34 @@ final class AppModel: NSObject, ObservableObject {
 
     // MARK: 연결 확인 (온보딩 5단계)
 
-    /// 아이폰 커서를 원 모양으로 계속 움직인다.
+    /// 아이폰 커서를 화면 가운데로 옮긴 뒤 원 모양으로 계속 움직인다.
+    /// Mac은 아이폰 커서 위치를 모르므로, 왼쪽 위 구석으로 크게 밀어 (0, 0)에 맞춘 다음 가운데로 간다.
     func startCircle() {
         stopCircle()
-        var angle = 0.0
         let radius = 120.0, speed = 2 * Double.pi / 2.0 // 2초에 한 바퀴
         let dt = 1.0 / 60
+        let size = settings.profile.model.screenSize
+        let (w, h) = settings.profile.landscape ? (size.height, size.width) : (size.width, size.height)
+        let k = settings.unitsPerPoint > 0 ? settings.unitsPerPoint : 2.0
+        // 원의 시작점(각도 0)은 가운데에서 오른쪽으로 반지름만큼
+        var toGo = (x: w / 2 * k + radius, y: h / 2 * k)
+        var cornerTicks = 18          // 0.3초 동안 왼쪽 위로 크게 민다 (5000 단위 넘게)
+        let step = 6.0                // 가운데로 갈 땐 천천히 (포인터 가속을 피함)
+        var angle = 0.0
         var carry = (x: 0.0, y: 0.0)
         circleTimer = Timer(timeInterval: dt, repeats: true) { [weak self] _ in
             guard let self, self.isConnected else { return }
+            if cornerTicks > 0 {
+                cornerTicks -= 1
+                self.hid.move(dx: -300, dy: -300)
+                return
+            }
+            if toGo.x > 0 || toGo.y > 0 {
+                let dx = min(step, toGo.x), dy = min(step, toGo.y)
+                toGo.x -= dx; toGo.y -= dy
+                self.hid.move(dx: Int(dx), dy: Int(dy))
+                return
+            }
             let next = angle + speed * dt
             carry.x += radius * (cos(next) - cos(angle))
             carry.y += radius * (sin(next) - sin(angle))

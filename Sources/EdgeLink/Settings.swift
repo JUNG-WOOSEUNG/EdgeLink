@@ -50,6 +50,8 @@ final class AppSettings: ObservableObject {
     @Published var profile: DeviceProfile { didSet { saveProfile() } }
 
     var autoReconnect: Bool { defaults.bool(forKey: Key.autoReconnect) }
+    /// 아이폰 1pt당 HID 이동량 (보정값, 기본 2.0)
+    var unitsPerPoint: Double { defaults.double(forKey: Key.unitsPerPoint) }
     var sensitivity: Double { defaults.double(forKey: Key.sensitivity) }
 
     private func saveProfile() {
@@ -95,6 +97,17 @@ struct DeviceProfile: Codable, Equatable {
             }
         }
         var isPad: Bool { self == .iPad || self == .iPadPro13 }
+
+        /// 세로 기준 화면 크기(pt). 돌아오는 위치 계산과 커서 가운데 맞추기에 쓴다.
+        var screenSize: (width: Double, height: Double) {
+            switch self {
+            case .iPhone: return (393, 852)
+            case .iPhoneMini: return (375, 812)
+            case .iPhoneMax: return (430, 932)
+            case .iPad: return (820, 1180)
+            case .iPadPro13: return (1032, 1376)
+            }
+        }
 
         /// 블루투스 이름으로 화면 크기를 고른다 ("지민의 iPhone 16 Pro" → iPhone). 모르면 nil.
         static func infer(from name: String?) -> Model? {
