@@ -511,7 +511,8 @@ extension AppModel: BluetoothHIDDelegate {
             stopCircleIfNeeded()
             router.returnToMac(.disconnected)
             if reason == .rejected { return }  // 기본 기기 상태와 상관없는 거절
-            if reason != .user { disconnectedAt = Date() }
+            // 재연결이 실패해도 처음 끊긴 시각을 유지한다 (연결되면 지움)
+            if reason != .user, disconnectedAt == nil { disconnectedAt = Date() }
             switch reason {
             case .user: connection = .idle
             case let .openFailed(stage, code):

@@ -306,7 +306,12 @@ final class InputRouter {
                 default: break
                 }
             }
-            if case let .finished(v) = result {
+            if case let .finished(raw) = result, raw < 0.2 {
+                result = .failed(reason: "움직인 양이 너무 작아요")
+            }
+            if case let .finished(raw) = result {
+                let v = min(4.0, max(0.6, raw))  // 보정값 범위 0.6~4.0
+                result = .finished(unitsPerPoint: v)
                 model.settings.unitsPerPointValue = v
                 HIDLog.info(String(format: "보정 완료 (%.2f)", v))
             } else {

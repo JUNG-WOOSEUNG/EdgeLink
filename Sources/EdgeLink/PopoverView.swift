@@ -745,16 +745,10 @@ struct DisconnectedCard: View {
         return "\(m / 60)시간 전에 끊겼어요"
     }
 
-    /// 다음 자동 재연결까지 남은 시간 (모르면 nil).
-    /// BluetoothHID가 예약 시각을 내보내지 않아서, 끊긴 시각 + 재연결 정책의 지연으로 어림한다.
+    /// 다음 자동 재연결까지 남은 시간 (예약이 없으면 nil)
     private func retryIn(now: Date) -> TimeInterval? {
-        guard settings.autoReconnect, let t = model.disconnectedAt else { return nil }
-        // ReconnectPolicy.attempt는 private라 Mirror로 읽는다 (예약할 때 하나 올라간 값)
-        let attempt = Mirror(reflecting: model.hid.reconnectPolicy).children
-            .first { $0.label == "attempt" }?.value as? Int ?? 0
-        guard attempt > 0 else { return nil }
-        let delay = ReconnectPolicy.delays[min(attempt - 1, ReconnectPolicy.delays.count - 1)]
-        return max(0, t.addingTimeInterval(delay).timeIntervalSince(now))
+        guard settings.autoReconnect, let at = model.hid.nextReconnectAt else { return nil }
+        return max(0, at.timeIntervalSince(now))
     }
 
     /// "1분 뒤에 자동으로 다시 시도해요."

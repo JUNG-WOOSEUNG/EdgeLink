@@ -191,7 +191,7 @@ struct MiscTests {
     }
 
     @Test func addressMasking() {
-        #expect(HIDLog.maskAddress("기기 a4-83-e7-12-34-56 연결") == "기기 a4-83-e7:**:**:** 연결")
+        #expect(HIDLog.maskAddress("기기 a4-83-e7-12-34-56 연결") == "기기 a4-83-e7-**-**-** 연결")
         #expect(HIDLog.maskAddress("A4:83:E7:12:34:56") == "A4:83:E7:**:**:**")
     }
 }

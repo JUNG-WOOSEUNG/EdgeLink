@@ -514,7 +514,13 @@ public enum HIDLog {
     /// "aa:bb:cc:dd:ee:ff" → "aa:bb:cc:**:**:**"
     public static func maskAddress(_ text: String) -> String {
         let pattern = #"([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2})[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}"#
-        return text.replacingOccurrences(of: pattern, with: "$1:**:**:**", options: .regularExpression)
+        var out = text
+        // 구분자(: 또는 -)를 그대로 쓴다
+        for sep in [":", "-"] {
+            let p = pattern.replacingOccurrences(of: "[:-]", with: sep)
+            out = out.replacingOccurrences(of: p, with: "$1\(sep)**\(sep)**\(sep)**", options: .regularExpression)
+        }
+        return out
     }
 
     private static let formatter: DateFormatter = {

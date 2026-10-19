@@ -364,14 +364,21 @@ public final class BluetoothHID: NSObject {
     private func scheduleReconnect(to address: String) {
         cancelReconnect()
         let delay = reconnectPolicy.nextDelay()
+        nextReconnectAt = Date().addingTimeInterval(delay)
         HIDLog.info("\(Int(delay))초 뒤 다시 연결")
         reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            guard let self, self.device == nil else { return }
+            guard let self else { return }
+            self.nextReconnectAt = nil
+            guard self.device == nil else { return }
             do { try self.connect(address: address) } catch { HIDLog.error("재연결 실패: \(error)") }
         }
     }
 
+    /// 다음 자동 재연결 예약 시각 (없으면 nil). 팝오버의 "1분 뒤에 다시 시도해요"에 쓴다.
+    public private(set) var nextReconnectAt: Date?
+
     public func cancelReconnect() {
+        nextReconnectAt = nil
         reconnectTimer?.invalidate()
         reconnectTimer = nil
     }
