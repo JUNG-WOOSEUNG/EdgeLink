@@ -805,11 +805,9 @@ struct LayoutStep: View {
     @EnvironmentObject var settings: AppSettings
     @State private var placements: [Placement] = []
     @State private var selected: Placement?
-    @State private var pickerOpened = false
-
-    /// 기기 이름으로 크기를 알 수 없거나 직접 골랐을 때만 고르는 칸을 보여준다
+    /// 기기 이름으로 크기를 알 수 없을 때만 묻는다 (바꾸기는 설정 › 배치)
     private var showModelPicker: Bool {
-        pickerOpened || settings.profile.manual || DeviceProfile.Model.infer(from: settings.lastDeviceName) == nil
+        DeviceProfile.Model.infer(from: settings.lastDeviceName) == nil
     }
 
     var body: some View {
@@ -838,9 +836,10 @@ struct LayoutStep: View {
                     Notice(title: conflict, message: "조금 더 길게 밀어야 넘어가요. Dock을 옆으로 옮기면 더 편해요.")
                 }
                 HStack(spacing: 12) {
-                    Text("화면 크기").font(Typo.body).foregroundStyle(Color.textSecondary)
+                    // 돌아오는 위치 계산에 아이폰 화면 크기가 필요하다. 기기 이름으로 알면 묻지 않는다.
                     if showModelPicker {
-                        Picker("화면 크기", selection: Binding(get: { settings.profile.model }, set: { m in
+                        Text("어떤 아이폰인가요?").font(Typo.body).foregroundStyle(Color.textSecondary)
+                        Picker("어떤 아이폰인가요?", selection: Binding(get: { settings.profile.model }, set: { m in
                             settings.profile.model = m
                             settings.profile.manual = true
                         })) {
@@ -848,12 +847,9 @@ struct LayoutStep: View {
                         }
                         .labelsHidden()
                         .frame(width: 200)
-                    } else {
-                        Text(settings.profile.model.label).font(Typo.bodyBold)
-                        Text("기기 이름으로 골랐어요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                        Button("바꾸기") { pickerOpened = true }.buttonStyle(TextLinkStyle(color: .brandText))
+                        Spacer()
                     }
-                    Spacer()
+                    Text("아이폰 방향").font(Typo.body).foregroundStyle(Color.textSecondary)
                     Picker("방향", selection: $settings.profile.landscape) {
                         Text("세로").tag(false)
                         Text("가로").tag(true)

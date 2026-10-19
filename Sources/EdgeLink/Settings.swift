@@ -87,7 +87,7 @@ struct DeviceProfile: Codable, Equatable {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .iPhone: return "iPhone"
+            case .iPhone: return "iPhone (일반 크기)"
             case .iPhoneMini: return "iPhone mini"
             case .iPhoneMax: return "iPhone Plus·Pro Max"
             case .iPad: return "iPad"
