@@ -9,29 +9,31 @@ import SwiftUI
 struct GeneralTab: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var permissions: Permissions
     @State private var loginOn = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             SettingsGroup {
-                ToggleRow(title: "로그인할 때 자동 실행", hint: "Mac을 켜면 바로 아이폰과 연결돼요",
+                ToggleRow(title: "로그인할 때 자동 실행", hint: "Mac을 켜면 EdgeLink가 메뉴 막대에서 바로 시작해요",
                           isOn: Binding(get: { loginOn }, set: { on in
                               model.setLoginItem(on)
                               loginOn = model.loginItemEnabled
                           }))
                 RowDivider()
-                ToggleRow(title: "모서리 유리 효과", hint: "밀 때 가장자리가 볼록하게 부풀어요", isOn: $settings.glassEnabled)
+                ToggleRow(title: "가장자리 유리 효과", hint: "화면 끝으로 밀 때 볼록하게 부풀어요", isOn: $settings.glassEnabled)
                 RowDivider()
                 ToggleRow(title: "전환할 때 소리", hint: "넘어가고 돌아올 때 짧은 효과음을 내요", isOn: $settings.soundEnabled)
             }
 
             SettingsCard {
-                RowText(title: "전환 감도", hint: "모서리를 얼마나 밀어야 아이폰으로 넘어갈지 정해요. 자꾸 실수로 넘어가면 오른쪽으로 옮기세요.")
+                // 오른쪽(꾹)으로 갈수록 덜 넘어간다. 이름도 그 방향에 맞춘다.
+                RowText(title: "넘어갈 때 밀어야 하는 정도", hint: "실수로 자주 넘어가면 ‘꾹’ 쪽으로 옮기세요.")
                 HStack(spacing: 12) {
                     Text("살짝").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     Slider(value: $settings.sensitivityValue, in: 0...1)
                         .tint(Color.brand)
-                        .accessibilityLabel("전환 감도")
+                        .accessibilityLabel("넘어갈 때 밀어야 하는 정도")
                         .accessibilityValue("\(Int((settings.sensitivityValue * 100).rounded()))퍼센트")
                     Text("꾹").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 }
@@ -39,14 +41,56 @@ struct GeneralTab: View {
             }
 
             SettingsCard {
-                RowText(title: "메뉴바 표시", hint: "기기 이름은 아이폰이 연결됐을 때만 보여요")
-                SegmentedChoice(label: "메뉴바 표시",
+                RowText(title: "메뉴 막대 표시", hint: "기기 이름은 아이폰이 연결됐을 때만 보여요")
+                SegmentedChoice(label: "메뉴 막대 표시",
                                 options: [(false, "아이콘만"), (true, "아이콘 + 기기 이름")],
                                 selection: $settings.showDeviceNameInMenuBar)
                     .padding(.top, 2)
             }
+
+            // 권한이 꺼져 문제가 생기면 정보 탭보다 일반 탭을 먼저 열어 본다
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel(text: "권한")
+                SettingsGroup {
+                    ForEach(Array(Permissions.Kind.allCases.enumerated()), id: \.element.id) { i, kind in
+                        if i > 0 { RowDivider() }
+                        permissionRow(kind)
+                    }
+                }
+            }
+
+            Button("처음 설정 다시 하기 ›") { model.openOnboarding(at: .welcome) }
+                .buttonStyle(TextLinkStyle(color: .brandText))
+                .accessibilityLabel("처음 설정 다시 하기")
         }
         .onAppear { loginOn = model.loginItemEnabled }
+    }
+
+    private func permissionRow(_ kind: Permissions.Kind) -> some View {
+        let granted = permissions.isGranted(kind)
+        return HStack(spacing: 12) {
+            StatusDot(color: granted ? .success : .danger)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(kind.title).font(Typo.itemTitle)
+                Text(granted ? "허용됨 · \(kind.why)" : "꺼져 있어요 · \(kind.why)")
+                    .font(Typo.secondary)
+                    .foregroundStyle(granted ? Color.textSecondary : .dangerText)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            if granted {
+                // 허용된 줄은 시선을 끌지 않게 글자 버튼으로
+                Button("설정 열기") { permissions.open(kind) }
+                    .buttonStyle(TextLinkStyle(color: .textSecondary))
+                    .accessibilityLabel("\(kind.title) 시스템 설정 열기")
+            } else {
+                Button("허용하기") { permissions.request(kind) }
+                    .buttonStyle(PillButtonStyle(kind: .primary, height: 32))
+                    .accessibilityLabel("\(kind.title) 허용하기")
+            }
+        }
+        .padding(.vertical, 12)
+        .frame(minHeight: 60)
     }
 }
 
@@ -84,9 +128,6 @@ struct LayoutTab: View {
             }
             deviceCard
             calibrationCard
-            Button("온보딩 다시 보기 ›") { model.openOnboarding(at: .welcome) }
-                .buttonStyle(TextLinkStyle(color: .brandText))
-                .accessibilityLabel("온보딩 다시 보기")
         }
         .onAppear { if previewPlacements == nil { model.reloadScreens() } }
     }
@@ -112,7 +153,7 @@ struct LayoutTab: View {
             }
             if let p = shown { status(p) }
             if settings.phoneLayout != nil, saved == nil {
-                Notice(title: "저장한 모니터가 연결돼 있지 않아요.", message: "그동안은 임시로 \(shown.map(label) ?? "다른 빈 모서리")를 써요. 모니터를 다시 연결하면 원래 자리로 돌아가요.")
+                Notice(title: "저장한 모니터가 연결돼 있지 않아요.", message: "그동안은 임시로 \(shown.map(label) ?? "다른 빈 가장자리")를 써요. 모니터를 다시 연결하면 원래 자리로 돌아가요.")
             }
             if let p = shown, let conflict = Layout.conflict(p), dismissedConflict != p.id {
                 conflictCard(p, title: conflict)
@@ -127,7 +168,7 @@ struct LayoutTab: View {
                 (Text("모니터 \(model.screens.count)대 · 아이폰: ") + Text(p.label).fontWeight(.semibold))
                     .font(Typo.body)
             }
-            Text("\(Self.direction(p.edge))으로 밀면 아이폰으로 넘어가고, 반대로 밀면 Mac으로 돌아와요. 꼭짓점 근처는 핫 코너와 겹치지 않게 비워둬요.")
+            Text("\(Self.direction(p.edge)) 끝으로 밀면 아이폰으로 넘어가고, 반대로 밀면 Mac으로 돌아와요. 구석은 핫 코너용으로 비워 뒀어요.")
                 .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -182,7 +223,7 @@ struct LayoutTab: View {
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.warningLine, lineWidth: 1))
     }
 
-    /// 놓을 모서리가 없을 때 (캔버스 4-3)
+    /// 놓을 가장자리가 없을 때 (캔버스 4-3)
     private var emptyState: some View {
         SettingsCard(spacing: 16) {
             BlockedArrangementView(screens: model.screens)
@@ -190,8 +231,8 @@ struct LayoutTab: View {
             HStack(alignment: .top, spacing: 10) {
                 StatusDot(color: .danger).padding(.top, 6)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("아이폰을 놓을 수 있는 모서리가 없어요").font(Typo.font(14, .bold))
-                    Text("모든 모서리가 다른 모니터와 맞닿아 있거나 너무 짧아요. 시스템 설정에서 모니터 배치를 바꿔 바깥쪽 모서리를 만들어주세요. 그동안은 단축키로만 넘어갈 수 있어요.")
+                    Text("아이폰을 놓을 수 있는 가장자리가 없어요").font(Typo.font(14, .bold))
+                    Text("모든 가장자리가 다른 모니터와 맞닿아 있거나 너무 짧아요. 시스템 설정에서 모니터 배치를 바꿔 바깥쪽 가장자리를 만들어 주세요. 그동안은 단축키로만 넘어갈 수 있어요.")
                         .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                         .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
@@ -208,7 +249,7 @@ struct LayoutTab: View {
     // 기기 모델 · 방향
     private var deviceCard: some View {
         SettingsCard(spacing: 12) {
-            RowText(title: "기기", hint: "배치도의 아이폰 크기와 돌아오는 위치 계산에 쓰여요. 기기마다 따로 저장돼요. 아이폰 화면 회전 잠금을 켜두면 위치가 어긋나지 않아요.")
+            RowText(title: "아이폰 모델과 방향", hint: "실제 아이폰과 같게 고르면 돌아오는 위치가 정확해져요.")
             HStack(spacing: 12) {
                 Text("모델").font(Typo.body).foregroundStyle(Color.textSecondary)
                 modelField
@@ -277,43 +318,31 @@ struct LayoutTab: View {
         })
     }
 
-    // 포인터 보정
+    // 돌아오는 위치 맞추기. 보정값은 숫자로 보이지 않고 도우미로만 맞춘다
+    // (처음 설정으로 되돌리기는 도우미 실패 화면에 있다).
     private var calibrationCard: some View {
-        SettingsCard(spacing: 12) {
-            RowText(title: "아이폰 포인터 이동 보정", hint: "Mac으로 돌아오는 위치가 어긋날 때 조절해요. 보정 도우미를 쓰면 자동으로 맞춰줘요.")
+        SettingsCard(spacing: 6) {
             HStack(spacing: 12) {
-                Text("작게").font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                Slider(value: $settings.unitsPerPointValue, in: 0.6...4.0)
-                    .tint(Color.brand)
-                    .accessibilityLabel("포인터 이동 보정")
-                    .accessibilityValue(String(format: "%.2f", settings.unitsPerPoint))
-                Text("크게").font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                Button("보정 도우미") { model.present(.calibration) }
-                    .buttonStyle(DimmablePillStyle(kind: .secondary))
+                Text("돌아오는 위치가 어긋나나요?").font(Typo.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button("위치 맞추기") { model.present(.calibration) }
+                    .buttonStyle(DimmablePillStyle(kind: .secondary, height: 32))
                     .disabled(!model.isConnected)
-                    .padding(.leading, 4)
             }
-            HStack(spacing: 8) {
-                Text("지금 값 \(String(format: "%.2f", settings.unitsPerPoint)) · 기본 2.00")
-                    .font(Typo.caption).foregroundStyle(Color.textSecondary)
-                if abs(settings.unitsPerPoint - 2.0) > 0.005 {
-                    Button("기본값으로") { settings.unitsPerPointValue = 2.0 }
-                        .buttonStyle(TextLinkStyle(color: .brandText))
-                        .font(Typo.caption)
-                }
-                Spacer()
-                if !model.isConnected { DisabledReason(text: "아이폰을 연결하면 쓸 수 있어요") }
+            if !model.isConnected {
+                DisabledReason(text: "아이폰을 연결하면 쓸 수 있어요")
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
     }
 
-    /// 모니터가 하나면 "화면 오른쪽"처럼 모서리만
+    /// 모니터가 하나면 "화면 오른쪽"처럼 가장자리만
     private func label(_ p: Placement) -> String {
         Set(placements.map(\.screen.id)).count > 1 ? p.label : "화면 \(p.edge.label)"
     }
 }
 
-/// 놓을 모서리가 없을 때의 배치도 (캔버스 4-3). 모니터마다 회색 점선을 둘러 놓을 수 없는 변임을 보인다.
+/// 놓을 가장자리가 없을 때의 배치도 (캔버스 4-3). 모니터마다 회색 점선을 둘러 놓을 수 없는 변임을 보인다.
 /// 다크에서도 카드 바탕과 구분되게 한 단계 어두운 바탕을 쓴다.
 struct BlockedArrangementView: View {
     let screens: [ScreenInfo]
@@ -342,7 +371,7 @@ struct BlockedArrangementView: View {
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .accessibilityElement()
-        .accessibilityLabel("배치도: 아이폰을 놓을 수 있는 모서리 없음")
+        .accessibilityLabel("배치도: 아이폰을 놓을 수 있는 가장자리 없음")
     }
 
     private var bounds: (minX: Double, maxY: Double, width: Double, height: Double) {
@@ -418,13 +447,13 @@ struct ConnectionTab: View {
                         .padding(.bottom, 14)
                 }
                 RowDivider()
-                ToggleRow(title: "자동으로 다시 연결", hint: "앱을 켜거나 깨어날 때 기본 기기에 연결해요. 실패가 이어지면 간격을 늘려요",
+                ToggleRow(title: "자동으로 다시 연결", hint: "앱을 켜거나 Mac이 깨어날 때 기본 기기에 연결해요",
                           isOn: Binding(get: { settings.autoReconnectValue }, set: { on in
                               settings.autoReconnectValue = on
                               model.hid.autoReconnect = on
                           }))
                 RowDivider()
-                ToggleRow(title: "잠자기 중엔 연결 끊기", hint: "배터리를 아끼기 위해 Mac이 잠들면 끊어요", isOn: $settings.disconnectOnSleep)
+                ToggleRow(title: "잠자기 중엔 연결 끊기", hint: "Mac이 잠들면 연결을 끊어 아이폰 배터리를 아껴요", isOn: $settings.disconnectOnSleep)
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -547,7 +576,6 @@ struct ConnectionTab: View {
 
 struct AboutTab: View {
     @EnvironmentObject var settings: AppSettings
-    @EnvironmentObject var permissions: Permissions
     @EnvironmentObject var model: AppModel
     @ObservedObject var updater: Updater
 
@@ -592,16 +620,6 @@ struct AboutTab: View {
             .padding(.top, 24) // 스크롤 내용 위 여백 24와 합쳐 48 (캔버스 3-1)
 
             VStack(alignment: .leading, spacing: 8) {
-                SectionLabel(text: "권한")
-                SettingsGroup {
-                    ForEach(Array(Permissions.Kind.allCases.enumerated()), id: \.element.id) { i, kind in
-                        if i > 0 { RowDivider() }
-                        permissionRow(kind)
-                    }
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: "업데이트")
                 SettingsGroup {
                     VStack(alignment: .leading, spacing: 0) {
@@ -641,31 +659,5 @@ struct AboutTab: View {
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-
-    private func permissionRow(_ kind: Permissions.Kind) -> some View {
-        let granted = permissions.isGranted(kind)
-        return HStack(spacing: 12) {
-            StatusDot(color: granted ? .success : .danger)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(kind.title).font(Typo.itemTitle)
-                Text(granted ? "허용됨 · \(kind.why)" : "꺼져 있어요 · \(kind.why)")
-                    .font(Typo.secondary)
-                    .foregroundStyle(granted ? Color.textSecondary : .dangerText)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-            if granted {
-                Button("설정 열기") { permissions.open(kind) }
-                    .buttonStyle(PillButtonStyle(kind: .plain, height: 32))
-                    .accessibilityLabel("\(kind.title) 시스템 설정 열기")
-            } else {
-                Button("허용하기") { permissions.request(kind) }
-                    .buttonStyle(PillButtonStyle(kind: .primary, height: 32))
-                    .accessibilityLabel("\(kind.title) 허용하기")
-            }
-        }
-        .padding(.vertical, 12)
-        .frame(minHeight: 60)
     }
 }

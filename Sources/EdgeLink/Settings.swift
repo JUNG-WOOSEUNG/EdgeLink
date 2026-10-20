@@ -113,13 +113,13 @@ final class AppSettings: ObservableObject {
     @Published var sensitivityValue: Double { didSet { defaults.set(sensitivityValue, forKey: Key.sensitivity) } }
     /// 아이폰 1pt당 HID 이동량 (보정값, 기본 2.0, 범위 0.6~4.0)
     @Published var unitsPerPointValue: Double { didSet { defaults.set(unitsPerPointValue, forKey: Key.unitsPerPoint) } }
-    /// 모서리 전환
+    /// 가장자리 전환
     @Published var edgeEnabled: Bool { didSet { defaults.set(edgeEnabled, forKey: Key.edgeEnabled) } }
     @Published var autoReconnectValue: Bool { didSet { defaults.set(autoReconnectValue, forKey: Key.autoReconnect) } }
     @Published var disconnectOnSleep: Bool { didSet { defaults.set(disconnectOnSleep, forKey: Key.disconnectOnSleep) } }
     /// 아이폰 조작 중 여부 (충돌 후 복구 확인용)
     @Published var remoteActive: Bool { didSet { defaults.set(remoteActive, forKey: Key.remoteActive) } }
-    /// 모서리 유리 효과
+    /// 가장자리 유리 효과
     @Published var glassEnabled: Bool { didSet { defaults.set(glassEnabled, forKey: Key.glassEnabled) } }
     @Published var soundEnabled: Bool { didSet { defaults.set(soundEnabled, forKey: Key.soundEnabled) } }
     @Published var invertScroll: Bool { didSet { defaults.set(invertScroll, forKey: Key.invertScroll) } }
@@ -160,7 +160,7 @@ final class AppSettings: ObservableObject {
         defaults.set(Self.encode([key: profile]), forKey: Key.profiles)
     }
 
-    /// 온보딩 다시 보기 · 페어링 초기화용
+    /// 처음 설정 다시 하기 · 페어링 초기화용
     func resetOnboarding() {
         onboardingStep = 0
         onboardingDone = false
@@ -248,7 +248,7 @@ enum HotkeyAction: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .toggleRemote: return "Mac ↔ 아이폰 전환"
         case .sendClipboard: return "클립보드 보내기"
-        case .toggleEdge: return "모서리 전환 켜기/끄기"
+        case .toggleEdge: return "가장자리 전환 켜기/끄기"
         case .appSwitcher: return "앱 전환기"
         case .home: return "홈"
         case .notificationCenter: return "알림 센터"

@@ -35,13 +35,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         window?.makeKeyAndOrderFront(nil)
     }
 
-    /// 아이폰 버튼 등록 도우미 창 (720×560, 캔버스 1-9). AppDialog.gestureSetup이 이걸 부른다.
+    /// 트랙패드 제스처 설정 창 (720×560, 캔버스 1-9). AppDialog.gestureSetup이 이걸 부른다.
     func showGestureSetup() {
         if gestureWindow == nil {
             let root = GestureSetupView(onClose: { [weak self] in self?.gestureWindow?.close() })
                 .environmentObject(model)
                 .environmentObject(model.settings)
-            gestureWindow = makeWindow(root, size: NSSize(width: 720, height: 560), title: "아이폰 버튼 등록", toolbar: false)
+            gestureWindow = makeWindow(root, size: NSSize(width: 720, height: 560), title: "트랙패드 제스처 설정", toolbar: false)
         }
         NSApp.activate(ignoringOtherApps: true)
         gestureWindow?.makeKeyAndOrderFront(nil)
@@ -295,7 +295,7 @@ struct ToggleRow<Trailing: View>: View {
     var title: String
     var hint: String?
     @Binding var isOn: Bool
-    /// 스위치 왼쪽에 붙는 것 (제스처 버튼 번호 등)
+    /// 스위치 왼쪽에 붙는 것 (제스처가 하는 아이폰 동작 등)
     @ViewBuilder var trailing: Trailing
 
     var body: some View {

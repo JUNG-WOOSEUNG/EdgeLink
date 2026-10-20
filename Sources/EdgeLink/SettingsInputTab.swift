@@ -11,6 +11,8 @@ struct InputTab: View {
     var previewPhases: [HotkeyAction: HotkeyRecorderRow.Phase] = [:]
     @State private var recording: HotkeyAction?
     @State private var showBlockedList = false
+    /// "모두 기본값으로" 직전 단축키 (되돌리기용)
+    @State private var undoHotkeys: [HotkeyAction: Hotkey]?
     /// Mac이 먼저 가져가는 트랙패드 제스처 (창을 열 때 한 번 읽는다)
     @State private var macGestures: Set<PhoneGesture> = []
 
@@ -23,30 +25,44 @@ struct InputTab: View {
         .onAppear { macGestures = TrackpadGestures.usedByMac() }
     }
 
-    // MARK: 단축키 8개
+    // MARK: 단축키 (Mac 쪽 3개. 아이폰 동작 단축키 5개는 트랙패드 제스처 아래)
 
     private var shortcuts: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(spacing: 8) {
                 SectionLabel(text: "단축키")
                 Spacer()
-                if settings.hotkeys != Hotkey.defaults {
-                    Button("모두 기본값으로") { settings.hotkeys = Hotkey.defaults }
-                        .buttonStyle(TextLinkStyle(color: .brandText))
-                        .font(Typo.font(12, .semibold))
+                if let undo = undoHotkeys, settings.hotkeys == Hotkey.defaults {
+                    // 확인 없이 8개를 한 번에 되돌리므로, 바로 되살릴 수 있게 한다
+                    Text("모두 기본값으로 바꿨어요").font(Typo.caption).foregroundStyle(Color.textSecondary)
+                    Button("되돌리기") {
+                        settings.hotkeys = undo
+                        undoHotkeys = nil
+                    }
+                    .buttonStyle(TextLinkStyle(color: .brandText))
+                } else if settings.hotkeys != Hotkey.defaults {
+                    Button("모두 기본값으로") {
+                        undoHotkeys = settings.hotkeys
+                        settings.hotkeys = Hotkey.defaults
+                    }
+                    .buttonStyle(TextLinkStyle(color: .brandText))
                 }
             }
-            SettingsGroup {
-                ForEach(Array(HotkeyAction.allCases.enumerated()), id: \.element.id) { i, action in
-                    if i > 0 { RowDivider() }
-                    HotkeyRecorderRow(action: action, title: action.settingsLabel, active: $recording,
-                                      initialPhase: previewPhases[action] ?? .idle)
-                }
-            }
-            Text("버튼을 누르고 새 조합을 입력하면 바뀌어요. 다른 동작이나 macOS 단축키와 겹치면 저장하지 않아요. 오른쪽 클릭하면 기본값으로 돌아가요.")
+            hotkeyGroup(HotkeyAction.allCases.filter { $0.gesture == nil })
+            Text("버튼을 누르고 새 조합을 입력하면 바뀌어요. 다른 동작이나 macOS 단축키와 겹치면 저장하지 않아요.")
                 .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func hotkeyGroup(_ actions: [HotkeyAction]) -> some View {
+        SettingsGroup {
+            ForEach(Array(actions.enumerated()), id: \.element.id) { i, action in
+                if i > 0 { RowDivider() }
+                HotkeyRecorderRow(action: action, title: action.settingsLabel, active: $recording,
+                                  initialPhase: previewPhases[action] ?? .idle)
+            }
         }
     }
 
@@ -60,7 +76,7 @@ struct InputTab: View {
             SettingsGroup {
                 ToggleRow(title: "스크롤 방향 반전", hint: "아이폰에서만 반대로 스크롤해요", isOn: $settings.invertScroll)
                 RowDivider()
-                ToggleRow(title: "Caps Lock으로 한/영 전환", hint: "Caps Lock을 누르면 아이폰에 ⌃Space를 보내요", isOn: $settings.capsLockHangul)
+                ToggleRow(title: "Caps Lock으로 한/영 전환", hint: "Caps Lock으로 아이폰 입력 언어를 바꿔요", isOn: $settings.capsLockHangul)
                 RowDivider()
                 ToggleRow(title: "드래그 중엔 넘어가지 않기", hint: "파일이나 창을 끌다 실수로 넘어가는 걸 막아요", isOn: $settings.dragLock)
                 RowDivider()
@@ -132,22 +148,23 @@ struct InputTab: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: 제스처를 아이폰 동작으로
+    // MARK: 트랙패드 제스처
 
     private var gestures: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                SectionLabel(text: "제스처를 아이폰 동작으로")
+                SectionLabel(text: "트랙패드 제스처")
                 Spacer()
                 if settings.gestureButtonsRegistered {
                     Badge(text: "아이폰 등록함", fg: .successText, bg: Color.success.opacity(0.14))
                 } else {
                     Badge(text: "아이폰 등록 전", fg: .warningText, bg: .warningBg)
                 }
-                Button(settings.gestureButtonsRegistered ? "다시 등록" : "아이폰 버튼 등록") {
+                Button("트랙패드 제스처 설정") {
                     model.settingsWindow.showGestureSetup()
                 }
                 .buttonStyle(PillButtonStyle(kind: settings.gestureButtonsRegistered ? .secondary : .primary, height: 30))
+                .fixedSize()
             }
             SettingsGroup {
                 ForEach(Array(PhoneGesture.allCases.filter { $0 != .lockOnly }.enumerated()), id: \.element.id) { i, g in
@@ -160,45 +177,50 @@ struct InputTab: View {
                               isOn: $settings.padUsesShortcuts)
                 }
             }
-            Text("제스처는 마우스 추가 버튼으로 바꿔 보내요. 아이폰 AssistiveTouch에 버튼을 한 번 등록해야 동작해요. 앱 사이 좌우 넘기기와 뒤로 가기는 지원하지 않아요.")
+            if !macGestures.isEmpty { macGestureHelp }
+            Text("아이폰에 한 번 등록해야 동작해요. 앱 사이 좌우 넘기기와 뒤로 가기는 아직 안 돼요.")
                 .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
+
+            SectionLabel(text: "아이폰 동작 단축키").padding(.top, 16)
+            hotkeyGroup(HotkeyAction.allCases.filter { $0.gesture != nil })
         }
     }
 
+    /// Mac이 먼저 가져가는 제스처가 있을 때: 무엇을 하면 되는지
+    private var macGestureHelp: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("‘Mac에서 먼저 써요’ 줄은 Mac 트랙패드 설정에서 같은 제스처를 끄면 아이폰으로 가요.")
+                .font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button("트랙패드 설정 열기") {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Trackpad-Settings.extension")!)
+            }
+            .buttonStyle(TextLinkStyle(color: .brandText))
+            .fixedSize()
+        }
+    }
+
+    /// 버튼 번호는 아이폰 등록과 맞물려 있어 여기서 바꾸지 않는다. 아이폰 동작 이름만 보인다.
     private func gestureRow(_ g: PhoneGesture) -> some View {
         let setting = settings.gestureMap[g] ?? GestureSetting.defaults[g]!
-        let hotkey = settings.hotkeys[g.hotkeyAction] ?? Hotkey.defaults[g.hotkeyAction]!
-        var hint = setting.hotkeyEnabled ? "단축키 \(hotkey.display)" : "단축키 꺼짐"
-        // 시스템 설정 › 트랙패드에서 같은 제스처가 켜져 있는 줄에만 덧붙인다
-        if macGestures.contains(g) { hint += " · Mac이 먼저 쓸 수 있어요" }
+        // 시스템 설정 › 트랙패드에서 같은 제스처가 켜져 있는 줄에만
+        let hint: String? = macGestures.contains(g) ? "Mac에서 먼저 써요" : nil
         return ToggleRow(title: g.label, hint: hint, isOn: Binding(get: { setting.gestureEnabled }, set: { on in
             var s = setting
             s.gestureEnabled = on
             settings.gestureMap[g] = s
         })) {
-            Menu {
-                ForEach(4...8, id: \.self) { n in
-                    Button("버튼 \(n)\(n == setting.button ? " (지금)" : "")") {
-                        var s = setting
-                        s.button = n
-                        settings.gestureMap[g] = s
-                    }
-                }
-            } label: {
-                Text("버튼 \(setting.button) → \(g.phoneAction)")
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .font(Typo.font(12, .semibold))
-            .foregroundStyle(Color.brandStrong)
-            .padding(.horizontal, 10)
-            .frame(height: 26)
-            .background(RoundedRectangle(cornerRadius: 6).fill(Color.brandTint))
-            .accessibilityLabel("\(g.label) 보낼 버튼: 버튼 \(setting.button), \(g.phoneAction)")
-            .help("보낼 버튼 번호를 바꿔요")
+            Text(g.phoneAction)
+                .font(Typo.font(12, .semibold))
+                .foregroundStyle(Color.brandStrong)
+                .padding(.horizontal, 10)
+                .frame(height: 26)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.brandTint))
+                .accessibilityLabel("아이폰 동작: \(g.phoneAction)")
         }
     }
 }
