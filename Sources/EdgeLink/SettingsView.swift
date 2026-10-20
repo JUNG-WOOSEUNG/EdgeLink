@@ -181,7 +181,7 @@ struct SettingsSidebar: View {
             Color.clear.frame(height: 52) // 신호등 버튼 자리
             ForEach(SettingsTab.allCases) { t in
                 Button { tab = t } label: {
-                    HStack(spacing: 10) {
+                    HStack(spacing: Space.s) {
                         Image(systemName: t.symbol)
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.white)
@@ -245,12 +245,52 @@ struct SectionLabel: View {
     }
 }
 
+/// 묶음 제목(+ⓘ, 오른쪽 끝 보조 요소) 아래에 내용을 두는 섹션. 제목과 내용 사이는 Space.m.
+struct SettingsSection<Trailing: View, Content: View>: View {
+    var title: String
+    var info: String?
+    @ViewBuilder var trailing: Trailing
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.m) {
+            HStack(spacing: Space.s) {
+                HStack(spacing: Space.xs) {
+                    SectionLabel(text: title)
+                    if let info { InfoTip(info) }
+                }
+                Spacer(minLength: 0)
+                trailing
+            }
+            .frame(minHeight: 18)
+            content
+        }
+    }
+}
+
+extension SettingsSection where Trailing == EmptyView {
+    init(title: String, info: String? = nil, @ViewBuilder content: () -> Content) {
+        self.init(title: title, info: info, trailing: { EmptyView() }, content: content)
+    }
+}
+
+/// 카드·묶음 아래에 붙는 한 줄 안내 (12, 보조 색)
+struct SettingsFootnote: View {
+    var text: String
+    var body: some View {
+        Text(text)
+            .font(Typo.secondary).foregroundStyle(Color.textSecondary)
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 /// 줄 여러 개를 담는 테두리 카드 (좌우 16, 줄 사이 구분선)
 struct SettingsGroup<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         VStack(spacing: 0) { content }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.l)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.settingsCard))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
@@ -259,11 +299,11 @@ struct SettingsGroup<Content: View>: View {
 
 /// 안쪽 16 카드 (전환 감도, 기기 같은 단독 항목)
 struct SettingsCard<Content: View>: View {
-    var spacing: CGFloat = 10
+    var spacing: CGFloat = Space.m
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) { content }
-            .padding(16)
+            .padding(Space.l)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.settingsCard))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
@@ -274,13 +314,18 @@ struct RowDivider: View {
     var body: some View { Rectangle().fill(Color.lineSoft).frame(height: 1) }
 }
 
-/// 항목 이름(14/600) + 설명(12)
+/// 항목 이름(14/600) + 설명(12, 한 줄 30자 안팎).
+/// 왜 그런지·예외 같은 보충은 info로 넘기면 이름 오른쪽에 ⓘ로 접힌다.
 struct RowText: View {
     var title: String
     var hint: String?
+    var info: String?
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(Typo.itemTitle)
+        VStack(alignment: .leading, spacing: Space.xs) {
+            HStack(spacing: Space.xs) {
+                Text(title).font(Typo.itemTitle)
+                if let info { InfoTip(info) }
+            }
             if let hint {
                 Text(hint).font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     .lineSpacing(2)
@@ -294,13 +339,14 @@ struct RowText: View {
 struct ToggleRow<Trailing: View>: View {
     var title: String
     var hint: String?
+    var info: String?
     @Binding var isOn: Bool
     /// 스위치 왼쪽에 붙는 것 (제스처가 하는 아이폰 동작 등)
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
-        HStack(spacing: 12) {
-            RowText(title: title, hint: hint)
+        HStack(spacing: Space.m) {
+            RowText(title: title, hint: hint, info: info)
                 .frame(maxWidth: .infinity, alignment: .leading)
             trailing
             Toggle(title, isOn: $isOn)
@@ -309,14 +355,14 @@ struct ToggleRow<Trailing: View>: View {
                 .accessibilityLabel(title)
                 .accessibilityHint(hint ?? "")
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, Space.m)
         .frame(minHeight: 60)
     }
 }
 
 extension ToggleRow where Trailing == EmptyView {
-    init(title: String, hint: String? = nil, isOn: Binding<Bool>) {
-        self.init(title: title, hint: hint, isOn: isOn) { EmptyView() }
+    init(title: String, hint: String? = nil, info: String? = nil, isOn: Binding<Bool>) {
+        self.init(title: title, hint: hint, info: info, isOn: isOn) { EmptyView() }
     }
 }
 

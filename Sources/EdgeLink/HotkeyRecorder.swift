@@ -131,8 +131,8 @@ struct HotkeyRecorderRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 6) {
-            HStack(spacing: 12) {
+        VStack(alignment: .trailing, spacing: Space.xs) {
+            HStack(spacing: Space.m) {
                 Text(title).font(Typo.font(14, .regular))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 // 기본값과 다를 때만 보이는 되돌리기 (오른쪽 클릭 메뉴는 찾기 어렵다)
@@ -152,7 +152,7 @@ struct HotkeyRecorderRow: View {
                     Text(buttonText)
                         .font(Typo.font(13, .semibold))
                         .foregroundStyle(foreground)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, Space.m)
                         .frame(minWidth: 130)
                         .frame(height: 32)
                         .background(RoundedRectangle(cornerRadius: 6).fill(background))
@@ -182,7 +182,7 @@ struct HotkeyRecorderRow: View {
                 EmptyView()
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, Space.s)
         .frame(minHeight: 48)
         .onAppear { if phase == .idle, initialPhase != .idle { phase = initialPhase } }
         .onChange(of: active) { a in if a != action, isRecording { stop(keep: .idle) } }
