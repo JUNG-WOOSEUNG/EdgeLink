@@ -426,13 +426,23 @@ public struct HeldKeyTracker: Equatable {
 
 /// 트랙패드 스크롤(픽셀)은 12pt마다 휠 1칸. 마우스 휠(줄 단위)은 1줄 = 1칸.
 public struct ScrollConverter: Equatable {
-    public static let pointsPerNotch: Double = 12
+    /// 휠 1칸에 해당하는 트랙패드 이동(pt). 12pt였을 때 아이폰에서 너무 빨리 내려갔다.
+    public static let defaultPointsPerNotch: Double = 40
+
+    /// 스크롤 속도 0~1 → 휠 1칸당 pt (0 = 70pt 가장 느림, 0.5 = 40pt, 1 = 10pt 가장 빠름)
+    public static func pointsPerNotch(speed: Double) -> Double {
+        70 - min(max(speed, 0), 1) * 60
+    }
 
     public var invert: Bool
+    public var pointsPerNotch: Double = ScrollConverter.defaultPointsPerNotch
     public private(set) var restY: Double = 0
     public private(set) var restX: Double = 0
 
-    public init(invert: Bool = false) { self.invert = invert }
+    public init(invert: Bool = false, pointsPerNotch: Double = ScrollConverter.defaultPointsPerNotch) {
+        self.invert = invert
+        self.pointsPerNotch = max(pointsPerNotch, 1)
+    }
 
     public mutating func reset() { restY = 0; restX = 0 }
 
@@ -441,8 +451,8 @@ public struct ScrollConverter: Equatable {
     public mutating func convert(deltaY: Double, deltaX: Double, continuous: Bool) -> (wheel: Int, pan: Int) {
         var wheel: Int, pan: Int
         if continuous {
-            wheel = Self.take(deltaY, &restY)
-            pan = -Self.take(deltaX, &restX)
+            wheel = Self.take(deltaY, &restY, perNotch: pointsPerNotch)
+            pan = -Self.take(deltaX, &restX, perNotch: pointsPerNotch)
         } else {
             wheel = Self.lines(deltaY)
             pan = -Self.lines(deltaX)
@@ -451,12 +461,12 @@ public struct ScrollConverter: Equatable {
         return (wheel, pan)
     }
 
-    static func take(_ delta: Double, _ rest: inout Double) -> Int {
+    static func take(_ delta: Double, _ rest: inout Double, perNotch: Double) -> Int {
         // 방향이 바뀌면 남은 양을 버린다 (반대로 돌렸는데 한 칸 늦게 반응하지 않게)
         if delta != 0, rest != 0, (delta > 0) != (rest > 0) { rest = 0 }
         rest += delta
-        let n = (rest / pointsPerNotch).rounded(.towardZero)
-        rest -= n * pointsPerNotch
+        let n = (rest / perNotch).rounded(.towardZero)
+        rest -= n * perNotch
         return Int(n)
     }
 
@@ -704,6 +714,16 @@ public enum ClipboardTyping {
 // MARK: - 이동량 소수점 이월
 
 /// 소수점 이동량을 모아 정수로 보낸다 (작은 움직임이 사라지지 않게).
+/// Mac 이동(pt) → 아이폰 HID 단위 배율. 보정값(아이폰 1pt당 단위) × 속도 배율.
+/// 1:1로 보내면 아이폰 커서가 Mac의 약 0.57배(보정값 1.74일 때)만 움직여 느리게 느껴졌다.
+public enum PointerScale {
+    public static let speedRange: ClosedRange<Double> = 0.5...2.0
+    public static func scale(unitsPerPoint: Double, speed: Double) -> Double {
+        let k = unitsPerPoint.isFinite && unitsPerPoint > 0 ? unitsPerPoint : 2.0
+        return k * min(max(speed, speedRange.lowerBound), speedRange.upperBound)
+    }
+}
+
 public struct MotionRemainder: Equatable {
     public private(set) var x: Double = 0
     public private(set) var y: Double = 0

@@ -202,7 +202,7 @@ final class InputRouter {
         }
         held.subtract(st.swallowKeyUp)
         session.held.begin(held: held)
-        session.scroll = ScrollConverter(invert: c.invertScroll)
+        session.scroll = ScrollConverter(invert: c.invertScroll, pointsPerNotch: c.scrollPointsPerNotch)
         // 넘어갈 때 Mac에서 눌려 있던 버튼: 그 뗌은 Mac에 보낸다
         session.macButtonsAtEntry = st.macButtons
         // 이동 계획을 다 보내고 조금 더 지날 때까지는 돌아오지 않는다
@@ -503,6 +503,8 @@ final class InputRouter {
         c.glass = s.glassEnabled
         c.dragLock = s.dragLock
         c.invertScroll = s.invertScroll
+        c.scrollPointsPerNotch = ScrollConverter.pointsPerNotch(speed: s.scrollSpeed)
+        c.pointerScale = PointerScale.scale(unitsPerPoint: s.unitsPerPoint, speed: s.pointerSpeed)
         c.capsLockHangul = s.capsLockHangul
         c.mediaKeysToPhone = s.mediaKeysToPhone
         c.padShortcuts = s.profile.model.isPad && s.padUsesShortcuts
@@ -728,8 +730,10 @@ final class InputRouter {
              CGEventType.rightMouseDragged.rawValue, CGEventType.otherMouseDragged.rawValue:
             guard var s = st.session else { return false }
             st.moveEvents.tick()
-            let m = s.remainder.take(dx: event.getDoubleValueField(.mouseEventDeltaX),
-                                     dy: event.getDoubleValueField(.mouseEventDeltaY))
+            // 보정 중엔 1:1 (보정 도우미가 보낸 단위를 그대로 재야 해서)
+            let k = calibrating ? 1.0 : st.config.pointerScale
+            let m = s.remainder.take(dx: event.getDoubleValueField(.mouseEventDeltaX) * k,
+                                     dy: event.getDoubleValueField(.mouseEventDeltaY) * k)
             st.session = s
             guard m.dx != 0 || m.dy != 0 else { return false }
             if calibrating {
@@ -1194,6 +1198,9 @@ private struct RouterConfig {
     var glass = true
     var dragLock = true
     var invertScroll = false
+    var scrollPointsPerNotch = ScrollConverter.defaultPointsPerNotch
+    /// Mac 이동 → 아이폰 HID 단위 배율 (보정 중엔 1:1)
+    var pointerScale: Double = 2.0
     var capsLockHangul = true
     var mediaKeysToPhone = false
     var padShortcuts = false

@@ -348,7 +348,7 @@ struct KeyTests {
 @Suite("스크롤 변환")
 struct ScrollTests {
     @Test func twelvePointsPerNotch() {
-        var s = ScrollConverter()
+        var s = ScrollConverter(pointsPerNotch: 12)
         #expect(s.convert(deltaY: 11, deltaX: 0, continuous: true).wheel == 0)
         #expect(s.convert(deltaY: 1, deltaX: 0, continuous: true).wheel == 1)
         #expect(s.restY == 0)
@@ -357,17 +357,32 @@ struct ScrollTests {
     }
 
     @Test func directionChangeDropsRest() {
-        var s = ScrollConverter()
+        var s = ScrollConverter(pointsPerNotch: 12)
         _ = s.convert(deltaY: 10, deltaX: 0, continuous: true)
         #expect(s.convert(deltaY: -12, deltaX: 0, continuous: true).wheel == -1)
     }
 
     @Test func invertAndPan() {
-        var s = ScrollConverter(invert: true)
+        var s = ScrollConverter(invert: true, pointsPerNotch: 12)
         #expect(s.convert(deltaY: 24, deltaX: 0, continuous: true).wheel == -2)
-        var n = ScrollConverter()
+        var n = ScrollConverter(pointsPerNotch: 12)
         // 축 2는 왼쪽이 +, HID 가로 스크롤은 오른쪽이 +
         #expect(n.convert(deltaY: 0, deltaX: 24, continuous: true).pan == -2)
+    }
+
+    @Test func defaultIsSlowerThanBefore() {
+        var s = ScrollConverter()
+        #expect(s.pointsPerNotch == 40)
+        // 예전(12pt)엔 3칸이던 36pt 스크롤이 이제 0칸, 40pt면 1칸
+        #expect(s.convert(deltaY: 36, deltaX: 0, continuous: true).wheel == 0)
+        #expect(s.convert(deltaY: 4, deltaX: 0, continuous: true).wheel == 1)
+    }
+
+    @Test func speedMapping() {
+        #expect(ScrollConverter.pointsPerNotch(speed: 0) == 70)
+        #expect(ScrollConverter.pointsPerNotch(speed: 0.5) == 40)
+        #expect(ScrollConverter.pointsPerNotch(speed: 1) == 10)
+        #expect(ScrollConverter.pointsPerNotch(speed: 5) == 10)
     }
 
     @Test func lineScrollOneNotchPerLine() {
@@ -546,3 +561,17 @@ struct HotkeyEntryDepthTests {
     }
 }
 
+@Suite("포인터 속도")
+struct PointerScaleTests {
+    @Test func defaultMatchesMacDistance() {
+        // 보정값 1.74, 속도 1.0 → Mac 1pt가 아이폰 1.74단위(=1pt)
+        #expect(abs(PointerScale.scale(unitsPerPoint: 1.74, speed: 1.0) - 1.74) < 1e-9)
+    }
+
+    @Test func speedClampedAndBadCalibrationFallsBack() {
+        #expect(PointerScale.scale(unitsPerPoint: 2, speed: 10) == 4)
+        #expect(PointerScale.scale(unitsPerPoint: 2, speed: 0) == 1)
+        #expect(PointerScale.scale(unitsPerPoint: .nan, speed: 1) == 2)
+        #expect(PointerScale.scale(unitsPerPoint: 0, speed: 1) == 2)
+    }
+}

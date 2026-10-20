@@ -25,6 +25,8 @@ final class AppSettings: ObservableObject {
         static let glassEnabled = "glassEnabled"
         static let soundEnabled = "soundEnabled"
         static let invertScroll = "invertScroll"
+        static let pointerSpeed = "pointerSpeed"
+        static let scrollSpeed = "scrollSpeed"
         static let capsLockHangul = "capsLockHangul"
         static let dragLock = "dragLock"
         static let mediaKeysToPhone = "mediaKeysToPhone"
@@ -51,6 +53,8 @@ final class AppSettings: ObservableObject {
             Key.glassEnabled: true,
             Key.soundEnabled: false,
             Key.invertScroll: false,
+            Key.pointerSpeed: 1.0,
+            Key.scrollSpeed: 0.5,
             Key.capsLockHangul: true,
             Key.dragLock: true,
             Key.mediaKeysToPhone: false,
@@ -80,6 +84,8 @@ final class AppSettings: ObservableObject {
         glassEnabled = defaults.bool(forKey: Key.glassEnabled)
         soundEnabled = defaults.bool(forKey: Key.soundEnabled)
         invertScroll = defaults.bool(forKey: Key.invertScroll)
+        pointerSpeed = defaults.double(forKey: Key.pointerSpeed)
+        scrollSpeed = defaults.double(forKey: Key.scrollSpeed)
         capsLockHangul = defaults.bool(forKey: Key.capsLockHangul)
         dragLock = defaults.bool(forKey: Key.dragLock)
         mediaKeysToPhone = defaults.bool(forKey: Key.mediaKeysToPhone)
@@ -117,6 +123,10 @@ final class AppSettings: ObservableObject {
     @Published var glassEnabled: Bool { didSet { defaults.set(glassEnabled, forKey: Key.glassEnabled) } }
     @Published var soundEnabled: Bool { didSet { defaults.set(soundEnabled, forKey: Key.soundEnabled) } }
     @Published var invertScroll: Bool { didSet { defaults.set(invertScroll, forKey: Key.invertScroll) } }
+    /// 아이폰 포인터 속도 배율 0.5~2.0 (1.0 = Mac에서 움직인 만큼 아이폰에서도)
+    @Published var pointerSpeed: Double { didSet { defaults.set(pointerSpeed, forKey: Key.pointerSpeed) } }
+    /// 아이폰 스크롤 속도 0~1 (0.5 = 휠 1칸에 40pt)
+    @Published var scrollSpeed: Double { didSet { defaults.set(scrollSpeed, forKey: Key.scrollSpeed) } }
     /// Caps Lock으로 한/영 (켜면 아이폰에 ⌃Space)
     @Published var capsLockHangul: Bool { didSet { defaults.set(capsLockHangul, forKey: Key.capsLockHangul) } }
     /// 드래그 중 전환 막기
