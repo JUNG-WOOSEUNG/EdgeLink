@@ -10,45 +10,131 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/JUNG-WOOSEUNG/EdgeLink/releases/latest"><img src="https://img.shields.io/badge/다운로드-EdgeLink.dmg-0077B6" alt="DMG 다운로드"></a>
+  <a href="https://github.com/JUNG-WOOSEUNG/EdgeLink/releases/latest"><img src="https://img.shields.io/github/v/release/JUNG-WOOSEUNG/EdgeLink?label=%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C&color=0077B6" alt="최신 릴리스"></a>
   <img src="https://img.shields.io/badge/macOS-13%2B-0077B6" alt="macOS 13 이상">
   <img src="https://img.shields.io/badge/iOS-13%2B-0077B6" alt="iOS 13 이상">
-  <img src="https://img.shields.io/badge/상태-베타-FFC107" alt="베타">
+  <img src="https://img.shields.io/badge/Swift-6-F05138" alt="Swift 6">
+  <img src="https://img.shields.io/badge/%EC%83%81%ED%83%9C-%EB%B2%A0%ED%83%80-FFC107" alt="베타">
   <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT">
 </p>
 
 <p align="center">
-  <img src="docs/images/hero.png" width="820" alt="EdgeLink 설정 창의 배치 화면과 메뉴 막대 팝오버. 아이폰을 Mac 화면 왼쪽에 두고 '연결됨 · 아이폰 조작 중'으로 표시된 모습">
+  <img src="docs/images/hero.png" width="820" alt="EdgeLink 설정 창의 배치 화면과 메뉴 막대 팝오버">
 </p>
 
 ---
 
-메신저 답장이나 인증번호 하나 때문에 키보드에서 손을 떼고 아이폰을 집는 일을 없애요. 아이폰을 둔 쪽 화면 끝으로 커서를 밀면 그때부터 Mac 키보드와 트랙패드가 아이폰을 조작하고, 반대로 밀면 Mac으로 돌아와요. 아이폰을 모니터 하나 더 둔 것처럼 쓰는 방식이에요.
+## 개요
 
-## 동작 방식
+EdgeLink는 Mac을 아이폰의 **블루투스 HID 키보드 + 마우스**로 만들어 주는 macOS 메뉴 막대 앱이에요. 아이폰을 둔 쪽 화면 가장자리로 커서를 밀면 그때부터 Mac의 키보드·트랙패드 입력이 아이폰으로 가고, 반대로 밀면 Mac으로 돌아와요.
 
-EdgeLink는 Mac을 아이폰에 **블루투스 키보드 + 마우스**로 연결해요. 아이폰은 평범한 블루투스 키보드·마우스가 붙은 것으로 알기 때문에 앱, 프로필, 탈옥이 필요 없어요. 아이폰 화면을 Mac으로 가져오는 게 아니라, 화면은 아이폰에서 보고 조작만 Mac에서 해요.
+- **아이폰엔 설치할 게 없어요.** 아이폰 입장에선 평범한 블루투스 키보드·마우스라서 앱·프로필·탈옥이 필요 없어요.
+- **화면은 아이폰에서 봐요.** 화면을 Mac으로 가져오는 미러링이 아니라, 조작만 Mac에서 해요.
+- **입력은 밖으로 나가지 않아요.** 키 입력은 블루투스로 아이폰에만 가고, 어디에도 저장하지 않아요.
 
+## 동작 구조
+
+```mermaid
+flowchart TB
+    Input["키보드 · 트랙패드"] --> Tap
+    subgraph App["EdgeLink.app — 메뉴 막대 앱"]
+        Tap["이벤트 탭 (CGEventTap)"] --> Router["InputRouter<br/>가장자리 감지 · 전환 판단"]
+        Router -->|"Mac 조작 중"| Pass["그대로 Mac에 전달"]
+        Router -->|"아이폰 조작 중"| Conv["HID 리포트로 변환<br/>키보드 · 마우스 · 미디어 키"]
+        UI["팝오버 · 설정 · 확인 창"] -.->|"설정 · 상태"| Router
+    end
+    Conv -->|"파이프 · 논블로킹"| Helper
+    subgraph HelperProc["edgelink-hid — 블루투스 도우미 프로세스"]
+        Helper["리포트 쓰기 · 연결 관리"] --> BT["IOBluetooth<br/>L2CAP 0x11 제어<br/>L2CAP 0x13 인터럽트"]
+    end
+    BT -->|"Bluetooth Classic HID"| Phone["아이폰<br/>AssistiveTouch 커서"]
 ```
- Mac 키보드·트랙패드 ──▶ EdgeLink ──블루투스 키보드·마우스──▶ 아이폰
+
+| 구성 요소 | 역할 |
+| --- | --- |
+| **이벤트 탭** | 세션 이벤트 탭으로 키·마우스·스크롤을 받아요. 아이폰 조작 중엔 Mac에 가지 않도록 이벤트를 삼켜요. |
+| **InputRouter · SwitchEngine** | 커서가 아이폰 쪽 가장자리를 충분히 밀었는지, 돌아올 때 Mac 커서를 어느 높이에 둘지 계산해요. 핫 코너와 겹치지 않게 구석은 비워 둬요. |
+| **HID 리포트 변환** | Mac 키 코드를 USB HID 사용 코드로, 트랙패드 이동·스크롤을 마우스 리포트로 바꿔요. |
+| **edgelink-hid 도우미** | 블루투스 SDP 등록, L2CAP 채널, 리포트 쓰기를 따로 떨어진 프로세스에서 해요. IOBluetooth가 몇 초씩 멈춰도 메뉴 막대·설정·Mac 복귀는 멈추지 않아요. |
+
+## 입력이 아이폰까지 가는 길
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant K as 키보드·트랙패드
+    participant A as EdgeLink.app
+    participant H as edgelink-hid
+    participant P as 아이폰
+    K->>A: 키 · 이동 · 스크롤 이벤트
+    Note over A: 아이폰 조작 중이면 이벤트를 삼키고<br/>HID 리포트로 변환
+    A->>H: 리포트 메시지 (길이 · 종류 · 내용)
+    H->>P: L2CAP 인터럽트 채널(0x13)로 즉시 쓰기
+    P-->>H: 키보드 LED (Caps Lock 등)
+    H-->>A: 상태 · 하트비트 · 로그
 ```
+
+- 리포트는 모아 보내지 않고 바로 써요. 실기기 측정에서 Mac 쪽 쓰기 시간은 평균 0.03ms, 최대 0.09ms였어요.
+- 앱은 도우미를 1초 하트비트로 지켜봐요. 응답이 끊기면 먼저 Mac 조작으로 돌아온 뒤 도우미만 다시 띄우고 다시 연결해요.
+
+## 전환과 안전장치
+
+```mermaid
+flowchart LR
+    Mac(["Mac 조작"]) -->|"가장자리 밀기<br/>⌃⌥⌘Space"| Phone(["아이폰 조작"])
+    Phone -->|"반대쪽 끝으로 밀기<br/>⌃⌥⌘Space"| Mac
+    Phone -.->|"자동 복귀"| Safe["안전장치<br/>비밀번호 칸 열림<br/>화면 잠금 · 사용자 전환<br/>블루투스 끊김<br/>도우미 응답 없음<br/>권한 꺼짐<br/>모니터 변경 · 잠자기"]
+    Safe -.->|"눌린 키 모두 떼고"| Mac
+```
+
+## 블루투스 연결 순서
+
+```mermaid
+sequenceDiagram
+    participant M as Mac (edgelink-hid)
+    participant P as 아이폰
+    Note over M: SDP에 HID 서비스 등록<br/>(UUID 0x1124, 키보드+마우스 콤보)
+    M->>P: 기본 연결 (baseband, 인증 요구)
+    M->>P: 제어 채널 열기 (L2CAP PSM 0x11)
+    M->>P: 인터럽트 채널 열기 (L2CAP PSM 0x13)
+    P-->>M: HID 장치로 인식
+    Note over M,P: 연결 완료. 이후 리포트는 인터럽트 채널로
+    P->>M: 아이폰이 먼저 다시 연결해 올 수도 있음<br/>(기본 기기만 허용, 처음 보는 기기는 묻기)
+```
+
+연결이 끊기면 15·15·30·60·300초 간격으로 다시 시도하고, Mac이 잠에서 깨면 바로 다시 연결해요.
 
 ## 기능
 
 ### 넘어가기와 돌아오기
 
-- 아이폰을 실제로 둔 쪽을 골라요. 모니터마다 왼쪽·오른쪽·위·아래 중 다른 모니터와 맞닿지 않은 가장자리를 쓸 수 있어요.
-- 그 가장자리를 밀면 아이폰으로 넘어가요. 밀기 시작하면 가장자리에 파란 유리 알약이 튀어나와 넘어갈 곳을 보여 줘요. 밀어야 하는 정도는 설정에서 조절해요.
-- 핫 코너와 겹치지 않게 구석은 비워 두고, 파일이나 창을 끄는 중에는 넘어가지 않아요.
-- 아이폰 화면의 반대쪽 끝으로 밀거나 `⌃⌥⌘Space`를 누르면 Mac으로 돌아와요. 돌아올 때 Mac 커서는 아이폰 커서가 있던 높이에 나타나요. 어긋나면 "위치 맞추기"로 한 번 맞추면 돼요.
+- 아이폰을 실제로 둔 쪽을 골라요. 모니터마다 다른 모니터와 맞닿지 않은 가장자리(왼쪽·오른쪽·위·아래)를 쓸 수 있어요.
+- 가장자리를 밀기 시작하면 파란 유리 알약이 튀어나와 넘어갈 곳을 보여 줘요. 밀어야 하는 정도는 설정에서 조절해요.
+- 파일이나 창을 끄는 중에는 넘어가지 않아요.
+- 돌아올 때 Mac 커서는 아이폰 커서가 있던 높이에 나타나요. 어긋나면 "돌아오는 위치 맞추기"로 한 번 맞추면 돼요.
 
 ### 입력
 
-- **키보드**: Mac 키보드로 그대로 입력해요. 한/영 전환은 Caps Lock이에요.
-- **트랙패드·마우스**: 클릭, 드래그, 오른쪽 클릭, 두 손가락 스크롤. 포인터 속도와 스크롤 속도는 따로 맞춰요.
-- **트랙패드 제스처**: 세 손가락 위로 쓸기 → 앱 전환기, 네 손가락 모으기 → 홈, 세 손가락 아래로 → 알림 센터, 네 손가락 아래로 → 제어 센터. 처음 한 번 아이폰 AssistiveTouch에 버튼을 등록해야 하고, 앱이 단계별로 안내해요(1~2분).
-- **미디어 키**: 켜 두면 볼륨·재생 키가 아이폰으로 가요.
-- **클립보드 보내기**: `⌃⌥⌘V`를 누르면 Mac에 복사한 글을 아이폰에 대신 타이핑해요.
+| 입력 | 아이폰에서 |
+| --- | --- |
+| 키보드 | 그대로 입력. 한/영은 Caps Lock |
+| 클릭 · 드래그 · 오른쪽 클릭 | 마우스 버튼 1~3 |
+| 두 손가락 스크롤 | 세로 휠 + 가로 스크롤. 가로는 관성을 빼서 홈 화면이 한 장씩 넘어가요 |
+| 트랙패드 제스처 | 마우스 버튼 4~8 → AssistiveTouch에 등록한 동작 (아래 표) |
+| 미디어 키 (선택) | 볼륨 · 재생 |
+| 클립보드 보내기 `⌃⌥⌘V` | 복사한 글을 한 글자씩 타이핑 (영문·숫자·기호) |
+
+### 트랙패드 제스처
+
+아이폰 AssistiveTouch의 "추가 버튼 사용자화"에 버튼을 한 번 등록하면 써요. 앱이 단계별로 안내해요(1~2분).
+
+| 제스처 | 보내는 버튼 | 아이폰 동작 | 대신 쓰는 단축키 |
+| --- | --- | --- | --- |
+| 세 손가락 위로 쓸기 | 버튼 4 | 앱 전환기 | `⌃⌥⌘↑` |
+| 네 손가락 모으기 | 버튼 5 | 홈 | `⌃⌥⌘H` |
+| 세 손가락 아래로 쓸기 | 버튼 6 | 알림 센터 | `⌃⌥⌘↓` |
+| 네 손가락 아래로 쓸기 | 버튼 7 | 제어 센터 | `⌃⌥⌘C` |
+| — | 버튼 8 | 잠금 화면 | `⌃⌥⌘L` |
 
 ### 단축키
 
@@ -57,68 +143,65 @@ EdgeLink는 Mac을 아이폰에 **블루투스 키보드 + 마우스**로 연결
 | Mac ↔ 아이폰 전환 | `⌃⌥⌘Space` |
 | 클립보드를 아이폰에 입력 | `⌃⌥⌘V` |
 | 가장자리 전환 켜기/끄기 | `⌃⌥⌘E` |
-| 앱 전환기 · 홈 · 알림 센터 · 제어 센터 · 잠금 화면 | `⌃⌥⌘↑` · `⌃⌥⌘H` · `⌃⌥⌘↓` · `⌃⌥⌘C` · `⌃⌥⌘L` |
 
-모두 설정 › 입력에서 바꿀 수 있어요. 아이폰 동작 단축키는 버튼 등록만 하면 제스처 없이도 써요.
-
-### 안전장치
-
-키 입력을 다루는 앱이라, 입력이 엉뚱한 곳으로 가지 않게 하는 것을 먼저 챙겨요.
-
-- 아이폰을 조작하는 중에 Mac에 비밀번호 칸이 열리거나, `⌃⌘Q`로 화면을 잠그거나, 블루투스가 끊기면 바로 Mac 조작으로 돌아와요. 이때 눌려 있던 키는 모두 떼고 돌아와요.
-- 기본으로 정한 아이폰만 자동으로 연결해요. 처음 보는 기기가 연결해 오면 허용할지 먼저 물어봐요.
-- 키 입력과 클립보드 내용은 로그·설정 어디에도 저장하지 않아요. 연결 로그의 기기 주소는 뒷자리를 가려요.
-- 인터넷은 하루 한 번 이 저장소의 GitHub 릴리스를 확인할 때만 쓰고, 설정에서 끌 수 있어요. 업데이트는 지금 앱과 같은 인증서로 서명된 앱만 설치해요.
-
-## 화면
-
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screens/onboarding-1.png" alt="처음 설정 시작 화면"></td>
-    <td width="50%"><img src="docs/screens/onboarding-6.png" alt="처음 설정에서 아이폰 둔 자리 고르기"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>처음 설정: 권한, 아이폰 연결, 배치, 연습 4단계</sub></td>
-    <td align="center"><sub>아이폰을 둔 가장자리 고르기</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screens/settings-input.png" alt="설정 입력 탭"></td>
-    <td><img src="docs/screens/gesture-setup.png" alt="트랙패드 제스처 설정"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>단축키, 입력 옵션, 속도</sub></td>
-    <td align="center"><sub>트랙패드 제스처 설정 도우미</sub></td>
-  </tr>
-</table>
-
-다크 모드와 연결 실패·권한 꺼짐 같은 상태별 화면은 [docs/screens](docs/screens/README.md)에 있어요.
+모두 설정 › 입력에서 바꿀 수 있어요. macOS 시스템 단축키와 겹치면 먼저 알려 줘요.
 
 ## 설치
 
 1. [Releases](https://github.com/JUNG-WOOSEUNG/EdgeLink/releases/latest)에서 `EdgeLink.dmg`를 받아요.
 2. DMG를 열고 EdgeLink를 Applications 폴더로 끌어 놓아요.
-3. Applications에서 EdgeLink를 열면 처음 설정이 시작돼요. 3분 정도 걸려요.
-   - Mac 권한 3가지 허용: 블루투스, 손쉬운 사용, 입력 모니터링
-   - 아이폰 설정 › Bluetooth에서 Mac과 페어링
-   - 아이폰 설정 › 손쉬운 사용 › 터치 › AssistiveTouch 켜기 (켜야 아이폰에 커서가 보여요)
-   - 아이폰을 둔 가장자리 고르기
+3. Applications에서 EdgeLink를 열면 처음 설정이 시작돼요(약 3분).
 
-아직 Apple 공증을 받지 않은 베타라 처음 열 때 macOS가 막을 수 있어요. 그러면 시스템 설정 › 개인정보 보호 및 보안 아래쪽의 "그래도 열기"를 눌러 주세요. 한 번만 하면 돼요.
+```mermaid
+flowchart LR
+    A["1. Mac 권한<br/>블루투스 · 손쉬운 사용<br/>입력 모니터링"] --> B["2. 아이폰 연결<br/>페어링 · AssistiveTouch<br/>커서 확인"]
+    B --> C["3. 배치<br/>아이폰을 둔<br/>가장자리 고르기"]
+    C --> D["4. 연습<br/>넘어가기 · 돌아오기<br/>단축키"]
+```
+
+아직 Apple 공증을 받지 않은 베타라 처음 열 때 macOS가 막을 수 있어요. 그러면 시스템 설정 › 개인정보 보호 및 보안 아래쪽의 "그래도 열기"를 눌러 주세요.
 
 ### 요구 사항
 
 | | 지원 |
 | --- | --- |
 | Mac | macOS 13 Ventura 이상, 블루투스 |
-| 아이폰 | iOS 13 이상 |
+| 아이폰 | iOS 13 이상 (AssistiveTouch로 커서 표시) |
 | 아이패드 | iPadOS 13.4 이상 |
+
+## 자동 업데이트
+
+```mermaid
+flowchart TB
+    S["앱 시작 5초 뒤<br/>+ 하루 한 번"] --> Q{"GitHub 릴리스에<br/>새 버전?"}
+    Q -->|아니요| E["그대로"]
+    Q -->|예| D["업데이트 창<br/>+ 팝오버 맨 위 알림"]
+    D --> G["DMG 받기"]
+    G --> V{"지금 앱과 같은 인증서로<br/>서명됐나?<br/>(도우미까지 검사)"}
+    V -->|아니요| X["설치하지 않음"]
+    V -->|예| R["앱 종료 → 바꿔 끼우기<br/>→ 다시 켜기<br/>(실패하면 되돌림)"]
+```
+
+- 인터넷은 이 저장소의 릴리스를 확인할 때만 쓰고, 설정 › 정보에서 끌 수 있어요.
+- 바꿔 끼우는 작업은 앱과 떨어진 세션에서 돌아서, 앱이 끝나도 중간에 멈추지 않아요. 다시 켠 뒤 실제로 떠 있는지 확인해요.
+
+## 개인정보와 보안
+
+| 항목 | 처리 |
+| --- | --- |
+| 키 입력 · 클립보드 내용 | 저장하지 않음. 아이폰 조작 중에만 블루투스로 아이폰에 전달 |
+| 연결 로그 | 연결 단계·오류만. 기기 주소는 뒷자리를 가림 (`A4:83:5C:**:**:**`) |
+| 연결 허용 | 기본으로 정한 기기만 자동 연결. 처음 보는 기기는 허용할지 물음 |
+| 비밀번호 입력 | Mac에 비밀번호 칸(Secure Input)이 열리면 즉시 Mac 조작으로 복귀 |
+| 네트워크 | GitHub 릴리스 확인뿐. 설정에서 끌 수 있음 |
+| 업데이트 | 같은 인증서로 서명된 번들만 설치 (지정 요구사항 검사) |
 
 ## 자주 묻는 질문
 
 <details>
 <summary>유니버설 컨트롤과 뭐가 다른가요?</summary>
 
-유니버설 컨트롤은 Mac과 아이패드 사이에서만 동작해요. EdgeLink는 아이폰도 조작할 수 있어요.
+유니버설 컨트롤은 Mac과 아이패드 사이에서만 동작해요. EdgeLink는 블루투스 HID를 쓰기 때문에 아이폰도 조작할 수 있어요.
 </details>
 
 <details>
@@ -130,7 +213,7 @@ EdgeLink는 Mac을 아이폰에 **블루투스 키보드 + 마우스**로 연결
 <details>
 <summary>세 손가락 위로 쓸면 Mac의 Mission Control이 열려요.</summary>
 
-Mac이 같은 제스처를 먼저 가져가서 그래요. 시스템 설정 › 트랙패드 › 추가 제스처에서 그 제스처를 끄거나, `⌃⌥⌘↑` 단축키를 쓰면 돼요.
+Mac이 같은 제스처를 먼저 가져가서 그래요. 시스템 설정 › 트랙패드 › 추가 제스처에서 그 제스처를 끄거나 `⌃⌥⌘↑` 단축키를 쓰면 돼요.
 </details>
 
 <details>
@@ -141,21 +224,52 @@ Mac이 같은 제스처를 먼저 가져가서 그래요. 시스템 설정 › �
 
 ## 알려진 문제
 
-- 아이폰 블루투스를 껐다 켜면 다시 연결되기까지 오래 걸리거나 붙지 않고, 그동안 메뉴 막대 아이콘이 몇 초씩 멈출 수 있어요. 블루투스 처리를 별도 프로세스로 옮기는 작업을 하고 있어요.
+- 아이폰 블루투스를 껐다 켜면 다시 연결되기까지 오래 걸리거나 붙지 않을 수 있어요. 블루투스 처리를 별도 프로세스로 옮겨 그동안 메뉴 막대가 멈추지는 않게 했고, 재연결 자체는 계속 살펴보고 있어요.
 - 아이폰 앱 사이 좌우 넘기기와 뒤로 가기 제스처는 아직 지원하지 않아요.
 
-## 직접 빌드하기
+## 개발
+
+### 저장소 구조
+
+```
+Sources/
+├── EdgeLink/          메뉴 막대 앱 (SwiftUI) — 화면, InputRouter, 업데이트
+├── EdgeLinkCore/      앱·도우미·bthid가 같이 쓰는 핵심
+│   ├── BluetoothHID        SDP 등록, L2CAP 채널, 리포트 쓰기
+│   ├── HIDReports          HID 디스크립터, 키 코드 변환, 리포트
+│   ├── HIDHelperClient     도우미 프로세스 대리 객체 (감시·재시작)
+│   ├── HelperMessages      앱 ↔ 도우미 메시지 인코딩
+│   ├── SwitchEngine        가장자리 밀기 판정, 스크롤 변환
+│   ├── LayoutGeometry      모니터 배치, 돌아오는 위치 계산
+│   └── UpdateFeed          릴리스 정보 해석, 버전 비교
+├── edgelink-hid/      블루투스 도우미 실행 파일
+└── bthid/             연결 검증용 명령줄 도구
+Tests/EdgeLinkCoreTests/   단위 테스트 (Swift Testing)
+scripts/               빌드 · DMG · 릴리스
+```
+
+### HID 리포트
+
+| Report ID | 장치 | 내용 |
+| --- | --- | --- |
+| 1 | 키보드 | 수정키 1바이트 + 예약 1 + 키 6개, LED 출력 1바이트 |
+| 2 | 마우스 | 버튼 8개 + X · Y · 휠 · 가로 스크롤 (각 −127~127) |
+| 3 | Consumer Control | 16비트 사용 코드 1개 (볼륨 · 재생 등) |
+
+### 빌드
 
 Xcode 없이 Command Line Tools(Swift 5.10 이상)만 있어도 돼요.
 
 ```sh
-./scripts/build-app.sh          # 디버그 앱 → build/EdgeLink.app
+./scripts/build-app.sh          # 디버그 앱 → build/EdgeLink.app (도우미 포함, 같은 인증서로 서명)
 ./scripts/test.sh               # 단위 테스트
-./scripts/make-dmg.sh --build   # 릴리스 빌드와 DMG → build/EdgeLink.dmg
-./scripts/release.sh 0.3.0 "고친 것"   # 버전 올리고 GitHub 릴리스까지
+./scripts/make-dmg.sh --build   # 릴리스 빌드와 끌어서 설치하는 DMG → build/EdgeLink.dmg
+./scripts/release.sh 0.4.0 -F notes.md   # 버전 올림 → 테스트 → DMG → 태그 → GitHub 릴리스
 ```
 
-설계는 [docs/DESIGN.md](docs/DESIGN.md), 진행 기록은 [docs/DEVLOG.md](docs/DEVLOG.md)에 있어요. 버그 제보와 아이디어는 [Issues](https://github.com/JUNG-WOOSEUNG/EdgeLink/issues)에 남겨 주세요.
+개발용 옵션: `EDGELINK_SNAPSHOT=<폴더>`(모든 화면을 PNG로), `EDGELINK_SHOW_DIALOG=<이름>`(확인 창을 실제 창으로), `EDGELINK_UPDATE_FEED=<주소>`(업데이트 확인 주소 바꾸기).
+
+설계는 [docs/DESIGN.md](docs/DESIGN.md), 진행 기록은 [docs/DEVLOG.md](docs/DEVLOG.md), 화면 전체는 [docs/screens](docs/screens/README.md)에 있어요. 버그 제보와 아이디어는 [Issues](https://github.com/JUNG-WOOSEUNG/EdgeLink/issues)에 남겨 주세요.
 
 ## 라이선스
 
