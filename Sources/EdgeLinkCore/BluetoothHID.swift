@@ -448,13 +448,19 @@ public final class BluetoothHID: NSObject {
     }
 
     /// 버튼 하나를 누르고 바로 뗀다 (제스처 → 추가 버튼).
-    public func click(button: Int) {
+    /// 버튼을 hold초 동안 누르고 뗀다. 10ms로 짧게 누르면 아이폰 AssistiveTouch가 추가 버튼을 알아채지 못했다.
+    /// 기다리는 동안 쓰기 큐를 막지 않아서 움직임은 계속 나간다.
+    public func click(button: Int, hold: TimeInterval = 0.1) {
         guard (1...8).contains(button) else { return }
+        let bit = UInt8(1) << UInt8(button - 1)
         writeQueue.async {
             self.flushMotion()
-            let bit = UInt8(1) << UInt8(button - 1)
-            self.write(MouseReport(buttons: self.buttons | bit).bytes)
-            usleep(10_000) // AssistiveTouch가 놓치지 않게 누름과 뗌 사이 10ms
+            self.buttons |= bit
+            self.write(MouseReport(buttons: self.buttons).bytes)
+        }
+        writeQueue.asyncAfter(deadline: .now() + hold) {
+            self.flushMotion()
+            self.buttons &= ~bit
             self.write(MouseReport(buttons: self.buttons).bytes)
         }
     }
