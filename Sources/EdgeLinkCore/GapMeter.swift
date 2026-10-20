@@ -2,12 +2,19 @@ import Foundation
 
 /// 이벤트 사이 간격 재기 (움직임 끊김 진단용). 같은 스레드에서만 쓴다.
 public struct GapMeter {
-    public struct Summary: CustomStringConvertible {
+    public struct Summary: CustomStringConvertible, Equatable {
         public let count: Int
         public let averageMs: Double
         public let maxMs: Double
         /// 간격이 30ms를 넘은 횟수 (눈에 보이는 끊김 후보)
         public let longGaps: Int
+
+        public init(count: Int, averageMs: Double, maxMs: Double, longGaps: Int) {
+            self.count = count
+            self.averageMs = averageMs
+            self.maxMs = maxMs
+            self.longGaps = longGaps
+        }
 
         public var description: String {
             count == 0 ? "없음" : String(format: "%d개 · 간격 평균 %.1fms · 최대 %.1fms · 30ms 넘음 %d번", count, averageMs, maxMs, longGaps)

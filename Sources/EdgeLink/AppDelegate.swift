@@ -64,7 +64,8 @@ final class AppModel: NSObject, ObservableObject {
     let settings = AppSettings(defaults: Snapshot.directory != nil ? Snapshot.defaults : .standard)
     let permissions = Permissions()
     let devices = DeviceDirectory()
-    let hid = BluetoothHID()
+    /// 블루투스 HID는 도우미 프로세스(edgelink-hid)가 맡는다. 화면 캡처 모드에선 띄우지 않는다 (블루투스를 시작하지 않음).
+    let hid = HIDHelperClient(launcher: HIDHelperClient.processLauncher(executable: HIDHelperClient.bundledHelperURL))
 
     @Published private(set) var connection: ConnectionPhase = .idle {
         didSet { trackConnection(from: oldValue) }
@@ -87,7 +88,7 @@ final class AppModel: NSObject, ObservableObject {
     @Published private(set) var screens: [ScreenInfo] = Layout.screens()
     @Published private(set) var placements: [Placement] = []
     /// 페어링 화면이 보이는 동안만 새 기기의 연결을 받는다
-    var acceptingNewDevice = false
+    var acceptingNewDevice = false { didSet { updateAcceptPolicy() } }
 
     /// Mac 조작 / 아이폰 조작 / 보정 중. InputRouter가 바꾼다.
     @Published var controlMode: ControlMode = .mac
@@ -107,6 +108,10 @@ final class AppModel: NSObject, ObservableObject {
     override init() {
         super.init()
         hid.delegate = self
+        // 아이폰 쪽에서 연결해 올 때 받을 기기: 도우미가 바로 정해야 해서 규칙을 미리 넘겨 둔다
+        updateAcceptPolicy()
+        settings.$lastDeviceAddress.combineLatest(settings.$onlyDefaultDevice)
+            .sink { [weak self] _ in DispatchQueue.main.async { self?.updateAcceptPolicy() } }.store(in: &bag)
         // 하위 객체가 바뀌면 메뉴바 아이콘도 다시 그린다
         placements = Layout.placements(screens)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
@@ -300,6 +305,13 @@ final class AppModel: NSObject, ObservableObject {
         hid.disconnect()
         hid.stopListening()
         hid.removeServiceRecord()
+        hid.shutdown()
+    }
+
+    /// 기본 기기만 받는다. 페어링 화면이 보이는 동안이나 "기본 기기만 연결 허용"을 끄면 누구든 받는다.
+    private func updateAcceptPolicy() {
+        hid.acceptPolicy = .init(address: settings.lastDeviceAddress,
+                                 acceptAll: acceptingNewDevice || !settings.onlyDefaultDevice)
     }
 
     /// 블루투스는 온보딩 2단계(권한) 전에는 쓰지 않는다. 설명 없이 시스템 창이 먼저 뜨지 않게.
@@ -549,8 +561,8 @@ final class AppModel: NSObject, ObservableObject {
     }
 }
 
-extension AppModel: BluetoothHIDDelegate {
-    func hid(_ hid: BluetoothHID, didChange state: BluetoothHID.State) {
+extension AppModel: HIDHelperClientDelegate {
+    func hid(_ hid: HIDHelperClient, didChange state: BluetoothHID.State) {
         switch state {
         case .idle:
             break
@@ -582,55 +594,31 @@ extension AppModel: BluetoothHIDDelegate {
             case .rejected: break  // 위에서 이미 처리
             case .virtualCableUnplug: connection = .failed(message: "아이폰에서 연결을 해제했어요")
             case .channelClosed, .stalled: connection = .failed(message: "연결이 끊겼어요")
+            case .helperLost: connection = .failed(message: "연결이 끊겼어요")
             }
         }
     }
 
-    /// 기본 기기만 연결 허용. 확인 창(캔버스 4-1)은 4단계에서 붙인다. 지금은 페어링 단계에서만 새 기기를 받는다.
-    func hid(_ hid: BluetoothHID, shouldAccept device: IOBluetoothDevice) -> Bool {
-        if device.addressString?.lowercased() == settings.lastDeviceAddress?.lowercased() { return true }
-        if acceptingNewDevice || !settings.onlyDefaultDevice { return true }
-        // 채널은 닫고 확인 창을 띄운다. 허용하면 그 기기로 Mac이 먼저 연결한다.
-        let name = device.name ?? device.addressString ?? "이름 없는 기기"
-        let address = device.addressString ?? ""
+    /// 허용하지 않은 기기가 연결해 와서 도우미가 채널을 닫았다. 확인 창을 띄우고, 허용하면 그 기기로 Mac이 먼저 연결한다.
+    func hid(_ hid: HIDHelperClient, didRejectIncoming address: String, name: String) {
+        let name = name.isEmpty ? (address.isEmpty ? "이름 없는 기기" : address) : name
         if let asked = connectionPrompts[address], Date().timeIntervalSince(asked) < 300 {
             HIDLog.info("최근에 물어본 기기라 조용히 거절")
-            return false
+            return
         }
         connectionPrompts[address] = Date()
-        DispatchQueue.main.async { self.present(.connectionRequest(name: name, address: address)) }
-        return false
+        present(.connectionRequest(name: name, address: address))
     }
 
-    /// 블루투스 쓰기가 3번 연속 50ms를 넘으면 Mac으로 돌아온다
-    func hidTransportStalled(_ hid: BluetoothHID) {
+    /// 블루투스 쓰기가 3번 연속 50ms를 넘거나 도우미가 응답하지 않으면 Mac으로 돌아온다
+    func hidTransportStalled(_ hid: HIDHelperClient) {
         router.returnToMac(.transportStalled)
     }
 
-    /// 아이폰 블루투스를 껐다 켠 뒤 재연결이 계속 거절되면 앱을 조용히 다시 띄운다.
-    /// 같은 프로세스에선 IOBluetooth의 예전 채널 상태가 남아 풀리지 않았고, 새로 띄우면 바로 붙었다.
-    /// 반복을 막으려고 30초에 한 번까지만.
-    func hidNeedsFreshProcess(_ hid: BluetoothHID) {
-        let key = "lastAutoRestart"
-        let last = UserDefaults.standard.double(forKey: key)
-        let now = Date().timeIntervalSince1970
-        guard now - last > 30 else {
-            HIDLog.warn("30초 안에 이미 다시 띄웠어서 이번엔 그대로 둬요")
-            return
-        }
-        UserDefaults.standard.set(now, forKey: key)
-        router.returnToMac(.disconnected)
-        HIDLog.info("앱을 다시 띄워요")
-        let path = Bundle.main.bundlePath
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/sh")
-        // 지금 앱이 완전히 끝난 뒤에 새로 띄운다 (중복 실행 확인에 걸리지 않게)
-        p.arguments = ["-c", "sleep 1.5; /usr/bin/open \"$0\"", path]
-        try? p.run()
-        NSApp.terminate(nil)
+    /// SDP 등록 실패 등
+    func hid(_ hid: HIDHelperClient, didFail message: String) {
+        connection = .failed(message: message)
     }
-
-    func hid(_ hid: BluetoothHID, didReceive leds: KeyboardLEDs) {}
 
     private func stopCircleIfNeeded() {
         if onboardingPage != .test { stopCircle() }

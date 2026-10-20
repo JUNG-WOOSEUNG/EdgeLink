@@ -10,7 +10,10 @@ public protocol BluetoothHIDDelegate: AnyObject {
     func hidTransportStalled(_ hid: BluetoothHID)
     /// 같은 프로세스 안에서 한 번 연결됐던 기기가 채널을 계속 거절할 때.
     /// IOBluetooth가 예전 채널 상태를 붙들고 있어서 프로세스를 새로 띄워야만 풀렸다 (실기기 6번 중 6번).
+    /// 앱에선 블루투스 도우미(edgelink-hid)만 다시 띄운다.
     func hidNeedsFreshProcess(_ hid: BluetoothHID)
+    /// 자동 재연결 예약이 바뀔 때 (nil = 예약 없음). 도우미가 앱에 "1분 뒤 다시 시도"를 알리는 데 쓴다.
+    func hid(_ hid: BluetoothHID, didScheduleReconnect at: Date?)
 }
 
 public extension BluetoothHIDDelegate {
@@ -18,6 +21,7 @@ public extension BluetoothHIDDelegate {
     func hid(_ hid: BluetoothHID, didReceive leds: KeyboardLEDs) {}
     func hidTransportStalled(_ hid: BluetoothHID) {}
     func hidNeedsFreshProcess(_ hid: BluetoothHID) {}
+    func hid(_ hid: BluetoothHID, didScheduleReconnect at: Date?) {}
 }
 
 /// Mac을 블루투스 HID 키보드·마우스로 보이게 한다.
@@ -45,6 +49,8 @@ public final class BluetoothHID: NSObject {
         case rejected
         case stalled
         case openFailed(stage: String, code: IOReturn)
+        /// 블루투스 도우미 프로세스가 끝났거나 응답하지 않아 다시 띄움 (앱 쪽 HIDHelperClient만 씀)
+        case helperLost
     }
 
     public enum HIDError: Error, CustomStringConvertible {
@@ -268,7 +274,7 @@ public final class BluetoothHID: NSObject {
         let stale = stage.contains("채널") && code == kIOReturnError && hadConnected
         if !userDisconnecting { teardown(reason: .openFailed(stage: stage, code: code)) }
         if stale {
-            HIDLog.warn("한 번 연결됐던 기기가 채널을 거절해요. 앱을 새로 띄워 블루투스 상태를 비워요")
+            HIDLog.warn("한 번 연결됐던 기기가 채널을 거절해요. 블루투스 도우미를 새로 띄워 상태를 비워요")
             delegate?.hidNeedsFreshProcess(self)
         }
         return .openFailed(stage: stage, code: code)
@@ -402,7 +408,9 @@ public final class BluetoothHID: NSObject {
     }
 
     /// 다음 자동 재연결 예약 시각 (없으면 nil). 팝오버의 "1분 뒤에 다시 시도해요"에 쓴다.
-    public private(set) var nextReconnectAt: Date?
+    public private(set) var nextReconnectAt: Date? {
+        didSet { if nextReconnectAt != oldValue { delegate?.hid(self, didScheduleReconnect: nextReconnectAt) } }
+    }
 
     /// 사용자가 직접 다시 연결하면 재연결 간격을 처음(15초)부터 다시 센다
     public func resetReconnectPolicy() { reconnectPolicy.reset() }

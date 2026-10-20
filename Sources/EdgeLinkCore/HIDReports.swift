@@ -483,6 +483,10 @@ public enum HIDLog {
     public static var echo: ((String) -> Void)? = { FileHandle.standardError.write(($0 + "\n").data(using: .utf8)!) }
     public static var verbose = false
     public static let capacity = 500
+    /// 시스템 로그(os_log)에도 남길지. 블루투스 도우미는 앱으로 넘기기만 해서 두 번 남지 않게 끈다.
+    public static var systemLog = true
+    /// 줄마다 (수준, 내용)을 넘겨받는다. 블루투스 도우미가 로그를 앱으로 보낼 때 쓴다.
+    public static var forward: ((Level, String) -> Void)?
 
     public static func info(_ message: String) { write(.info, message) }
     public static func warn(_ message: String) { write(.warn, message) }
@@ -492,11 +496,13 @@ public enum HIDLog {
     public static func write(_ level: Level, _ message: String) {
         let line = "\(timestamp()) [\(level.rawValue)] \(message)"
         // 시스템 로그에는 블루투스 주소 뒷자리를 가려서 남긴다
-        let masked = maskAddress(message)
-        switch level {
-        case .error: logger.error("\(masked, privacy: .public)")
-        case .warn: logger.warning("\(masked, privacy: .public)")
-        default: logger.info("\(masked, privacy: .public)")
+        if systemLog {
+            let masked = maskAddress(message)
+            switch level {
+            case .error: logger.error("\(masked, privacy: .public)")
+            case .warn: logger.warning("\(masked, privacy: .public)")
+            default: logger.info("\(masked, privacy: .public)")
+            }
         }
         lock.lock()
         appendToFile(maskAddress(line))
@@ -504,6 +510,7 @@ public enum HIDLog {
         if buffer.count > capacity { buffer.removeFirst(buffer.count - capacity) }
         lock.unlock()
         echo?(line)
+        forward?(level, message)
     }
 
     /// 로그 파일 (앱이 정함). 2MB를 넘으면 .1로 넘기고 새로 쓴다. 키 입력·클립보드 내용은 원래 로그에 없다.

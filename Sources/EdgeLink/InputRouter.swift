@@ -97,7 +97,7 @@ final class InputRouter {
         }
         if tap != nil { HIDLog.info("입력 감시 멈춤") }
         // 앞에서 보낸 빈 리포트가 실제로 나가도록 전송 큐를 한 번 기다린다 (종료 직전 연결을 끊기 전에)
-        _ = model.hid.writeStatistics()
+        model.hid.flushWrites()
     }
 
     private func runTapThread() {
@@ -425,7 +425,7 @@ final class InputRouter {
                 if self.cursorHidden { CGDisplayShowCursor(CGMainDisplayID()); self.cursorHidden = false }
                 self.model.settings.remoteActive = false
                 self.model.hid.sendEmptyReports()
-                _ = self.model.hid.writeStatistics()
+                self.model.hid.flushWrites()
                 NSApp.terminate(nil)
             }
             source.resume()
