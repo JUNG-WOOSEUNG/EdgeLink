@@ -80,6 +80,8 @@ final class DialogPresenter: NSObject, NSWindowDelegate {
             CalibrationView(session: CalibrationSession(model: model), handle: handle)
         case .gestureSetup:
             EmptyView()
+        case .update:
+            UpdateView(updater: model.updater, handle: handle)
         }
     }
 
@@ -156,6 +158,7 @@ extension AppDialog {
         case .connectionLog: return "connectionLog"
         case .calibration: return "calibration"
         case .gestureSetup: return "gestureSetup"
+        case .update: return "update"
         }
     }
 
@@ -177,6 +180,7 @@ extension AppDialog {
         case .connectionLog: return "연결 로그"
         case .calibration: return "포인터 보정 도우미"
         case .gestureSetup: return "아이폰 버튼 등록 도우미"
+        case .update: return "업데이트"
         }
     }
 }

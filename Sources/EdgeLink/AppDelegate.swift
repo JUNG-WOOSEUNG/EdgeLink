@@ -87,6 +87,7 @@ final class AppModel: NSObject, ObservableObject {
     lazy var toasts = ToastCenter()
     lazy var dialogs = DialogPresenter(model: self)
     lazy var settingsWindow = SettingsWindowController(model: self)
+    lazy var updater = Updater(model: self)
 
     private var bluetoothStarted = false
     private var pairer: Pairer?
@@ -250,6 +251,7 @@ final class AppModel: NSObject, ObservableObject {
             openOnboarding()
         }
         startRouterIfAllowed()
+        updater.startAutomaticChecks()
         permissions.$accessibility.combineLatest(permissions.$inputMonitoring)
             .removeDuplicates { $0 == $1 }
             .sink { [weak self] _ in DispatchQueue.main.async { self?.startRouterIfAllowed() } }

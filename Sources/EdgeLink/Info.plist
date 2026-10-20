@@ -26,6 +26,10 @@
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Mac이 아이폰에 키보드·마우스로 보이게 해요.</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>EdgeLinkUpdateFeed</key>
+	<string>https://api.github.com/repos/JUNG-WOOSEUNG/EdgeLink/releases/latest</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT License</string>
 </dict>

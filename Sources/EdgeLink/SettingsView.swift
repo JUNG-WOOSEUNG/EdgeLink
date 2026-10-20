@@ -168,7 +168,7 @@ struct SettingsView: View {
         case .layout: LayoutTab()
         case .input: InputTab()
         case .connection: ConnectionTab()
-        case .about: AboutTab()
+        case .about: AboutTabHost()
         }
     }
 }
@@ -430,4 +430,10 @@ struct DisabledReason: View {
 struct StatusDot: View {
     var color: Color
     var body: some View { Circle().fill(color).frame(width: 8, height: 8).accessibilityHidden(true) }
+}
+
+/// 정보 탭이 업데이트 상태를 따라 그리게 updater를 넘긴다
+private struct AboutTabHost: View {
+    @EnvironmentObject var model: AppModel
+    var body: some View { AboutTab(updater: model.updater) }
 }

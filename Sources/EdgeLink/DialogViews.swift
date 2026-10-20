@@ -427,3 +427,84 @@ struct ResetPairingView: View {
         }
     }
 }
+
+// MARK: - 업데이트
+
+/// 새 버전 알림. 내려받기·설치 진행도 이 창에서 보여준다.
+struct UpdateView: View {
+    @ObservedObject var updater: Updater
+    let handle: DialogHandle
+
+    var body: some View {
+        DialogFrame(spacing: 14) {
+            switch updater.state {
+            case let .available(release):
+                Text("새 버전 \(release.version)이 나왔어요").font(Typo.font(16, .bold))
+                Text("지금 버전은 \(Updater.currentVersion)이에요. 설치하면 EdgeLink가 잠깐 꺼졌다 다시 켜져요.")
+                    .font(Typo.body).foregroundStyle(Color.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !release.notes.isEmpty { notes(release.notes) }
+                buttons {
+                    if let page = release.pageURL {
+                        Button("자세히") { NSWorkspace.shared.open(page) }
+                            .buttonStyle(DialogButtonStyle(kind: .plain))
+                    }
+                    Spacer()
+                    Button("나중에") { handle.close() }
+                        .buttonStyle(DialogButtonStyle(kind: .plain))
+                    Button("업데이트") { updater.install() }
+                        .buttonStyle(DialogButtonStyle(kind: .primary))
+                        .keyboardShortcut(.defaultAction)
+                }
+            case let .downloading(progress):
+                Text("내려받는 중…").font(Typo.font(16, .bold))
+                ProgressView(value: progress).tint(Color.brandFill)
+                buttons {
+                    Spacer()
+                    Button("취소") { updater.cancelDownload() }
+                        .buttonStyle(DialogButtonStyle(kind: .plain))
+                }
+            case .installing:
+                Text("설치하는 중…").font(Typo.font(16, .bold))
+                ProgressView().progressViewStyle(.linear).tint(Color.brandFill)
+                Text("서명을 확인한 뒤 다시 켜요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
+            case let .failed(message):
+                Text("업데이트하지 못했어요").font(Typo.font(16, .bold))
+                Text(message).font(Typo.body).foregroundStyle(Color.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                buttons {
+                    Spacer()
+                    Button("닫기") { handle.close() }
+                        .buttonStyle(DialogButtonStyle(kind: .primary))
+                        .keyboardShortcut(.defaultAction)
+                }
+            default:
+                Text("최신 버전이에요").font(Typo.font(16, .bold))
+                buttons {
+                    Spacer()
+                    Button("닫기") { handle.close() }
+                        .buttonStyle(DialogButtonStyle(kind: .primary))
+                        .keyboardShortcut(.defaultAction)
+                }
+            }
+        }
+    }
+
+    private func notes(_ text: String) -> some View {
+        ScrollView {
+            Text(text)
+                .font(Typo.secondary).lineSpacing(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+                .padding(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+        }
+        .frame(maxHeight: 180)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
+    }
+
+    private func buttons<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        HStack(spacing: 8) { content() }.padding(.top, 4)
+    }
+}

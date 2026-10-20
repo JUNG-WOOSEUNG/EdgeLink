@@ -78,6 +78,8 @@ enum AppDialog: Equatable, Identifiable {
     case calibration
     /// 아이폰 버튼 등록 도우미 (설정 › 입력, 온보딩 뒤 선택 단계)
     case gestureSetup
+    /// 새 버전 알림 (자동 확인, 설정 › 정보 › 지금 확인)
+    case update(version: String)
 
     var id: String {
         switch self {
@@ -88,6 +90,7 @@ enum AppDialog: Equatable, Identifiable {
         case .connectionLog: return "connectionLog"
         case .calibration: return "calibration"
         case .gestureSetup: return "gestureSetup"
+        case .update: return "update"
         }
     }
 }

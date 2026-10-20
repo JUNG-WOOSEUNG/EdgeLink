@@ -547,8 +547,30 @@ struct ConnectionTab: View {
 
 struct AboutTab: View {
     @EnvironmentObject var settings: AppSettings
-    private static let notYet = "다음 버전부터 쓸 수 있어요"
     @EnvironmentObject var permissions: Permissions
+    @EnvironmentObject var model: AppModel
+    @ObservedObject var updater: Updater
+
+    private var updateHint: String {
+        switch updater.state {
+        case .upToDate: return "최신 버전이에요"
+        case let .available(r): return "새 버전 \(r.version)이 있어요"
+        case .failed(let m): return m
+        default:
+            guard let last = updater.lastChecked else { return "새 버전이 있는지 바로 알아봐요" }
+            let f = RelativeDateTimeFormatter()
+            f.locale = Locale(identifier: "ko_KR")
+            return "마지막 확인 \(f.localizedString(for: last, relativeTo: Date()))"
+        }
+    }
+
+    private func checkNow() {
+        if case let .available(r) = updater.state {
+            model.dialogs.present(.update(version: r.version))
+        } else {
+            updater.check(userInitiated: true)
+        }
+    }
 
     private var version: String {
         let info = Bundle.main.infoDictionary
@@ -560,17 +582,9 @@ struct AboutTab: View {
     var body: some View {
         VStack(spacing: 24) {
             VStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16).fill(Color.brandFill)
-                    Image(systemName: "iphone")
-                        .font(.system(size: 34, weight: .regular))
-                        .foregroundStyle(.white)
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
-                        .offset(x: -24)
-                }
-                .frame(width: 72, height: 72)
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 88, height: 88)
                 .accessibilityHidden(true)
                 Text("EdgeLink").font(Typo.font(20, .bold)).padding(.top, 4)
                 Text("버전 \(version) · Mac 하나로 아이폰까지").font(Typo.body).foregroundStyle(Color.textSecondary)
@@ -591,34 +605,25 @@ struct AboutTab: View {
                 SectionLabel(text: "업데이트")
                 SettingsGroup {
                     VStack(alignment: .leading, spacing: 0) {
-                        // 업데이트 기능은 아직 없다: 스위치와 버튼 모두 흐리게, 이유는 바로 아래 한 줄
                         HStack(spacing: 12) {
                             RowText(title: "자동으로 업데이트 확인",
-                                    hint: settings.autoUpdateAllowed ? "하루 한 번, 정해진 주소 한 곳에서만 확인해요" : "회사 정책으로 꺼져 있어요")
+                                    hint: settings.autoUpdateAllowed ? "하루 한 번 GitHub 릴리스에서 확인해요" : "회사 정책으로 꺼져 있어요")
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            VStack(alignment: .trailing, spacing: 6) {
-                                Toggle("자동으로 업데이트 확인", isOn: $settings.autoUpdateCheck)
-                                    .toggleStyle(SettingsSwitchStyle())
-                                    .labelsHidden()
-                                    .disabled(true)
-                                    .accessibilityLabel("자동으로 업데이트 확인")
-                                    .accessibilityHint(Self.notYet)
-                                DisabledReason(text: Self.notYet)
-                            }
+                            Toggle("자동으로 업데이트 확인", isOn: $settings.autoUpdateCheck)
+                                .toggleStyle(SettingsSwitchStyle())
+                                .labelsHidden()
+                                .disabled(!settings.autoUpdateAllowed)
+                                .accessibilityLabel("자동으로 업데이트 확인")
                         }
                         .padding(.vertical, 12)
                         .frame(minHeight: 60)
                         RowDivider()
                         HStack(spacing: 12) {
-                            RowText(title: "업데이트 확인", hint: "새 버전이 있는지 바로 알아봐요")
+                            RowText(title: "업데이트 확인", hint: updateHint)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            VStack(alignment: .trailing, spacing: 6) {
-                                Button("지금 확인") {}
-                                    .buttonStyle(DimmablePillStyle(kind: .plain, height: 32))
-                                    .disabled(true)
-                                    .accessibilityHint(Self.notYet)
-                                DisabledReason(text: Self.notYet)
-                            }
+                            Button(updater.state == .checking ? "확인 중…" : "지금 확인") { checkNow() }
+                                .buttonStyle(DimmablePillStyle(kind: .plain, height: 32))
+                                .disabled(updater.state == .checking)
                         }
                         .padding(.vertical, 12)
                         .frame(minHeight: 60)
