@@ -3,21 +3,22 @@
 ## 1. 저장소 받기
 
 ```sh
-gh repo clone JUNG-WOOSEUNG/EdgeLink   # 비공개 저장소라 로그인 필요
+gh repo clone JUNG-WOOSEUNG/EdgeLink
 cd EdgeLink
 ```
 
 ## 2. Claude Code 대화 이어가기
 
+대화 기록과 대화 메모리는 이 저장소가 아니라 **비공개 저장소 `JUNG-WOOSEUNG/ai-wsjung`**(Claude 설정 백업)의 `session-backup/EdgeLink/`에 있어요. 대화에는 이메일, 기기 이름 같은 개인정보가 들어 있어서 공개 저장소에는 넣지 않아요.
+
 ```sh
-./scripts/restore-claude-session.sh   # 대화 기록을 이 PC의 ~/.claude/projects/ 아래로 넣음
+./scripts/restore-claude-session.sh   # ai-wsjung를 ~/Workspace/ai-wsjung에 받고, 대화를 이 PC의 ~/.claude/projects/ 아래로 넣음
 claude --resume                       # 목록에서 EdgeLink 대화를 골라요
 ```
 
-- 대화 기록은 `.claude-session/`에 압축돼 있고, 이 프로젝트의 대화 메모리는 `.claude-memory/`에 읽을 수 있는 파일로 있어요. 복원 스크립트가 둘 다 넣어줘요(이미 있는 메모리 파일은 덮어쓰지 않음).
-- 대화 기록은 압축돼 있어요. 원래 PC 경로(`~/Workspace/EdgeLink`)는 이 PC 경로로 바꿔서 넣어요.
-- 이 PC에서 대화를 더 한 뒤 다시 옮기려면 `./scripts/save-claude-session.sh` 후 커밋·푸시하면 돼요.
-- 대화 기록에는 이메일, 기기 이름·블루투스 주소 등이 들어 있어요. **저장소를 공개로 바꾸기 전에는 `.claude-session/`과 `.claude-memory/`를 지우세요.**
+- 원래 PC 경로는 이 PC 경로로 바꿔서 넣어요. 이미 있는 메모리 파일은 덮어쓰지 않아요.
+- 이 PC에서 대화를 더 한 뒤 다시 옮기려면 `./scripts/save-claude-session.sh` — 압축해서 ai-wsjung에 커밋·푸시까지 해요.
+- ai-wsjung를 다른 곳에 받아 두었다면 `EDGELINK_NOTES_DIR=<폴더>`를 붙여 실행하세요.
 
 ## 3. 빌드 환경
 
