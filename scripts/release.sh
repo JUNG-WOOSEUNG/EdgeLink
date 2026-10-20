@@ -29,4 +29,4 @@ for try in 1 2 3; do
   [ "$try" = 3 ] && { echo "릴리스를 만들지 못했어요. 나중에 gh release create v$V build/EdgeLink.dmg 로 다시 해 주세요"; exit 1; }
   echo "다시 시도해요 ($try)"; sleep 5
 done
-echo "릴리스 v${V}를 올렸어요"
+echo "릴리스를 올렸어요: v$V"

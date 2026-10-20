@@ -160,23 +160,19 @@ struct PopoverHeader: View {
     private var isConnected: Bool { if case .connected = state { return true } else { return false } }
     private var isProblem: Bool { if case .problem = state { return true } else { return false } }
 
+    /// 앱 아이콘. 연결되지 않았을 땐 흐리게 해서 상태를 같이 보여준다.
     private var icon: some View {
-        let glyph: PhoneGlyph.Kind = isConnected ? .linked : isProblem ? .plain : .slashed
-        return ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isConnected ? Color.brand : .disabledFill)
-                .frame(width: 36, height: 36)
-                .overlay(
-                    PhoneGlyph(kind: glyph)
-                        .stroke(isConnected ? Color.white : .textSecondary,
-                                style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
-                        .frame(width: 20, height: 20)
-                )
+        ZStack(alignment: .topTrailing) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 40, height: 40)
+                .opacity(isConnected ? 1 : 0.5)
             if isProblem {
                 Circle().fill(Color.warningDot)
                     .frame(width: 12, height: 12)
                     .overlay(Circle().strokeBorder(Color.bgPopover, lineWidth: 2))
-                    .offset(x: 3, y: -3)
+                    .offset(x: 1, y: 1)
             }
         }
         .accessibilityHidden(true)

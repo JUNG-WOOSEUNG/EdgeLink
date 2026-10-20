@@ -275,7 +275,11 @@ final class Updater: ObservableObject {
             return
         }
         let backup = staged.deletingLastPathComponent().appendingPathComponent("EdgeLink-old.app")
+        // 앱이 끝날 때 macOS가 앱과 같은 묶음(프로세스 그룹)을 정리하면서 이 스크립트까지 끝낸 적이 있다
+        // (0.3.2 → 0.3.3: 바꿔 끼운 뒤 다시 켜지 않음). 그래서 새 세션으로 따로 띄우고 종료 신호도 무시한다.
+        // 다시 켠 앱이 다른 EdgeLink(예: 개발용 캡처)를 보고 스스로 꺼질 수 있어서, 떠 있는지 확인하며 몇 번 더 켠다.
         let script = """
+        trap '' HUP TERM INT
         while kill -0 "$0" 2>/dev/null; do sleep 0.2; done
         if mv "$1" "$3" && /usr/bin/ditto "$2" "$1"; then
           /usr/bin/xattr -dr com.apple.quarantine "$1" 2>/dev/null
@@ -283,18 +287,32 @@ final class Updater: ObservableObject {
         else
           rm -rf "$1"; mv "$3" "$1"
         fi
-        /usr/bin/open "$1"
+        for i in 1 2 3 4 5; do
+          /usr/bin/open "$1"
+          sleep 2
+          /usr/bin/pgrep -f "$1/Contents/MacOS/EdgeLink" >/dev/null && break
+        done
         rm -rf "$(dirname "$2")"
         """
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/sh")
-        p.arguments = ["-c", script, "\(ProcessInfo.processInfo.processIdentifier)", target.path, staged.path, backup.path]
-        do { try p.run() } catch {
+        let args = ["/bin/sh", "-c", script, "\(ProcessInfo.processInfo.processIdentifier)", target.path, staged.path, backup.path]
+        guard Self.spawnDetached(args) else {
             state = .failed("설치를 시작하지 못했어요")
             return
         }
         HIDLog.info("업데이트 설치: 앱을 끝내고 바꿔 끼워요")
         model.router.returnToMac(.disconnected)
         NSApp.terminate(nil)
+    }
+
+    /// 새 세션(새 프로세스 그룹)으로 띄워서 앱이 끝나도 같이 정리되지 않게 한다
+    private static func spawnDetached(_ args: [String]) -> Bool {
+        var attr: posix_spawnattr_t?
+        posix_spawnattr_init(&attr)
+        defer { posix_spawnattr_destroy(&attr) }
+        posix_spawnattr_setflags(&attr, Int16(POSIX_SPAWN_SETSID))
+        var cargs = args.map { strdup($0) } + [nil]
+        defer { cargs.forEach { free($0) } }
+        var pid: pid_t = 0
+        return posix_spawn(&pid, args[0], nil, &attr, &cargs, environ) == 0
     }
 }
