@@ -35,7 +35,7 @@ final class DeviceDirectory: NSObject, ObservableObject {
     }
 
     private func startInquiry() {
-        guard wantSearch, inquiry == nil else { return }
+        guard wantSearch, inquiry == nil, Snapshot.directory == nil else { return }
         let q = IOBluetoothDeviceInquiry(delegate: self)
         q?.inquiryLength = 8
         q?.updateNewDeviceNames = true
@@ -44,6 +44,11 @@ final class DeviceDirectory: NSObject, ObservableObject {
     }
 
     func reloadPaired() {
+        // 캡처에는 이 Mac의 실제 페어링 기기 대신 예시 기기를 쓴다
+        if Snapshot.directory != nil {
+            if !items.contains(Snapshot.sampleDevice) { items.append(Snapshot.sampleDevice) }
+            return
+        }
         let paired = (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice]) ?? []
         for d in paired { upsert(d) }
     }

@@ -2,7 +2,7 @@
 
 2026-10-20 새벽 빌드 기준. 창 없이 그린 캡처라 알약 버튼 끝 세로줄, 회색 슬라이더·체크박스는 실제 창과 달라요. 왼쪽이 라이트, 오른쪽이 다크예요.
 
-## 온보딩
+## 처음 설정
 
 | 화면 | 라이트 | 다크 |
 | --- | --- | --- |
@@ -15,7 +15,7 @@
 | onboarding-7 | <img src="onboarding-7.png" width="320"> | <img src="onboarding-7-dark.png" width="320"> |
 | onboarding-8 | <img src="onboarding-8.png" width="320"> | <img src="onboarding-8-dark.png" width="320"> |
 
-## 메뉴바 팝오버
+## 메뉴 막대 팝오버
 
 | 화면 | 라이트 | 다크 |
 | --- | --- | --- |
@@ -60,7 +60,7 @@
 | settings-layout-empty | <img src="settings-layout-empty.png" width="320"> | <img src="settings-layout-empty-dark.png" width="320"> |
 | settings-layout | <img src="settings-layout.png" width="320"> | <img src="settings-layout-dark.png" width="320"> |
 
-## 아이폰 버튼 등록 도우미
+## 트랙패드 제스처 설정
 
 | 화면 | 라이트 | 다크 |
 | --- | --- | --- |

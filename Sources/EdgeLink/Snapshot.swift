@@ -9,6 +9,22 @@ enum Snapshot {
         ProcessInfo.processInfo.environment["EDGELINK_SNAPSHOT"].map { URL(fileURLWithPath: $0, isDirectory: true) }
     }
 
+    /// 캡처용 설정 저장소: 지금 설정을 복사하되 실제 기기 이름은 예시 이름으로 바꾼다 (캡처에 개인정보가 찍히지 않게)
+    static let defaults: UserDefaults = {
+        let suite = "com.edgelink.snapshot"
+        let d = UserDefaults(suiteName: suite)!
+        d.removePersistentDomain(forName: suite)
+        for (k, v) in UserDefaults.standard.persistentDomain(forName: Bundle.main.bundleIdentifier ?? "") ?? [:] {
+            d.set(v, forKey: k)
+        }
+        if d.string(forKey: "lastDeviceName") != nil { d.set(sampleDevice.name, forKey: "lastDeviceName") }
+        if d.string(forKey: "lastDeviceAddress") != nil { d.set(sampleDevice.address, forKey: "lastDeviceAddress") }
+        return d
+    }()
+
+    /// 캡처에 보이는 페어링 기기 (실제 페어링 목록 대신)
+    static let sampleDevice = DeviceDirectory.Item(address: "00-11-22-33-44-55", name: "지민의 iPhone 16 Pro", paired: true, kind: .phone)
+
     static func run(model: AppModel) {
         guard let dir = directory else { return }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

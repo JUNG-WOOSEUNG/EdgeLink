@@ -61,7 +61,7 @@ enum ConnectionPhase: Equatable {
 }
 
 final class AppModel: NSObject, ObservableObject {
-    let settings = AppSettings()
+    let settings = AppSettings(defaults: Snapshot.directory != nil ? Snapshot.defaults : .standard)
     let permissions = Permissions()
     let devices = DeviceDirectory()
     let hid = BluetoothHID()

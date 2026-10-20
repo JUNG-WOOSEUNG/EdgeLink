@@ -8,7 +8,7 @@ extension Snapshot {
         let size = NSSize(width: 860, height: 640)
         let tall = NSSize(width: 860, height: 1500)
         let sampleDevices = [
-            DeviceDirectory.Item(address: "00-11-22-33-44-55", name: "iPhone 15 Pro", paired: true, kind: .phone),
+            Snapshot.sampleDevice,
             DeviceDirectory.Item(address: "00-11-22-33-44-66", name: "iPad Air", paired: true, kind: .pad),
         ]
         let sampleDefault = "00-11-22-33-44-55"
@@ -26,7 +26,7 @@ extension Snapshot {
             render(view, size: s, appearance: appearance, to: dir.appendingPathComponent("\(name)\(suffix).png"))
         }
 
-        model.debugSetConnection(.connected(name: "iPhone 15 Pro"))
+        model.debugSetConnection(.connected(name: Snapshot.sampleDevice.name))
         for tab in SettingsTab.allCases {
             let content: AnyView? = tab == .connection
                 ? AnyView(ConnectionTab(preview: (sampleDevices, sampleDefault))) : nil

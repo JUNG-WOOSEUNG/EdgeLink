@@ -53,6 +53,7 @@ struct InputTab: View {
                 .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
+            blockedHelp
         }
     }
 
@@ -71,7 +72,6 @@ struct InputTab: View {
     private var phoneToggles: some View {
         VStack(alignment: .leading, spacing: 8) {
             // 막을 수 없는 단축키 안내는 제목 위 (캔버스 3-1)
-            blockedHelp
             SectionLabel(text: "아이폰으로 보낼 때")
             SettingsGroup {
                 ToggleRow(title: "스크롤 방향 반전", hint: "아이폰에서만 반대로 스크롤해요", isOn: $settings.invertScroll)
