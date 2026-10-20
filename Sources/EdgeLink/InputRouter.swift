@@ -676,7 +676,8 @@ final class InputRouter {
             let quiet = calibrating || st.typing != nil
             if code == ModifierKeys.capsLockKeyCode {
                 if !quiet {
-                    for r in CapsLockRule.reports(hangul: st.config.capsLockHangul, current: s.keys.report) { model.hid.send(r) }
+                    // 실제 키보드처럼 신호 사이에 20ms를 둔다 (붙여 보내면 아이폰이 ⌃Space를 놓쳤음)
+                    model.hid.send(CapsLockRule.reports(hangul: st.config.capsLockHangul, current: s.keys.report), gap: 0.02)
                 }
                 return false
             }

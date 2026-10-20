@@ -429,6 +429,17 @@ public final class BluetoothHID: NSObject {
         }
     }
 
+    /// 키보드 리포트 여러 개를 간격을 두고 보낸다. 아이폰이 너무 붙은 신호를 놓치는 조합키(⌃Space 등)에 쓴다.
+    public func send(_ reports: [KeyboardReport], gap: TimeInterval) {
+        writeQueue.async {
+            self.flushMotion()
+            for (i, r) in reports.enumerated() {
+                if i > 0 { usleep(useconds_t(gap * 1_000_000)) }
+                self.write(r.bytes)
+            }
+        }
+    }
+
     /// 버튼 하나를 누르고 바로 뗀다 (제스처 → 추가 버튼).
     public func click(button: Int) {
         guard (1...8).contains(button) else { return }
