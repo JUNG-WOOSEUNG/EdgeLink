@@ -12,7 +12,7 @@ struct ConnectionLogView: View {
     @State private var copied = false
 
     var body: some View {
-        DialogFrame(width: 560, spacing: 14) {
+        DialogFrame(width: 760, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("연결 로그").font(Typo.font(16, .bold))
                 Spacer()
@@ -46,29 +46,36 @@ struct ConnectionLogView: View {
     }
 
     private var logBox: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                if lines.isEmpty {
-                    Text("아직 기록이 없어요. 연결을 시도하면 여기에 남아요.")
-                        .font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
-                            LogRow(line: line).id(i)
+        GeometryReader { geo in
+            ScrollViewReader { proxy in
+                // 한 줄은 한 줄로 (줄바꿈하면 시각과 내용이 섞여 읽기 어렵다). 긴 줄은 가로로 스크롤.
+                ScrollView([.vertical, .horizontal]) {
+                    Group {
+                        if lines.isEmpty {
+                            Text("아직 기록이 없어요. 연결을 시도하면 여기에 남아요.")
+                                .font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                        } else {
+                            LazyVStack(alignment: .leading, spacing: 4) {
+                                ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
+                                    LogRow(line: line).id(i)
+                                }
+                            }
+                            .textSelection(.enabled)
                         }
                     }
-                    .textSelection(.enabled)
+                    .padding(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+                    // 짧을 때도 왼쪽 위부터 (두 방향 스크롤은 작은 내용을 가운데로 모은다)
+                    .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .topLeading)
                 }
+                .onChange(of: lines.count) { n in
+                    if n > 0 { proxy.scrollTo(n - 1, anchor: .bottomLeading) }
+                }
+                .onAppear { if !lines.isEmpty { proxy.scrollTo(lines.count - 1, anchor: .bottomLeading) } }
             }
-            .padding(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
-            .frame(minHeight: 200, idealHeight: 260, maxHeight: 260)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
-            .onChange(of: lines.count) { n in
-                if n > 0 { proxy.scrollTo(n - 1, anchor: .bottom) }
-            }
-            .onAppear { if !lines.isEmpty { proxy.scrollTo(lines.count - 1, anchor: .bottom) } }
         }
+        .frame(height: 300)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
         .accessibilityLabel("연결 로그 \(lines.count)줄")
     }
 
@@ -125,9 +132,8 @@ private struct LogRow: View {
             + Text(p.tag.map { "\($0) · " } ?? "").font(body).foregroundColor(p.color)
             + Text(verbatim: p.message).font(body).foregroundColor(p.color))
             .font(.system(size: 11, design: .monospaced))
-            .lineSpacing(2)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .lineLimit(1)
+            .fixedSize()
     }
 
     private var parsed: (time: String, tag: String?, message: String, color: Color, isError: Bool) {
