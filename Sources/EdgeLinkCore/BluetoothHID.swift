@@ -226,7 +226,9 @@ public final class BluetoothHID: NSObject {
             dev.closeConnection()
             Thread.sleep(forTimeInterval: 1.0)
         }
-        var r = dev.openConnection(nil, withPageTimeout: BluetoothHID.pageTimeout, authenticationRequired: false)
+        // 인증(암호화)을 요구한다: 아이폰은 암호화된 연결에서만 HID 채널을 받는 것으로 보인다.
+        // 요구하지 않으면 아이폰이 스스로 암호화했을 때만 붙고 아니면 0xE00002BC로 거절됐다 (들쭉날쭉했음)
+        var r = dev.openConnection(nil, withPageTimeout: BluetoothHID.pageTimeout, authenticationRequired: true)
         guard r == kIOReturnSuccess else { return failed("기기 연결", r) }
         HIDLog.info("기기 연결됨 (baseband)")
         guard wanted() else { dev.closeConnection(); return }
@@ -286,35 +288,12 @@ public final class BluetoothHID: NSObject {
                 HIDLog.error("PSM 0x\(String(psm, radix: 16)) 수신 등록 실패")
             }
         }
-        // 아이폰 설정에서 이 Mac을 누르면 기본 연결만 들어오고 HID 채널은 열리지 않는다 → 알아채서 우리가 연다
-        if connectNotification == nil {
-            connectNotification = IOBluetoothDevice.register(forConnectNotifications: self,
-                                                             selector: #selector(deviceConnected(_:device:)))
-        }
         HIDLog.info("아이폰의 연결을 기다려요 (PSM 0x11, 0x13)")
     }
 
     public func stopListening() {
         openNotifications.forEach { $0.unregister() }
         openNotifications = []
-        connectNotification?.unregister()
-        connectNotification = nil
-    }
-
-    private var connectNotification: IOBluetoothUserNotification?
-
-    /// 어떤 기기든 기본 연결이 생기면 불린다. 기본 기기가 연결해 왔고 우리가 연결 중이 아니면 HID 채널을 연다.
-    @objc private func deviceConnected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
-        guard let address = device.addressString, let def = defaultAddress,
-              address.lowercased() == def.lowercased() else { return }
-        switch state {
-        case .connected, .connecting: return
-        default: break
-        }
-        HIDLog.info("아이폰이 연결해 왔어요 (기본 연결) → HID 채널을 열어요")
-        cancelReconnect()
-        reconnectPolicy.reset()
-        do { try connect(address: address) } catch { HIDLog.error("\(error)") }
     }
 
     @objc private func channelOpened(_ notification: IOBluetoothUserNotification, channel: IOBluetoothL2CAPChannel) {
@@ -707,8 +686,6 @@ extension BluetoothHID: IOBluetoothL2CAPChannelDelegate {
             HIDLog.info("채널 PSM 0x\(String(ch.psm, radix: 16)) 닫힘")
             guard !self.userDisconnecting, self.device != nil else { return }
             self.teardown(reason: .channelClosed)
-            // 뜻하지 않게 끊겼으면 이 프로세스에선 재연결이 거절되므로(실기기 확인) 바로 새로 띄운다
-            if self.hadConnected { self.delegate?.hidNeedsFreshProcess(self) }
         }
     }
 
