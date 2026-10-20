@@ -816,7 +816,8 @@ final class InputRouter {
                                 : event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
             let dx = continuous ? event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)
                                 : event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2)
-            let r = s.scroll.convert(deltaY: dy, deltaX: dx, continuous: continuous)
+            let momentum = event.getIntegerValueField(.scrollWheelEventMomentumPhase) != 0
+            let r = s.scroll.convert(deltaY: dy, deltaX: dx, continuous: continuous, momentum: momentum)
             st.session = s
             if r.wheel != 0 || r.pan != 0 { model.hid.scroll(wheel: r.wheel, pan: r.pan) }
             return false

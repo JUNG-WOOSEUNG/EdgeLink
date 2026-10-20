@@ -447,9 +447,13 @@ public struct ScrollConverter: Equatable {
     public mutating func reset() { restY = 0; restX = 0 }
 
     /// deltaY: 위로 스크롤이 +(CGEvent 축 1). deltaX: CGEvent 축 2(왼쪽이 +).
+    /// momentum: 손가락을 뗀 뒤 트랙패드가 이어 보내는 관성 스크롤.
     /// 돌려주는 값: wheel(위가 +), pan(오른쪽이 +).
-    public mutating func convert(deltaY: Double, deltaX: Double, continuous: Bool) -> (wheel: Int, pan: Int) {
+    public mutating func convert(deltaY: Double, deltaX: Double, continuous: Bool, momentum: Bool = false) -> (wheel: Int, pan: Int) {
         var wheel: Int, pan: Int
+        var deltaX = deltaX
+        // 아이폰은 가로 스크롤을 페이지 넘기기로 받는다. 관성분까지 보내면 홈 화면이 두 장씩 넘어가서 가로는 손가락으로 민 만큼만.
+        if momentum { deltaX = 0; restX = 0 }
         if continuous {
             wheel = Self.take(deltaY, &restY, perNotch: pointsPerNotch)
             pan = -Self.take(deltaX, &restX, perNotch: pointsPerNotch)

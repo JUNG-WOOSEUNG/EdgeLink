@@ -356,6 +356,16 @@ struct ScrollTests {
         #expect(s.restY == 6)
     }
 
+    @Test func momentumKeepsVerticalDropsHorizontal() {
+        var s = ScrollConverter(pointsPerNotch: 12)
+        _ = s.convert(deltaY: 0, deltaX: -10, continuous: true)
+        let r = s.convert(deltaY: 24, deltaX: -24, continuous: true, momentum: true)
+        #expect(r.wheel == 2)
+        #expect(r.pan == 0)
+        #expect(s.restX == 0)
+        #expect(s.convert(deltaY: 0, deltaX: -12, continuous: true).pan == 1)
+    }
+
     @Test func directionChangeDropsRest() {
         var s = ScrollConverter(pointsPerNotch: 12)
         _ = s.convert(deltaY: 10, deltaX: 0, continuous: true)
