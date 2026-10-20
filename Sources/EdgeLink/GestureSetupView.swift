@@ -90,7 +90,7 @@ struct GestureSetupView: View {
             } else {
                 VStack(spacing: 6) {
                     Text("버튼을 누르세요").font(.system(size: 10, weight: .bold))
-                    Text("사용자화할 버튼을 포인터 장치에서 누르세요")
+                    Text("사용자화할 버튼을 포인터 기기에서 누르세요")
                         .font(.system(size: 8)).foregroundStyle(Color(hex: 0x6E6E73))
                         .multilineTextAlignment(.center)
                         .lineSpacing(2)
@@ -130,7 +130,7 @@ struct GestureSetupView: View {
                 Text("아이폰에 버튼을 등록해요").font(Typo.onboardingTitle)
                     .accessibilityAddTraits(.isHeader)
                 (Text("아이폰에서 ")
-                 + Text("설정 › 손쉬운 사용 › 터치 › AssistiveTouch › 장치 › \(hostName)(이\u{00A0}Mac의\u{00A0}이름) › 추가 버튼 사용자화").fontWeight(.bold).foregroundColor(.textPrimary)
+                 + Text("설정 › 손쉬운 사용 › 터치 › AssistiveTouch › 기기 › \(hostName)(이\u{00A0}Mac의\u{00A0}이름) › 추가 버튼 사용자화").fontWeight(.bold).foregroundColor(.textPrimary)
                  + Text("를 열고, ‘버튼을 누르세요’가 뜨면 아래 버튼을 누르세요."))
                     .font(Typo.secondary)
                     .foregroundStyle(Color.textSecondary)
