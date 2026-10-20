@@ -39,6 +39,8 @@ final class InputRouter {
     private let timerQueue = DispatchQueue(label: "com.edgelink.router.timer", qos: .userInteractive)
 
     /// ⌃⌥⌘Space — 어떤 상태에서도 Mac으로 돌아오는 조합
+    /// macOS 화면 잠금 ⌃⌘Q
+    private static let lockScreenCombo = KeyCombo(keyCode: 0x0C, modifiers: KeyCombo.control | KeyCombo.command)
     private static let safetyCombo = KeyCombo(keyCode: 0x31, modifiers: KeyCombo.control | KeyCombo.option | KeyCombo.command)
 
     init(model: AppModel) {
@@ -665,6 +667,12 @@ final class InputRouter {
             if st.swallowKeyUp.contains(code) {
                 if isRepeat { return false }
                 st.swallowKeyUp.remove(code)
+            }
+            // ⌃⌘Q(화면 잠금)는 아이폰에 보내지 않고 Mac에 넘긴다: Mac이 잠기고 Mac 조작으로 돌아온다
+            // (설계 문서 › 안전 장치. 전엔 아이폰으로 가서 아이폰이 잠겼음)
+            if !isRepeat, Self.lockScreenCombo.matches(keyCode: code, flags: flags) {
+                beginReturnLocked(.screenLocked)
+                return true
             }
             if !isRepeat, let action = matchHotkeyLocked(code, flags, gestures: !calibrating) {
                 st.swallowKeyUp.insert(code)
