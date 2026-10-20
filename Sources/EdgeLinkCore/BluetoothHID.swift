@@ -168,8 +168,13 @@ public final class BluetoothHID: NSObject {
         state = .connecting(address: dev.addressString ?? address)
         HIDLog.info("연결 시작 → \(dev.nameOrAddress)")
         openAttempt = 0
+        // 기본 연결 단계에도 시간 제한: 아이폰 블루투스가 꺼져 있으면 응답이 없어 영영 기다렸다
+        armOpenTimer(timeout: basebandTimeout)
         try startBaseband(dev)
     }
+
+    /// 기본 연결(baseband)이 이 시간 안에 안 되면 다시 시도한다
+    public var basebandTimeout: TimeInterval = 12
 
     /// 남아 있는 기본 연결 위에서는 채널이 열리지 않는 일이 있어서, 있으면 끊고 새로 맺는다.
     private func startBaseband(_ dev: IOBluetoothDevice) throws {
@@ -187,16 +192,19 @@ public final class BluetoothHID: NSObject {
         guard r == kIOReturnSuccess else { throw fail(stage: "기기 연결", code: r) }
     }
 
-    private func armOpenTimer() {
+    private func armOpenTimer(timeout: TimeInterval? = nil) {
         openTimer?.invalidate()
-        openTimer = Timer.scheduledTimer(withTimeInterval: openTimeout, repeats: false) { [weak self] _ in
+        let t = timeout ?? openTimeout
+        openTimerSeconds = t
+        openTimer = Timer.scheduledTimer(withTimeInterval: t, repeats: false) { [weak self] _ in
             self?.openTimedOut()
         }
     }
+    private var openTimerSeconds: TimeInterval = 0
 
     private func openTimedOut() {
         guard case .connecting = state, let dev = device else { return }
-        HIDLog.warn("채널이 \(Int(openTimeout))초 안에 열리지 않았어요")
+        HIDLog.warn("\(control == nil ? "기기 연결" : "채널")이 \(Int(openTimerSeconds))초 안에 되지 않았어요")
         let c = control, i = interrupt
         control = nil
         interrupt = nil
@@ -205,7 +213,8 @@ public final class BluetoothHID: NSObject {
         i?.close()
         c?.close()
         guard openAttempt < openRetries else {
-            fail(stage: "채널 열기", code: kIOReturnTimeout)
+            // 실패로 끝내면 자동 재연결이 15초 → 1분 → 5분으로 다시 시도한다
+            fail(stage: "연결", code: kIOReturnTimeout)
             return
         }
         openAttempt += 1
@@ -213,6 +222,7 @@ public final class BluetoothHID: NSObject {
         dev.closeConnection()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             guard let self, self.device === dev, case .connecting = self.state else { return }
+            self.armOpenTimer(timeout: self.basebandTimeout)
             let r = dev.openConnection(self)
             if r != kIOReturnSuccess { self.fail(stage: "기기 연결", code: r) }
         }
