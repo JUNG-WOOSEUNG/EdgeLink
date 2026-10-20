@@ -123,12 +123,17 @@ struct SettingsView: View {
         HStack(spacing: 0) {
             SettingsSidebar(tab: $state.tab)
             VStack(spacing: 0) {
-                Text(state.tab.title)
-                    .font(Typo.sectionTitle)
-                    .accessibilityAddTraits(.isHeader)
-                    .padding(.horizontal, 32)
-                    .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52, alignment: .leading)
-                Rectangle().fill(Color.line).frame(height: 1)
+                // 탭 제목 줄은 불투명 바탕으로 늘 위에 둔다
+                VStack(spacing: 0) {
+                    Text(state.tab.title)
+                        .font(Typo.sectionTitle)
+                        .accessibilityAddTraits(.isHeader)
+                        .padding(.horizontal, 32)
+                        .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52, alignment: .leading)
+                    Rectangle().fill(Color.line).frame(height: 1)
+                }
+                .background(Color.bgWindow)
+                .zIndex(1)
                 ScrollView {
                     tabContent
                         .padding(.horizontal, 32)
@@ -136,6 +141,8 @@ struct SettingsView: View {
                         .padding(.bottom, 32)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
+                // 제목 표시줄이 내용 위에 겹치는 창이라, 스크롤한 내용이 제목 줄 뒤까지 비쳐 보였다
+                .clipped()
                 .id(state.tab) // 탭을 바꾸면 맨 위부터
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
