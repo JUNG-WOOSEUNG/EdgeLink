@@ -281,17 +281,6 @@ struct FooterButtonStyle: ButtonStyle {
     }
 }
 
-/// 마우스를 올리면 옅은 바탕이 생기는 버튼 (톱니, 메뉴 항목)
-struct HoverFillStyle: ButtonStyle {
-    var radius: CGFloat = 6
-    @State private var hover = false
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(RoundedRectangle(cornerRadius: radius).fill(configuration.isPressed || hover ? Color.segmentBg : .clear))
-            .onHover { hover = $0 }
-    }
-}
-
 /// 크기를 정할 수 있는 글자 링크 버튼
 struct LinkButtonStyle: ButtonStyle {
     var size: CGFloat = 12

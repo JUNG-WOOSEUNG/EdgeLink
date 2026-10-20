@@ -104,16 +104,7 @@ struct LayoutTab: View {
     @State private var dismissedConflict: String?
 
     /// 놓을 수 있는 자리. 모니터 순서는 그대로 두고, 모니터 안에선 왼쪽·오른쪽·위·아래 순.
-    private var placements: [Placement] {
-        let all = previewPlacements ?? model.placements
-        var screenOrder: [String: Int] = [:]
-        for p in all where screenOrder[p.screen.id] == nil { screenOrder[p.screen.id] = screenOrder.count }
-        let edgeOrder: [ScreenEdge: Int] = [.left: 0, .right: 1, .top: 2, .bottom: 3]
-        return all.enumerated().sorted { a, b in
-            (screenOrder[a.element.screen.id] ?? 0, edgeOrder[a.element.edge] ?? 0, a.offset)
-                < (screenOrder[b.element.screen.id] ?? 0, edgeOrder[b.element.edge] ?? 0, b.offset)
-        }.map(\.element)
-    }
+    private var placements: [Placement] { Layout.pickerOrder(previewPlacements ?? model.placements) }
     /// 저장한 자리. 저장한 모니터가 없으면 nil.
     private var saved: Placement? { Layout.find(settings.phoneLayout, in: placements) }
     /// 배치도에 보여줄 자리 (저장한 자리가 없으면 임시로 쓰는 기본 위치)

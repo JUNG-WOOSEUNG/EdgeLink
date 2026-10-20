@@ -44,7 +44,9 @@ struct GestureSetupView: View {
         .ignoresSafeArea()
         .onAppear {
             if let p = preview { index = p.index; sent = p.sent; testing = p.testing }
-            if let name = BluetoothHID.hostInfo()?.name, !name.isEmpty { hostName = name }
+            // 캡처에는 이 Mac의 실제 이름 대신 예시 이름을 쓴다
+            if Snapshot.directory != nil { hostName = "지민의 MacBook Pro" }
+            else if let name = BluetoothHID.hostInfo()?.name, !name.isEmpty { hostName = name }
         }
     }
 

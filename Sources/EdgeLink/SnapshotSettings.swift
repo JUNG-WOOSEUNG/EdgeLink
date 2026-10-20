@@ -31,9 +31,7 @@ extension Snapshot {
             let content: AnyView? = tab == .connection
                 ? AnyView(ConnectionTab(preview: (sampleDevices, sampleDefault))) : nil
             save(settingsView(tab, content: content), "settings-\(tab.rawValue)")
-            if tab != .general {
-                save(settingsView(tab, content: content), "settings-\(tab.rawValue)-full", tall)
-            }
+            save(settingsView(tab, content: content), "settings-\(tab.rawValue)-full", tall)
         }
 
         // 빈 상태 · 기록 중 · 겹침
