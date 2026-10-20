@@ -225,7 +225,7 @@ struct ClipboardConfirmView: View {
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
             VStack(alignment: .leading, spacing: 2) {
                 Toggle(isOn: $dontAsk) { Text("다시 묻지 않기").font(Typo.body) }
-                    .toggleStyle(.checkbox)
+                    .toggleStyle(BoxCheckboxStyle())
                 // 빠지는 글자가 있으면 이 설정과 상관없이 다시 묻는다 (requestClipboardSend)
                 Text("보내지 않는 글자가 있을 때는 다시 물어요")
                     .font(Typo.caption).foregroundStyle(Color.textSecondary)

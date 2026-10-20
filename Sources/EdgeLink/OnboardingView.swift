@@ -655,7 +655,7 @@ struct AssistiveTouchStep: View {
                 Toggle(isOn: $checked) {
                     Text("아이폰에서 AssistiveTouch를 켰어요").font(Typo.font(14, .semibold))
                 }
-                .toggleStyle(.checkbox)
+                .toggleStyle(BoxCheckboxStyle())
             }
             .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .top)

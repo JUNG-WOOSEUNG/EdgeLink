@@ -273,6 +273,14 @@ final class AppModel: NSObject, ObservableObject {
         hangWatch.start()
         // 설정 창의 ⌘, 키 감시가 첫 실행부터 동작하게 미리 만든다
         _ = settingsWindow
+        // 개발용: 확인 창을 실제 창으로 바로 띄운다 (창 크기 맞추기 문제 재현)
+        if let d = ProcessInfo.processInfo.environment["EDGELINK_SHOW_DIALOG"] {
+            let dialog: AppDialog? = ["clipboard": .clipboardConfirm(sendable: 12, skipped: 3), "reset": .resetPairing,
+                                      "log": .connectionLog, "update": .update(version: "9.9.9"), "calibration": .calibration,
+                                      "request": .connectionRequest(name: "지민의 iPhone", address: "00-11-22-33-44-55"),
+                                      "conflict": .shortcutConflict(action: .toggleRemote, hotkey: Hotkey.defaults[.toggleRemote]!, conflictsWith: "입력 소스 전환")][d]
+            if let dialog { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.present(dialog) } }
+        }
         // 개발용: 온보딩을 마쳤어도 창을 바로 연다
         if let v = ProcessInfo.processInfo.environment["EDGELINK_SHOW_ONBOARDING"] {
             openOnboarding(at: Int(v).flatMap(OnboardingStep.init(rawValue:)) ?? .layout)

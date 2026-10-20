@@ -268,3 +268,31 @@ struct KeyCap: View {
             .background(RoundedRectangle(cornerRadius: 6).fill(Color.segmentBg))
     }
 }
+
+/// 체크박스. 시스템 `.checkbox`는 AppKit 버튼이라, 내용 크기에 맞춰 늘어나는 확인 창에서
+/// 크기 계산이 끝없이 반복돼 앱이 꺼졌다 (클립보드 확인 창). 그래서 SwiftUI로 그린다.
+struct BoxCheckboxStyle: ToggleStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        Button { configuration.isOn.toggle() } label: {
+            HStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 3.5)
+                    .fill(configuration.isOn ? Color.brand : Color.bgWindow)
+                    .overlay(RoundedRectangle(cornerRadius: 3.5)
+                        .strokeBorder(configuration.isOn ? Color.brand : Color.control, lineWidth: 1))
+                    .overlay(Image(systemName: "checkmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .opacity(configuration.isOn ? 1 : 0))
+                    .frame(width: 14, height: 14)
+                configuration.label
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.4)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(configuration.isOn ? [.isSelected] : [])
+    }
+}
