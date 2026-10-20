@@ -80,11 +80,6 @@ public final class BluetoothHID: NSObject {
     private var userDisconnecting = false
     private var reconnectTimer: Timer?
     private var openTimer: Timer?
-    private var openAttempt = 0
-
-    /// 채널이 이 시간 안에 열리지 않으면 기본 연결부터 다시 맺는다 (`openRetries`번까지).
-    public var openTimeout: TimeInterval = 30
-    public var openRetries = 1
 
     // 아래는 writeQueue에서만 만진다
     private let writeQueue = DispatchQueue(label: "com.edgelink.hid.write", qos: .userInteractive)
@@ -158,6 +153,11 @@ public final class BluetoothHID: NSObject {
 
     // MARK: 연결 (Mac → 아이폰)
 
+    /// Mac → 아이폰 연결. 메인 스레드에서 부른다.
+    ///
+    /// 실제 연결은 전용 블루투스 스레드에서 동기 API로 차례로 연다 (기본 연결 → 제어 채널 → 인터럽트 채널).
+    /// 전엔 메인 스레드에서 비동기로 열었는데, 실패한 채널이 남아 있다가 다음 기본 연결 때 깨어나
+    /// IOBluetooth가 메인 스레드에서 동기로 기다리는 바람에 앱 전체가 멈췄다 (실기기에서 확인).
     public func connect(address: String) throws {
         guard BluetoothHID.hostInfo()?.poweredOn == true else { throw HIDError.bluetoothOff }
         guard let dev = IOBluetoothDevice(addressString: address) else { throw HIDError.invalidAddress(address) }
@@ -167,97 +167,88 @@ public final class BluetoothHID: NSObject {
         device = dev
         state = .connecting(address: dev.addressString ?? address)
         HIDLog.info("연결 시작 → \(dev.nameOrAddress)")
-        openAttempt = 0
-        // 기본 연결 단계에도 시간 제한: 아이폰 블루투스가 꺼져 있으면 응답이 없어 영영 기다렸다
-        armOpenTimer(timeout: basebandTimeout)
-        try startBaseband(dev)
+        connectGeneration += 1
+        let gen = connectGeneration
+        // 전체 시간 제한 (블루투스 스레드가 오래 막혀도 메인은 기다리지 않고, 시간이 지나면 이번 시도를 버린다)
+        armOpenTimer(timeout: connectTimeout)
+        btThread.async { [weak self] in self?.connectSync(dev, gen: gen) }
     }
 
-    /// 기본 연결(baseband)이 이 시간 안에 안 되면 다시 시도한다
-    public var basebandTimeout: TimeInterval = 12
+    /// 연결 전체 시간 제한. 넘으면 이번 시도를 버리고 자동 재연결 일정으로 넘긴다.
+    public var connectTimeout: TimeInterval = 40
+    /// 기본 연결 페이지 시간 (0.625ms 단위, 16000 ≈ 10초)
+    static let pageTimeout: BluetoothHCIPageTimeout = 16000
 
-    /// 남아 있는 기본 연결 위에서는 채널이 열리지 않는 일이 있어서, 있으면 끊고 새로 맺는다.
-    private func startBaseband(_ dev: IOBluetoothDevice) throws {
+    private let btThread = BluetoothThread()
+    /// 연결 시도 번호 (메인에서만). 끊기·시간 초과·새 시도가 오면 올려서 이전 시도의 결과를 버린다.
+    private var connectGeneration = 0
+
+    private func armOpenTimer(timeout: TimeInterval) {
+        openTimer?.invalidate()
+        openTimer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
+            self?.openTimedOut(after: timeout)
+        }
+    }
+
+    private func openTimedOut(after seconds: TimeInterval) {
+        guard case .connecting = state, device != nil else { return }
+        HIDLog.warn("연결이 \(Int(seconds))초 안에 되지 않았어요")
+        connectGeneration += 1  // 블루투스 스레드의 이번 시도 결과는 버린다
+        // 실패로 끝내면 자동 재연결이 15초 → 1분 → 5분으로 다시 시도한다
+        fail(stage: "연결", code: kIOReturnTimeout)
+    }
+
+    // 블루투스 스레드에서만. 단계마다 결과를 기다리고, 실패하면 연 것을 닫는다.
+    private func connectSync(_ dev: IOBluetoothDevice, gen: Int) {
+        func wanted() -> Bool {
+            var ok = false
+            DispatchQueue.main.sync { ok = self.connectGeneration == gen && self.device === dev }
+            return ok
+        }
+        func failed(_ stage: String, _ code: IOReturn, close: [IOBluetoothL2CAPChannel?] = []) {
+            close.forEach { $0?.close() }
+            dev.closeConnection()
+            DispatchQueue.main.async {
+                guard self.connectGeneration == gen, self.device === dev else { return }
+                self.fail(stage: stage, code: code)
+            }
+        }
+        guard wanted() else { return }
+        // 남아 있는 기본 연결 위에서는 채널이 열리지 않는 일이 있어서, 있으면 끊고 새로 맺는다
         if dev.isConnected() {
             HIDLog.info("남아 있던 기본 연결을 끊고 새로 연결해요")
             dev.closeConnection()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                guard let self, self.device === dev, case .connecting = self.state else { return }
-                let r = dev.openConnection(self)
-                if r != kIOReturnSuccess { self.fail(stage: "기기 연결", code: r) }
-            }
-            return
+            Thread.sleep(forTimeInterval: 1.0)
         }
-        let r = dev.openConnection(self)
-        guard r == kIOReturnSuccess else { throw fail(stage: "기기 연결", code: r) }
-    }
-
-    private func armOpenTimer(timeout: TimeInterval? = nil) {
-        openTimer?.invalidate()
-        let t = timeout ?? openTimeout
-        openTimerSeconds = t
-        openTimer = Timer.scheduledTimer(withTimeInterval: t, repeats: false) { [weak self] _ in
-            self?.openTimedOut()
-        }
-    }
-    private var openTimerSeconds: TimeInterval = 0
-
-    private func openTimedOut() {
-        guard case .connecting = state, let dev = device else { return }
-        HIDLog.warn("\(control == nil ? "기기 연결" : "채널")이 \(Int(openTimerSeconds))초 안에 되지 않았어요")
-        let c = control, i = interrupt
-        control = nil
-        interrupt = nil
-        controlOpen = false
-        interruptOpen = false
-        i?.close()
-        c?.close()
-        guard openAttempt < openRetries else {
-            // 실패로 끝내면 자동 재연결이 15초 → 1분 → 5분으로 다시 시도한다
-            fail(stage: "연결", code: kIOReturnTimeout)
-            return
-        }
-        openAttempt += 1
-        HIDLog.info("처음부터 다시 연결해요 (\(openAttempt)/\(openRetries))")
-        dev.closeConnection()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            guard let self, self.device === dev, case .connecting = self.state else { return }
-            self.armOpenTimer(timeout: self.basebandTimeout)
-            let r = dev.openConnection(self)
-            if r != kIOReturnSuccess { self.fail(stage: "기기 연결", code: r) }
-        }
-    }
-
-    @objc public func connectionComplete(_ device: IOBluetoothDevice!, status: IOReturn) {
-        guard case .connecting = state, device === self.device else { return }
-        guard status == kIOReturnSuccess else {
-            _ = fail(stage: "기기 연결", code: status)
-            return
-        }
+        var r = dev.openConnection(nil, withPageTimeout: BluetoothHID.pageTimeout, authenticationRequired: false)
+        guard r == kIOReturnSuccess else { return failed("기기 연결", r) }
         HIDLog.info("기기 연결됨 (baseband)")
-        do { try openControlChannel() } catch { HIDLog.error("\(error)") }
-    }
+        guard wanted() else { dev.closeConnection(); return }
 
-    private func openControlChannel() throws {
-        guard let dev = device else { return }
-        var ch: IOBluetoothL2CAPChannel?
-        let r = dev.openL2CAPChannelAsync(&ch, withPSM: BluetoothHID.controlPSM, delegate: self)
-        guard r == kIOReturnSuccess else { throw fail(stage: "제어 채널(0x11)", code: r) }
-        control = ch
-        armOpenTimer()
         HIDLog.info("제어 채널(0x11) 여는 중")
-    }
+        var ctrl: IOBluetoothL2CAPChannel?
+        r = dev.openL2CAPChannelSync(&ctrl, withPSM: BluetoothHID.controlPSM, delegate: self)
+        guard r == kIOReturnSuccess, let c = ctrl else { return failed("제어 채널(0x11)", r, close: [ctrl]) }
+        HIDLog.info("제어 채널(0x11) 열림")
+        guard wanted() else { c.close(); dev.closeConnection(); return }
 
-    private func openInterruptChannel() {
-        guard let dev = device else { return }
-        var ch: IOBluetoothL2CAPChannel?
-        let r = dev.openL2CAPChannelAsync(&ch, withPSM: BluetoothHID.interruptPSM, delegate: self)
-        guard r == kIOReturnSuccess else {
-            _ = fail(stage: "인터럽트 채널(0x13)", code: r)
-            return
-        }
-        interrupt = ch
         HIDLog.info("인터럽트 채널(0x13) 여는 중")
+        var intr: IOBluetoothL2CAPChannel?
+        r = dev.openL2CAPChannelSync(&intr, withPSM: BluetoothHID.interruptPSM, delegate: self)
+        guard r == kIOReturnSuccess, let i = intr else { return failed("인터럽트 채널(0x13)", r, close: [intr, c]) }
+        HIDLog.info("인터럽트 채널(0x13) 열림")
+
+        DispatchQueue.main.async {
+            guard self.connectGeneration == gen, self.device === dev, case .connecting = self.state else {
+                i.close(); c.close(); dev.closeConnection()
+                return
+            }
+            self.control = c
+            self.interrupt = i
+            self.controlOpen = true
+            self.interruptOpen = true
+            self.finishOpen()
+        }
     }
 
     @discardableResult
@@ -347,6 +338,7 @@ public final class BluetoothHID: NSObject {
 
     private func teardown(reason: Reason, reconnect: Bool = true) {
         guard device != nil || control != nil || interrupt != nil else { return }
+        connectGeneration += 1  // 진행 중인 연결 시도의 결과는 버린다
         openTimer?.invalidate()
         openTimer = nil
         // 큐에 남은 쓰기가 닫히는 채널로 가지 않게 먼저 막는다
@@ -558,18 +550,23 @@ public final class BluetoothHID: NSObject {
 
     // MARK: 채널 상태
 
+    /// 아이폰이 연결해 온 채널이 열렸을 때 (메인)
     private func channelDidOpen(_ channel: IOBluetoothL2CAPChannel) {
         guard case .connecting = state else { return }
         if channel === control, !controlOpen {
             controlOpen = true
             HIDLog.info("제어 채널(0x11) 열림")
-            // Mac이 연결하는 쪽이면 제어 채널 다음에 인터럽트 채널을 연다
-            if interrupt == nil, !channel.isIncoming() { openInterruptChannel() }
         } else if channel === interrupt, !interruptOpen {
             interruptOpen = true
             HIDLog.info("인터럽트 채널(0x13) 열림")
         }
-        guard controlOpen, interruptOpen, let i = interrupt else { return }
+        guard controlOpen, interruptOpen else { return }
+        finishOpen()
+    }
+
+    /// 두 채널이 다 열렸을 때 공통 마무리 (메인)
+    private func finishOpen() {
+        guard let i = interrupt else { return }
         writeQueue.async {
             self.writeChannel = i
             self.pending = PendingMotion()
@@ -620,46 +617,115 @@ public final class BluetoothHID: NSObject {
 // MARK: - IOBluetoothL2CAPChannelDelegate
 
 extension BluetoothHID: IOBluetoothL2CAPChannelDelegate {
+    // 콜백은 메인이나 블루투스 스레드 어디서든 올 수 있다. 상태를 바꾸는 일은 메인으로 넘긴다.
+
     public func l2capChannelOpenComplete(_ l2capChannel: IOBluetoothL2CAPChannel!, status error: IOReturn) {
-        guard let ch = l2capChannel, ch === control || ch === interrupt else { return }
-        guard error == kIOReturnSuccess else {
-            let stage = ch.psm == BluetoothHID.controlPSM ? "제어 채널(0x11)" : "인터럽트 채널(0x13)"
-            _ = fail(stage: stage, code: error)
-            return
+        // 나가는 연결은 블루투스 스레드의 동기 열기가 결과를 처리한다. 여기선 들어온 채널만 본다.
+        guard let ch = l2capChannel else { return }
+        onMain {
+            guard ch === self.control || ch === self.interrupt else { return }
+            guard error == kIOReturnSuccess else {
+                let stage = ch.psm == BluetoothHID.controlPSM ? "제어 채널(0x11)" : "인터럽트 채널(0x13)"
+                self.fail(stage: stage, code: error)
+                return
+            }
+            self.channelDidOpen(ch)
         }
-        channelDidOpen(ch)
     }
 
     public func l2capChannelData(_ l2capChannel: IOBluetoothL2CAPChannel!, data dataPointer: UnsafeMutableRawPointer!, length dataLength: Int) {
         guard let ch = l2capChannel, let ptr = dataPointer, dataLength > 0 else { return }
+        // 포인터는 콜백 안에서만 유효하니 먼저 복사한다
         let bytes = Array(UnsafeRawBufferPointer(start: ptr, count: dataLength))
-        if ch === control {
+        if ch.psm == BluetoothHID.controlPSM {
+            // 제어 채널이 열리자마자 아이폰이 묻는 것(프로토콜, LED 등)엔 그 채널로 바로 답한다.
+            // 연결을 마치기 전(블루투스 스레드가 인터럽트 채널을 여는 중)에도 와서, control 확인 없이 PSM으로 판단한다.
             HIDLog.debug("제어 메시지 받음: \(hex(bytes))")
-            let result = HIDP.handleControl(bytes) { [weak self] body in self?.handleOutputReport(body) }
+            var leds: [UInt8]?
+            let result = HIDP.handleControl(bytes) { body in leds = body }
             switch result {
             case .reply(var reply):
                 _ = reply.withUnsafeMutableBytes { ch.writeSync($0.baseAddress, length: UInt16($0.count)) }
             case .virtualCableUnplug:
                 HIDLog.info("아이폰이 연결을 해제했어요 (Virtual Cable Unplug)")
-                teardown(reason: .virtualCableUnplug)
+                onMain { if ch === self.control { self.teardown(reason: .virtualCableUnplug) } }
             case .ignore:
                 break
             }
-        } else if ch === interrupt, bytes.first == HIDP.dataOutput {
-            handleOutputReport(Array(bytes.dropFirst()))
+            if let body = leds { onMain { self.handleOutputReport(body) } }
+        } else if ch.psm == BluetoothHID.interruptPSM, bytes.first == HIDP.dataOutput {
+            let body = Array(bytes.dropFirst())
+            onMain { self.handleOutputReport(body) }
         }
     }
 
     public func l2capChannelClosed(_ l2capChannel: IOBluetoothL2CAPChannel!) {
-        guard let ch = l2capChannel, ch === control || ch === interrupt else { return }
-        HIDLog.info("채널 PSM 0x\(String(ch.psm, radix: 16)) 닫힘")
-        guard !userDisconnecting, device != nil else { return }
-        teardown(reason: .channelClosed)
+        guard let ch = l2capChannel else { return }
+        onMain {
+            guard ch === self.control || ch === self.interrupt else { return }
+            HIDLog.info("채널 PSM 0x\(String(ch.psm, radix: 16)) 닫힘")
+            guard !self.userDisconnecting, self.device != nil else { return }
+            self.teardown(reason: .channelClosed)
+        }
     }
 
     private func handleOutputReport(_ body: [UInt8]) {
         guard let leds = KeyboardLEDs(outputReport: body) else { return }
         delegate?.hid(self, didReceive: leds)
+    }
+
+    private func onMain(_ block: @escaping () -> Void) {
+        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
+    }
+}
+
+// MARK: - 블루투스 스레드
+
+/// 연결용 전용 스레드. 런루프를 계속 돌리고, 맡긴 일을 한 번에 하나씩 순서대로 한다.
+/// IOBluetooth의 동기 API가 기다리는 동안 런루프를 다시 돌려도, 다음 일은 앞의 일이 끝난 뒤에 시작한다.
+final class BluetoothThread {
+    private var thread: Thread!
+    private var runLoop: CFRunLoop?
+    private let lock = NSLock()
+    private var queue: [() -> Void] = []
+    private var busy = false   // 블루투스 스레드에서만
+
+    init() {
+        let ready = DispatchSemaphore(value: 0)
+        thread = Thread { [weak self] in
+            guard let self else { return }
+            self.runLoop = CFRunLoopGetCurrent()
+            // 할 일이 없어도 런루프가 끝나지 않게 포트를 하나 붙인다
+            RunLoop.current.add(NSMachPort(), forMode: .default)
+            ready.signal()
+            while true { _ = RunLoop.current.run(mode: .default, before: .distantFuture) }
+        }
+        thread.name = "EdgeLink 블루투스"
+        thread.qualityOfService = .userInitiated
+        thread.start()
+        ready.wait()
+    }
+
+    func async(_ block: @escaping () -> Void) {
+        lock.lock()
+        queue.append(block)
+        lock.unlock()
+        guard let rl = runLoop else { return }
+        CFRunLoopPerformBlock(rl, CFRunLoopMode.defaultMode.rawValue) { [weak self] in self?.drain() }
+        CFRunLoopWakeUp(rl)
+    }
+
+    private func drain() {
+        guard !busy else { return }  // 앞의 일이 동기 API 안에서 런루프를 돌리는 중
+        busy = true
+        defer { busy = false }
+        while true {
+            lock.lock()
+            guard !queue.isEmpty else { lock.unlock(); return }
+            let block = queue.removeFirst()
+            lock.unlock()
+            block()
+        }
     }
 }
 
