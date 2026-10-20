@@ -254,8 +254,27 @@ public final class BluetoothHID: NSObject {
     @discardableResult
     private func fail(stage: String, code: IOReturn) -> HIDError {
         HIDLog.error("\(stage) 실패: \(BluetoothHID.describe(code))")
+        // 채널을 열다 실패하면 블루투스 등록을 앱을 새로 켠 것처럼 되돌린 뒤 다시 시도한다.
+        // (실기기: 아이폰 블루투스를 껐다 켠 뒤 재연결하면 채널이 계속 거절됐고, 앱을 다시 켜면 바로 붙었다.
+        //  IOBluetooth가 예전 채널을 찾아 다시 쓰는 흔적이 스택에 있었다)
+        if stage.contains("채널") { refreshBluetoothRegistration() }
         if !userDisconnecting { teardown(reason: .openFailed(stage: stage, code: code)) }
         return .openFailed(stage: stage, code: code)
+    }
+
+    /// SDP 레코드와 연결 받기 등록을 새로 한다 (메인)
+    private func refreshBluetoothRegistration() {
+        let hadRecord = serviceRecord != nil
+        let wasListening = !openNotifications.isEmpty
+        if hadRecord {
+            removeServiceRecord()
+            do { try publishServiceRecord() } catch { HIDLog.error("SDP 다시 등록 실패: \(error)") }
+        }
+        if wasListening {
+            stopListening()
+            listen()
+        }
+        HIDLog.info("블루투스 등록을 새로 했어요")
     }
 
     // MARK: 연결 받기 (아이폰 → Mac)
