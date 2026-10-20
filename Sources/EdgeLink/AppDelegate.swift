@@ -66,7 +66,15 @@ final class AppModel: NSObject, ObservableObject {
     let devices = DeviceDirectory()
     let hid = BluetoothHID()
 
-    @Published private(set) var connection: ConnectionPhase = .idle
+    @Published private(set) var connection: ConnectionPhase = .idle {
+        didSet { trackConnection(from: oldValue) }
+    }
+    /// 연결·페어링을 시작한 시각 (팝오버에서 몇 초가 지나면 "취소"를 보인다)
+    @Published private(set) var connectingSince: Date?
+    /// 연결되기 전까지 이어진 실패 횟수 (같은 실패가 이어질 때만 회사 정책 안내)
+    @Published private(set) var failureStreak = 0
+    /// 사용자가 기기 메뉴에서 직접 끊음 (자동으로 다시 연결하지 않는다)
+    @Published private(set) var disconnectedByUser = false
     @Published private(set) var connectingAddress: String?
     /// 마지막으로 끊긴 시각 (팝오버 "3분 전에 끊겼어요")
     @Published private(set) var disconnectedAt: Date?
@@ -143,6 +151,22 @@ final class AppModel: NSObject, ObservableObject {
 
     var isConnected: Bool { if case .connected = connection { return true } else { return false } }
 
+    private func trackConnection(from old: ConnectionPhase) {
+        switch connection {
+        case .connecting, .pairing:
+            if connectingSince == nil { connectingSince = Date() }
+        case .connected:
+            connectingSince = nil
+            failureStreak = 0
+            disconnectedByUser = false
+        case .failed:
+            connectingSince = nil
+            if old != connection { failureStreak += 1 }
+        case .idle:
+            connectingSince = nil
+        }
+    }
+
     /// 개발용 화면 캡처에서만: 연결 상태를 흉내 낸다
     func debugSetConnection(_ phase: ConnectionPhase) {
         guard Snapshot.directory != nil else { return }
@@ -173,7 +197,7 @@ final class AppModel: NSObject, ObservableObject {
     /// 클립보드 보내기 (팝오버 버튼, ⌃⌥⌘V). 첫 사용이거나 영문 외 글자가 섞이면 확인 창부터.
     func requestClipboardSend() {
         guard settings.clipboardTypingAllowed else { return showToast("회사 정책으로 클립보드 보내기가 꺼져 있어요") }
-        guard isConnected else { return showToast("아이폰을 연결하면 쓸 수 있어요") }
+        guard isConnected else { return showToast("아이폰이 연결되지 않았어요") }
         let text = NSPasteboard.general.string(forType: .string) ?? ""
         guard !text.isEmpty else { return showToast("클립보드가 비어 있어요") }
         let sendable = text.filter { HIDUsage.fromASCII($0) != nil }.count
@@ -327,6 +351,7 @@ final class AppModel: NSObject, ObservableObject {
     func connect(address: String) {
         startBluetoothIfAllowed()
         guard bluetoothStarted else { return }
+        disconnectedByUser = false
         connectingAddress = address
         let paired = IOBluetoothDevice(addressString: address)?.isPaired() ?? false
         if paired {
@@ -354,6 +379,7 @@ final class AppModel: NSObject, ObservableObject {
                     self.connection = .failed(message: "\(error)")
                 }
             } else {
+                HIDLog.error("페어링 실패: \(BluetoothHID.describe(result))")
                 self.connection = .failed(message: "페어링하지 못했어요 (\(BluetoothHID.describe(result)))")
             }
         }
@@ -361,6 +387,7 @@ final class AppModel: NSObject, ObservableObject {
         connection = .pairing(code: nil)
         let r = p.start(address: address)
         if r != kIOReturnSuccess {
+            HIDLog.error("페어링 시작 실패: \(BluetoothHID.describe(r))")
             pairer = nil
             connection = .failed(message: "페어링을 시작하지 못했어요 (\(BluetoothHID.describe(r)))")
         }
@@ -371,6 +398,13 @@ final class AppModel: NSObject, ObservableObject {
         pairer = nil
         hid.disconnect()
         connection = .idle
+    }
+
+    /// 팝오버 기기 메뉴의 "연결 끊기", 연결 중 "취소". 다시 연결할 때까지 자동으로 붙지 않는다.
+    func disconnectByUser(toast: String = "연결을 끊었어요. 다시 연결하려면 메뉴 막대 아이콘을 누르세요") {
+        disconnect()
+        disconnectedByUser = true
+        showToast(toast)
     }
 
     // MARK: 연결 확인 (온보딩 5단계)

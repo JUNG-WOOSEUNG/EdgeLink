@@ -40,7 +40,7 @@ enum Layout {
         return CFUUIDCreateString(nil, cf) as String
     }
 
-    /// 모든 모니터의 모든 모서리 중 놓을 수 있는 자리. 메인 모니터 오른쪽이 먼저.
+    /// 모든 모니터의 모든 가장자리 중 놓을 수 있는 자리. 메인 모니터 오른쪽이 먼저.
     static func placements(_ screens: [ScreenInfo] = screens()) -> [Placement] {
         let rects = screens.map(\.frame)
         let order: [ScreenEdge] = [.right, .left, .bottom, .top]
@@ -60,7 +60,18 @@ enum Layout {
         placements.first { $0.screen.isMain && $0.edge == .right } ?? placements.first
     }
 
-    /// 저장한 자리를 찾는다. 모니터가 없으면 nil (임시로 다른 빈 모서리를 쓴다).
+    /// 고르는 칩 순서: 모니터 순서는 그대로 두고, 모니터 안에선 왼쪽·오른쪽·위·아래 (설정 › 배치와 같게)
+    static func pickerOrder(_ placements: [Placement]) -> [Placement] {
+        var screenOrder: [String: Int] = [:]
+        for p in placements where screenOrder[p.screen.id] == nil { screenOrder[p.screen.id] = screenOrder.count }
+        let edgeOrder: [ScreenEdge: Int] = [.left: 0, .right: 1, .top: 2, .bottom: 3]
+        return placements.enumerated().sorted { a, b in
+            (screenOrder[a.element.screen.id] ?? 0, edgeOrder[a.element.edge] ?? 0, a.offset)
+                < (screenOrder[b.element.screen.id] ?? 0, edgeOrder[b.element.edge] ?? 0, b.offset)
+        }.map(\.element)
+    }
+
+    /// 저장한 자리를 찾는다. 모니터가 없으면 nil (임시로 다른 빈 가장자리를 쓴다).
     static func find(_ layout: PhoneLayout?, in placements: [Placement]) -> Placement? {
         guard let layout else { return nil }
         return placements.first { $0.screen.id == layout.screenID && $0.edge == layout.edge }
@@ -86,6 +97,18 @@ enum Layout {
         switch (dockSide, p.edge) {
         case (.bottom, .bottom), (.left, .left), (.right, .right): return "Dock과 같은 쪽이에요."
         default: return nil
+        }
+    }
+}
+
+extension ScreenEdge {
+    /// 아이폰에서 Mac으로 돌아올 때 미는 아이폰 화면 쪽 ("아이폰 화면 왼쪽 끝으로 밀어요")
+    var returnLabel: String {
+        switch self {
+        case .right: return "왼쪽"
+        case .left: return "오른쪽"
+        case .top: return "아래쪽"
+        case .bottom: return "위쪽"
         }
     }
 }

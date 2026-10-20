@@ -17,6 +17,9 @@ final class Permissions: NSObject, ObservableObject {
             }
         }
 
+        /// 시스템 설정 › 개인정보 보호 및 보안 목록에 보이는 이름 (macOS 한국어 표기)
+        var settingsName: String { self == .bluetooth ? "Bluetooth" : title }
+
         /// 화면 문구 (설계 문서 › macOS 권한 설계)
         var why: String {
             switch self {
@@ -26,11 +29,12 @@ final class Permissions: NSObject, ObservableObject {
             }
         }
 
-        var glyph: String {
+        /// 권한 줄 앞의 SF Symbol (블루투스 로고는 SF Symbols에 없어 전파 모양으로)
+        var symbol: String {
             switch self {
-            case .bluetooth: return "B"
-            case .accessibility: return "A"
-            case .inputMonitoring: return "K"
+            case .bluetooth: return "antenna.radiowaves.left.and.right"
+            case .accessibility: return "accessibility"
+            case .inputMonitoring: return "keyboard"
             }
         }
 
