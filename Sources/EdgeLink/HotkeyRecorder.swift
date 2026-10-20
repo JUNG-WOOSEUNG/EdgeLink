@@ -135,6 +135,19 @@ struct HotkeyRecorderRow: View {
             HStack(spacing: 12) {
                 Text(title).font(Typo.font(14, .regular))
                     .frame(maxWidth: .infinity, alignment: .leading)
+                // 기본값과 다를 때만 보이는 되돌리기 (오른쪽 클릭 메뉴는 찾기 어렵다)
+                if isIdle, hotkey != Hotkey.defaults[action] {
+                    Button(action: resetToDefault) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.textSecondary)
+                            .frame(width: 26, height: 26)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("기본값으로 되돌리기")
+                    .accessibilityLabel("\(title) 단축키 기본값으로 되돌리기")
+                }
                 Button(action: toggleRecording) {
                     Text(buttonText)
                         .font(Typo.font(13, .semibold))
@@ -154,11 +167,8 @@ struct HotkeyRecorderRow: View {
                     if action.gesture != nil {
                         Button(hotkeyOff ? "단축키 켜기" : "단축키 끄기") { setHotkeyEnabled(hotkeyOff) }
                     }
-                    Button("기본값으로") {
-                        settings.hotkeys[action] = Hotkey.defaults[action]
-                        phase = .idle
-                    }
-                    .disabled(hotkey == Hotkey.defaults[action])
+                    Button("기본값으로", action: resetToDefault)
+                        .disabled(hotkey == Hotkey.defaults[action])
                 }
             }
             switch phase {
@@ -186,6 +196,11 @@ struct HotkeyRecorderRow: View {
             }
         }
         .onDisappear { if isRecording { stop(keep: .idle) } }
+    }
+
+    private func resetToDefault() {
+        settings.hotkeys[action] = Hotkey.defaults[action]
+        phase = .idle
     }
 
     private var isRecording: Bool { if case .recording = phase { return true } else { return false } }

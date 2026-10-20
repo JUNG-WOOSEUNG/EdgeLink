@@ -2,7 +2,7 @@ import AppKit
 import EdgeLinkCore
 import SwiftUI
 
-/// 보정 도우미 진행 (캔버스 4-2, 실패는 4-3)
+/// 돌아오는 위치 맞추기 진행 (캔버스 4-2, 실패는 4-3)
 final class CalibrationSession: ObservableObject {
     enum Phase: Equatable {
         case intro(note: String?)
@@ -42,8 +42,10 @@ final class CalibrationSession: ObservableObject {
     func cancel() {
         guard running else { return }
         model.router.cancelCalibration()
-        phase = .intro(note: "보정을 취소했어요. 보정값은 그대로예요.")
+        phase = .intro(note: Self.cancelledNote)
     }
+
+    static let cancelledNote = "취소했어요. 이전 설정을 그대로 두었어요."
 
     func resetToDefault() {
         model.settings.unitsPerPointValue = 2.0
@@ -70,27 +72,26 @@ final class CalibrationSession: ObservableObject {
                 phase = .done(old: old, new: min(max(value, 0.6), 4.0))
             }
         case let .failed(reason):
-            phase = .failed(title: "보정하지 못했어요", reason: reason)
+            phase = .failed(title: "위치를 맞추지 못했어요", reason: reason)
         case .cancelled:
-            phase = .intro(note: "보정을 취소했어요. 보정값은 그대로예요.")
+            phase = .intro(note: Self.cancelledNote)
         }
     }
 }
 
-/// 포인터 보정 도우미 (시트 420)
+/// 돌아오는 위치 맞추기 (시트 420). 보정값·움직인 양 같은 숫자는 이용자에게 보이지 않는다.
 struct CalibrationView: View {
     @EnvironmentObject var model: AppModel
-    @EnvironmentObject var settings: AppSettings
     @ObservedObject var session: CalibrationSession
     let handle: DialogHandle
 
     var body: some View {
         DialogFrame(spacing: 16) {
-            Text("포인터 보정 도우미").font(Typo.font(17, .bold))
+            Text("돌아오는 위치 맞추기").font(Typo.font(17, .bold))
             switch session.phase {
             case let .intro(note): intro(note)
             case .preparing, .measuring: measuring
-            case let .done(old, new): done(old: old, new: new)
+            case .done: done
             case let .failed(title, reason): failed(title, reason)
             }
         }
@@ -102,24 +103,23 @@ struct CalibrationView: View {
         }
     }
 
-    private func format(_ v: Double) -> String { String(format: "%.2f", v) }
-
     // 안내
 
     private func intro(_ note: String?) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("시작하면 아이폰 포인터가 화면 왼쪽 위 끝으로 가요. 트랙패드로 천천히 오른쪽 아래 끝까지 옮긴 뒤 클릭하세요.")
-                .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Mac으로 돌아올 때 커서가 엉뚱한 곳에 나타나면 한 번 맞춰 주세요.")
+                    .font(Typo.body).foregroundStyle(Color.textPrimary).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("시작하면 아이폰 포인터가 화면 왼쪽 위 끝으로 가요. 트랙패드나 마우스로 천천히 오른쪽 아래 끝까지 옮긴 뒤 클릭하세요.")
+                    .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             CalibrationPhoneArt(progress: nil)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-            VStack(alignment: .leading, spacing: 6) {
-                if let note {
-                    Text(note).font(Typo.secondary).foregroundStyle(Color.textPrimary)
-                }
-                Text("지금 보정값 \(format(settings.unitsPerPoint)) · 기본 2.00")
-                    .font(Typo.secondary).foregroundStyle(Color.textSecondary)
+            if let note {
+                Text(note).font(Typo.secondary).foregroundStyle(Color.textPrimary)
             }
             VStack(alignment: .trailing, spacing: 8) {
                 HStack(spacing: 8) {
@@ -139,30 +139,22 @@ struct CalibrationView: View {
         }
     }
 
-    // 진행
+    // 진행. 할 일은 상태 줄에 한 번만 쓴다.
 
     private var measuring: some View {
-        let moved: (Int, Int)? = { if case let .measuring(dx, dy) = session.phase { return (dx, dy) } else { return nil } }()
+        let ready: Bool = { if case .measuring = session.phase { return true } else { return false } }()
         return VStack(alignment: .leading, spacing: 16) {
-            Text("시작하면 아이폰 포인터가 화면 왼쪽 위 끝으로 가요. 트랙패드로 천천히 오른쪽 아래 끝까지 옮긴 뒤 클릭하세요.")
-                .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-            CalibrationPhoneArt(progress: moved.map { _ in 1 })
+            CalibrationPhoneArt(progress: ready ? 1 : nil)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
             HStack(spacing: 10) {
                 Spinner(size: 14)
-                Text(moved == nil ? "아이폰 포인터를 왼쪽 위로 보내는 중…" : "오른쪽 아래 끝까지 옮기고 클릭하세요")
+                Text(ready ? "트랙패드나 마우스로 오른쪽 아래 끝까지 옮기고 클릭하세요" : "아이폰 포인터를 왼쪽 위로 보내는 중…")
                     .font(Typo.font(13, .semibold))
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
-            VStack(alignment: .leading, spacing: 6) {
-                (Text("움직인 양   가로 ") + Text(verbatim: "\(moved?.0 ?? 0)").monospacedDigit()
-                    + Text(" · 세로 ") + Text(verbatim: "\(moved?.1 ?? 0)").monospacedDigit())
-                    .font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                    .accessibilityLabel("움직인 양 가로 \(moved?.0 ?? 0), 세로 \(moved?.1 ?? 0)")
-                Text("Esc를 누르면 취소돼요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
-            }
+            Text("Esc를 누르면 취소돼요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
             HStack {
                 Spacer()
                 Button("취소") { session.cancel() }
@@ -173,7 +165,7 @@ struct CalibrationView: View {
 
     // 결과
 
-    private func done(old: Double, new: Double) -> some View {
+    private var done: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.circle")
@@ -181,16 +173,16 @@ struct CalibrationView: View {
                     .foregroundStyle(Color.successText)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("보정 완료 (\(format(new)))").font(Typo.font(13, .semibold))
-                    Text("이제 돌아오는 위치가 포인터와 맞아요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                    Text("완료했어요").font(Typo.font(13, .semibold))
+                    Text("이제 Mac으로 돌아올 때 커서가 아이폰에서 있던 자리에 나타나요.")
+                        .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .combine)
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
-            Text("이전 보정값 \(format(old)) → 새 보정값 \(format(new))")
-                .font(Typo.secondary).foregroundStyle(Color.textSecondary)
             HStack(spacing: 8) {
                 Spacer()
                 Button("다시 하기") { session.start() }
@@ -212,7 +204,7 @@ struct CalibrationView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title).font(Typo.font(13, .bold))
-                    Text("\(reason) 이전\u{00A0}보정값(\(format(session.previous ?? settings.unitsPerPoint)))은 그대로 두었어요.")
+                    Text("\(reason) 이전\u{00A0}설정을 그대로 두었어요.")
                         .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -221,9 +213,9 @@ struct CalibrationView: View {
             VStack(alignment: .trailing, spacing: 8) {
                 HStack(spacing: 8) {
                     Spacer()
-                    Button("기본값으로") {
+                    Button("처음 설정으로 되돌리기") {
                         session.resetToDefault()
-                        model.showToast("보정값을 기본값(2.00)으로 바꿨어요")
+                        model.showToast("처음 설정으로 되돌렸어요")
                         handle.close()
                     }
                     .buttonStyle(DialogButtonStyle(kind: .plain))
