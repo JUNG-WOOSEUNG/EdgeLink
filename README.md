@@ -34,21 +34,9 @@ EdgeLink는 Mac을 아이폰의 **블루투스 HID 키보드 + 마우스**로 �
 
 ## 동작 구조
 
-```mermaid
-flowchart TB
-    Input["키보드 · 트랙패드"] --> Tap
-    subgraph App["EdgeLink.app — 메뉴 막대 앱"]
-        Tap["이벤트 탭 (CGEventTap)"] --> Router["InputRouter<br/>가장자리 감지 · 전환 판단"]
-        Router -->|"Mac 조작 중"| Pass["그대로 Mac에 전달"]
-        Router -->|"아이폰 조작 중"| Conv["HID 리포트로 변환<br/>키보드 · 마우스 · 미디어 키"]
-        UI["팝오버 · 설정 · 확인 창"] -.->|"설정 · 상태"| Router
-    end
-    Conv -->|"파이프 · 논블로킹"| Helper
-    subgraph HelperProc["edgelink-hid — 블루투스 도우미 프로세스"]
-        Helper["리포트 쓰기 · 연결 관리"] --> BT["IOBluetooth<br/>L2CAP 0x11 제어<br/>L2CAP 0x13 인터럽트"]
-    end
-    BT -->|"Bluetooth Classic HID"| Phone["아이폰<br/>AssistiveTouch 커서"]
-```
+<p align="center">
+  <img src="docs/images/diagram-architecture.png" width="520" alt="동작 구조: 키보드·트랙패드 입력이 이벤트 탭과 InputRouter를 거쳐 HID 리포트로 바뀌고, 블루투스 도우미 프로세스와 IOBluetooth를 지나 아이폰으로 가는 흐름">
+</p>
 
 | 구성 요소 | 역할 |
 | --- | --- |
@@ -59,48 +47,24 @@ flowchart TB
 
 ## 입력이 아이폰까지 가는 길
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant K as 키보드·트랙패드
-    participant A as EdgeLink.app
-    participant H as edgelink-hid
-    participant P as 아이폰
-    K->>A: 키 · 이동 · 스크롤 이벤트
-    Note over A: 아이폰 조작 중이면 이벤트를 삼키고<br/>HID 리포트로 변환
-    A->>H: 리포트 메시지 (길이 · 종류 · 내용)
-    H->>P: L2CAP 인터럽트 채널(0x13)로 즉시 쓰기
-    P-->>H: 키보드 LED (Caps Lock 등)
-    H-->>A: 상태 · 하트비트 · 로그
-```
+<p align="center">
+  <img src="docs/images/diagram-input-path.png" width="780" alt="입력 경로: EdgeLink.app이 이벤트를 HID 리포트로 바꿔 edgelink-hid에 넘기고, 도우미가 L2CAP 인터럽트 채널로 아이폰에 쓰는 순서">
+</p>
 
 - 리포트는 모아 보내지 않고 바로 써요. 실기기 측정에서 Mac 쪽 쓰기 시간은 평균 0.03ms, 최대 0.09ms였어요.
 - 앱은 도우미를 1초 하트비트로 지켜봐요. 응답이 끊기면 먼저 Mac 조작으로 돌아온 뒤 도우미만 다시 띄우고 다시 연결해요.
 
 ## 전환과 안전장치
 
-```mermaid
-flowchart LR
-    Mac(["Mac 조작"]) -->|"가장자리 밀기<br/>⌃⌥⌘Space"| Phone(["아이폰 조작"])
-    Phone -->|"반대쪽 끝으로 밀기<br/>⌃⌥⌘Space"| Mac
-    Phone -.->|"자동 복귀"| Safe["안전장치<br/>비밀번호 칸 열림<br/>화면 잠금 · 사용자 전환<br/>블루투스 끊김<br/>도우미 응답 없음<br/>권한 꺼짐<br/>모니터 변경 · 잠자기"]
-    Safe -.->|"눌린 키 모두 떼고"| Mac
-```
+<p align="center">
+  <img src="docs/images/diagram-switching.png" width="660" alt="전환: 가장자리 밀기나 단축키로 Mac과 아이폰 조작을 오가고, 비밀번호 칸·화면 잠금·블루투스 끊김 같은 안전장치에서는 자동으로 Mac에 돌아옴">
+</p>
 
 ## 블루투스 연결 순서
 
-```mermaid
-sequenceDiagram
-    participant M as Mac (edgelink-hid)
-    participant P as 아이폰
-    Note over M: SDP에 HID 서비스 등록<br/>(UUID 0x1124, 키보드+마우스 콤보)
-    M->>P: 기본 연결 (baseband, 인증 요구)
-    M->>P: 제어 채널 열기 (L2CAP PSM 0x11)
-    M->>P: 인터럽트 채널 열기 (L2CAP PSM 0x13)
-    P-->>M: HID 장치로 인식
-    Note over M,P: 연결 완료. 이후 리포트는 인터럽트 채널로
-    P->>M: 아이폰이 먼저 다시 연결해 올 수도 있음<br/>(기본 기기만 허용, 처음 보는 기기는 묻기)
-```
+<p align="center">
+  <img src="docs/images/diagram-bluetooth.png" width="640" alt="블루투스 연결 순서: SDP 등록, 기본 연결, 제어 채널 0x11, 인터럽트 채널 0x13">
+</p>
 
 연결이 끊기면 15·15·30·60·300초 간격으로 다시 시도하고, Mac이 잠에서 깨면 바로 다시 연결해요.
 
@@ -152,12 +116,9 @@ sequenceDiagram
 2. DMG를 열고 EdgeLink를 Applications 폴더로 끌어 놓아요.
 3. Applications에서 EdgeLink를 열면 처음 설정이 시작돼요(약 3분).
 
-```mermaid
-flowchart LR
-    A["1. Mac 권한<br/>블루투스 · 손쉬운 사용<br/>입력 모니터링"] --> B["2. 아이폰 연결<br/>페어링 · AssistiveTouch<br/>커서 확인"]
-    B --> C["3. 배치<br/>아이폰을 둔<br/>가장자리 고르기"]
-    C --> D["4. 연습<br/>넘어가기 · 돌아오기<br/>단축키"]
-```
+<p align="center">
+  <img src="docs/images/diagram-onboarding.png" width="780" alt="처음 설정 4단계: Mac 권한, 아이폰 연결, 배치, 연습">
+</p>
 
 아직 Apple 공증을 받지 않은 베타라 처음 열 때 macOS가 막을 수 있어요. 그러면 시스템 설정 › 개인정보 보호 및 보안 아래쪽의 "그래도 열기"를 눌러 주세요.
 
@@ -171,16 +132,9 @@ flowchart LR
 
 ## 자동 업데이트
 
-```mermaid
-flowchart TB
-    S["앱 시작 5초 뒤<br/>+ 하루 한 번"] --> Q{"GitHub 릴리스에<br/>새 버전?"}
-    Q -->|아니요| E["그대로"]
-    Q -->|예| D["업데이트 창<br/>+ 팝오버 맨 위 알림"]
-    D --> G["DMG 받기"]
-    G --> V{"지금 앱과 같은 인증서로<br/>서명됐나?<br/>(도우미까지 검사)"}
-    V -->|아니요| X["설치하지 않음"]
-    V -->|예| R["앱 종료 → 바꿔 끼우기<br/>→ 다시 켜기<br/>(실패하면 되돌림)"]
-```
+<p align="center">
+  <img src="docs/images/diagram-update.png" width="450" alt="자동 업데이트: 새 버전 확인, 업데이트 창, DMG 받기, 서명 확인, 바꿔 끼우고 다시 켜기">
+</p>
 
 - 인터넷은 이 저장소의 릴리스를 확인할 때만 쓰고, 설정 › 정보에서 끌 수 있어요.
 - 바꿔 끼우는 작업은 앱과 떨어진 세션에서 돌아서, 앱이 끝나도 중간에 멈추지 않아요. 다시 켠 뒤 실제로 떠 있는지 확인해요.
@@ -245,7 +199,8 @@ Sources/
 ├── edgelink-hid/      블루투스 도우미 실행 파일
 └── bthid/             연결 검증용 명령줄 도구
 Tests/EdgeLinkCoreTests/   단위 테스트 (Swift Testing)
-scripts/               빌드 · DMG · 릴리스
+scripts/               빌드 · DMG · 릴리스 · 도식 그리기
+docs/diagrams/         README 도식 원본 (Mermaid)
 ```
 
 ### HID 리포트
@@ -269,7 +224,7 @@ Xcode 없이 Command Line Tools(Swift 5.10 이상)만 있어도 돼요.
 
 개발용 옵션: `EDGELINK_SNAPSHOT=<폴더>`(모든 화면을 PNG로), `EDGELINK_SHOW_DIALOG=<이름>`(확인 창을 실제 창으로), `EDGELINK_UPDATE_FEED=<주소>`(업데이트 확인 주소 바꾸기).
 
-설계는 [docs/DESIGN.md](docs/DESIGN.md), 진행 기록은 [docs/DEVLOG.md](docs/DEVLOG.md), 화면 전체는 [docs/screens](docs/screens/README.md)에 있어요. 버그 제보와 아이디어는 [Issues](https://github.com/JUNG-WOOSEUNG/EdgeLink/issues)에 남겨 주세요.
+도식 원본은 [docs/diagrams](docs/diagrams)(Mermaid)에 있고 `./scripts/render-diagrams.sh`로 이미지를 다시 만들어요. 설계는 [docs/DESIGN.md](docs/DESIGN.md), 진행 기록은 [docs/DEVLOG.md](docs/DEVLOG.md), 화면 전체는 [docs/screens](docs/screens/README.md)에 있어요. 버그 제보와 아이디어는 [Issues](https://github.com/JUNG-WOOSEUNG/EdgeLink/issues)에 남겨 주세요.
 
 ## 라이선스
 

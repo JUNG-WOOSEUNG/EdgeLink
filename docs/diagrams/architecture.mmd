@@ -1,0 +1,11 @@
+flowchart TB
+    Input["키보드 · 트랙패드"] --> Tap
+    subgraph App["EdgeLink.app — 메뉴 막대 앱"]
+        Tap["이벤트 탭 (CGEventTap)"] --> Router["InputRouter<br/>가장자리 감지 · 전환 판단"]
+        Router -->|"Mac 조작 중"| Pass["그대로 Mac에 전달"]
+        Router -->|"아이폰 조작 중"| Conv["HID 리포트로 변환<br/>키보드 · 마우스 · 미디어 키"]
+        UI["팝오버 · 설정 · 확인 창"] -.->|"설정 · 상태"| Router
+    end
+    Conv -->|"파이프 · 논블로킹"| Helper["edgelink-hid<br/>블루투스 도우미 프로세스<br/>리포트 쓰기 · 연결 관리"]
+    Helper --> BT["IOBluetooth<br/>L2CAP 0x11 제어<br/>L2CAP 0x13 인터럽트"]
+    BT -->|"Bluetooth Classic HID"| Phone["아이폰<br/>AssistiveTouch 커서"]

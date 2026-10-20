@@ -1,0 +1,12 @@
+sequenceDiagram
+    autonumber
+    participant K as 키보드·트랙패드
+    participant A as EdgeLink.app
+    participant H as edgelink-hid
+    participant P as 아이폰
+    K->>A: 키 · 이동 · 스크롤 이벤트
+    Note over A: 아이폰 조작 중이면 이벤트를 삼키고<br/>HID 리포트로 변환
+    A->>H: 리포트 메시지 (길이 · 종류 · 내용)
+    H->>P: L2CAP 인터럽트 채널(0x13)로 즉시 쓰기
+    P-->>H: 키보드 LED (Caps Lock 등)
+    H-->>A: 상태 · 하트비트 · 로그

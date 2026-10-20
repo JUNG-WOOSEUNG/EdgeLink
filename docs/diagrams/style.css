@@ -1,0 +1,2 @@
+/* 이 Mac의 고딕 글꼴로 그린다 (mermaid.ink 서버에는 영문 고딕이 없어 명조로 나왔다) */
+* { font-family: "Apple SD Gothic Neo", "Helvetica Neue", Helvetica, sans-serif !important; }

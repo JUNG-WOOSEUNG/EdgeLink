@@ -1,0 +1,10 @@
+sequenceDiagram
+    participant M as Mac (edgelink-hid)
+    participant P as 아이폰
+    Note over M: SDP에 HID 서비스 등록<br/>(UUID 0x1124, 키보드+마우스 콤보)
+    M->>P: 기본 연결 (baseband, 인증 요구)
+    M->>P: 제어 채널 열기 (L2CAP PSM 0x11)
+    M->>P: 인터럽트 채널 열기 (L2CAP PSM 0x13)
+    P-->>M: HID 장치로 인식
+    Note over M,P: 연결 완료. 이후 리포트는 인터럽트 채널로
+    P->>M: 아이폰이 먼저 다시 연결해 올 수도 있음<br/>(기본 기기만 허용, 처음 보는 기기는 묻기)
