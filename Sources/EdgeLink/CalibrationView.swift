@@ -86,8 +86,8 @@ struct CalibrationView: View {
     let handle: DialogHandle
 
     var body: some View {
-        DialogFrame(spacing: 16) {
-            Text("돌아오는 위치 맞추기").font(Typo.font(17, .bold))
+        DialogFrame {
+            DialogTitle("돌아오는 위치 맞추기")
             switch session.phase {
             case let .intro(note): intro(note)
             case .preparing, .measuring: measuring
@@ -106,36 +106,31 @@ struct CalibrationView: View {
     // 안내
 
     private func intro(_ note: String?) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.l) {
+            VStack(alignment: .leading, spacing: Space.s) {
                 Text("Mac으로 돌아올 때 커서가 엉뚱한 곳에 나타나면 한 번 맞춰 주세요.")
                     .font(Typo.body).foregroundStyle(Color.textPrimary).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("시작하면 아이폰 포인터가 화면 왼쪽 위 끝으로 가요. 트랙패드나 마우스로 천천히 오른쪽 아래 끝까지 옮긴 뒤 클릭하세요.")
+                // 문장마다 한 줄 (중간에서 갈리지 않게)
+                Text("시작하면 아이폰 포인터가 왼쪽 위 끝으로 가요.\n천천히 오른쪽 아래 끝까지 옮긴 뒤 클릭하세요.")
                     .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
             CalibrationPhoneArt(progress: nil)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.vertical, Space.s)
             if let note {
                 Text(note).font(Typo.secondary).foregroundStyle(Color.textPrimary)
             }
-            VStack(alignment: .trailing, spacing: 8) {
-                HStack(spacing: 8) {
-                    Spacer()
-                    Button("닫기") { handle.close() }
-                        .buttonStyle(DialogButtonStyle(kind: .plain))
-                    Button("시작") { session.start() }
-                        .buttonStyle(DialogButtonStyle(kind: .primary, dimWhenDisabled: true))
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(!model.isConnected)
-                }
-                if !model.isConnected {
-                    Text("아이폰을 연결하면 쓸 수 있어요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                }
+            // 꺼진 이유는 흐린 버튼과 같은 줄 왼쪽에
+            DialogButtonRow(note: model.isConnected ? nil : "아이폰을 연결하면 쓸 수 있어요") {
+                Button("닫기") { handle.close() }
+                    .buttonStyle(DialogButtonStyle(kind: .plain))
+                Button("시작") { session.start() }
+                    .buttonStyle(DialogButtonStyle(kind: .primary, dimWhenDisabled: true))
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!model.isConnected)
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 
@@ -143,48 +138,32 @@ struct CalibrationView: View {
 
     private var measuring: some View {
         let ready: Bool = { if case .measuring = session.phase { return true } else { return false } }()
-        return VStack(alignment: .leading, spacing: 16) {
+        return VStack(alignment: .leading, spacing: Space.l) {
             CalibrationPhoneArt(progress: ready ? 1 : nil)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-            HStack(spacing: 10) {
+                .padding(.vertical, Space.s)
+            HStack(spacing: Space.s) {
                 Spinner(size: 14)
-                Text(ready ? "트랙패드나 마우스로 오른쪽 아래 끝까지 옮기고 클릭하세요" : "아이폰 포인터를 왼쪽 위로 보내는 중…")
+                Text(ready ? "오른쪽 아래 끝까지 옮기고 클릭하세요" : "아이폰 포인터를 왼쪽 위로 보내는 중…")
                     .font(Typo.font(13, .semibold))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
-            Text("Esc를 누르면 취소돼요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
-            HStack {
-                Spacer()
+            // 따로 한 줄을 쓰지 않고 취소 버튼 옆에
+            DialogButtonRow(note: "Esc를 눌러도 취소돼요") {
                 Button("취소") { session.cancel() }
                     .buttonStyle(DialogButtonStyle(kind: .plain))
             }
         }
     }
 
-    // 결과
+    // 결과 (완료·실패는 같은 모양: 아이콘 + 제목 + 설명)
 
     private var done: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Image(systemName: "checkmark.circle")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(Color.successText)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("완료했어요").font(Typo.font(13, .semibold))
-                    Text("이제 Mac으로 돌아올 때 커서가 아이폰에서 있던 자리에 나타나요.")
-                        .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .accessibilityElement(children: .combine)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
-            HStack(spacing: 8) {
-                Spacer()
+        VStack(alignment: .leading, spacing: Space.l) {
+            DialogStatus(systemImage: "checkmark.circle", color: .successText, title: "완료했어요",
+                         message: "이제 Mac으로 돌아올 때 커서가 아이폰에서 있던 자리에 나타나요.")
+            DialogButtonRow {
                 Button("다시 하기") { session.start() }
                     .buttonStyle(DialogButtonStyle(kind: .plain))
                     .disabled(!model.isConnected)
@@ -196,40 +175,23 @@ struct CalibrationView: View {
     }
 
     private func failed(_ title: String, _ reason: String) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "xmark.circle")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color.dangerText)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(Typo.font(13, .bold))
-                    Text("\(reason) 이전\u{00A0}설정을 그대로 두었어요.")
-                        .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
+        // 버튼 두 개가 길어 꺼진 이유는 버튼 줄 대신 설명 끝에 붙인다
+        let offline = model.isConnected ? "" : " 아이폰을 연결하면 다시 할 수 있어요."
+        return VStack(alignment: .leading, spacing: Space.l) {
+            DialogStatus(systemImage: "xmark.circle", color: .dangerText, title: title,
+                         message: "\(reason) 이전\u{00A0}설정을 그대로 두었어요.\(offline)")
+            DialogButtonRow {
+                Button("처음 설정으로 되돌리기") {
+                    session.resetToDefault()
+                    model.showToast("처음 설정으로 되돌렸어요")
+                    handle.close()
                 }
-                .accessibilityElement(children: .combine)
+                .buttonStyle(DialogButtonStyle(kind: .plain))
+                Button("다시 하기") { session.start() }
+                    .buttonStyle(DialogButtonStyle(kind: .primary, dimWhenDisabled: true))
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!model.isConnected)
             }
-            VStack(alignment: .trailing, spacing: 8) {
-                HStack(spacing: 8) {
-                    Spacer()
-                    Button("처음 설정으로 되돌리기") {
-                        session.resetToDefault()
-                        model.showToast("처음 설정으로 되돌렸어요")
-                        handle.close()
-                    }
-                    .buttonStyle(DialogButtonStyle(kind: .plain))
-                    Button("다시 하기") { session.start() }
-                        .buttonStyle(DialogButtonStyle(kind: .primary, dimWhenDisabled: true))
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(!model.isConnected)
-                }
-                if !model.isConnected {
-                    Text("아이폰을 연결하면 다시 할 수 있어요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.top, 8)
         }
     }
 }

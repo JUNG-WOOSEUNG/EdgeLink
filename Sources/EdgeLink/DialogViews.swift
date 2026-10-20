@@ -4,19 +4,105 @@ import SwiftUI
 
 // 확인 창 내용 (캔버스 4-1 연결 요청·클립보드·단축키 겹침, 4-4 페어링 초기화)
 
-/// 확인 창 공통 틀: 너비 420, 안쪽 여백 24
+/// 확인 창 공통 틀: 너비 420, 가장자리 xl(24), 덩어리 사이 l(16)
+/// 글은 왼쪽 정렬, 버튼 줄은 `DialogButtonRow`로 주 버튼을 맨 오른쪽에 둔다.
 struct DialogFrame<Content: View>: View {
     var width: CGFloat = 420
-    var spacing: CGFloat = 16
+    var spacing: CGFloat = Space.l
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) { content }
-            .padding(24)
+            .padding(Space.xl)
             .frame(width: width, alignment: .leading)
             .background(Color.bgWindow)
             .foregroundStyle(Color.textPrimary)
             .noFocusRing()
+    }
+}
+
+/// 확인 창 제목 (16pt 굵게). 궁금할 때만 볼 설명은 제목 오른쪽 ⓘ로 접는다.
+struct DialogTitle: View {
+    let text: String
+    var info: String? = nil
+
+    init(_ text: String, info: String? = nil) {
+        self.text = text
+        self.info = info
+    }
+
+    var body: some View {
+        HStack(spacing: Space.xs) {
+            Text(text).font(Typo.font(16, .bold))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            if let info { InfoTip(info) }
+        }
+    }
+}
+
+/// 확인 창 맨 아래 버튼 줄. 왼쪽에는 짧은 안내(남은 시간, 버튼이 꺼진 이유), 버튼은 오른쪽 끝에 모으고
+/// 주 버튼을 맨 마지막(맨 오른쪽)에 넣는다.
+struct DialogButtonRow<Buttons: View>: View {
+    var note: String? = nil
+    @ViewBuilder var buttons: Buttons
+
+    var body: some View {
+        HStack(spacing: Space.s) {
+            if let note {
+                Text(note).font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                    .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Spacer(minLength: 0)
+            }
+            buttons
+        }
+        .padding(.top, Space.xs)
+    }
+}
+
+/// 결과·경고 한 덩어리: 아이콘(첫 줄에 맞춤) + 제목 + 설명. 완료·실패·겹침 창이 같은 모양을 쓴다.
+struct DialogStatus: View {
+    let systemImage: String
+    let color: Color
+    let title: String
+    var message: String? = nil
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Space.m) {
+            Image(systemName: systemImage)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(color)
+                .frame(width: 20)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text(title).font(Typo.font(14, .bold))
+                    .fixedSize(horizontal: false, vertical: true)
+                if let message {
+                    Text(message)
+                        .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, 1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+/// 회색 바탕 묶음 (확인 창 안 목록·미리보기). 안쪽 여백 세로 m, 가로 l.
+struct DialogBox<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .padding(.vertical, Space.m)
+            .padding(.horizontal, Space.l)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
     }
 }
 
@@ -129,36 +215,36 @@ struct ConnectionRequestView: View {
 
     var body: some View {
         DialogFrame {
-            HStack(spacing: 12) {
+            HStack(spacing: Space.m) {
                 RoundedRectangle(cornerRadius: 10).fill(Color.segmentBg)
                     .frame(width: 40, height: 40)
                     .overlay(PhoneGlyph(kind: .plain)
                         .stroke(Color.textPrimary, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
                         .frame(width: 22, height: 22))
                     .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: Space.xs) {
                     Text("‘\(name)’\(Josa.iGa(name)) 연결하려고 해요").font(Typo.font(16, .bold))
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("기본 기기가 아니에요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                    HStack(spacing: Space.xs) {
+                        Text("기본 기기가 아니에요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                        // 허용한 뒤 어떻게 되는지는 궁금할 때만
+                        InfoTip("허용하면 이 기기가 새 기본 기기가 돼요. 이전 기본 기기는 목록에 그대로 남아요.")
+                    }
                 }
                 .accessibilityElement(children: .combine)
             }
-            (Text("허용하면 아이폰으로 넘어갔을 때 ")
-                + Text("키보드와 트랙패드 입력이 \("이 기기로 가요.".nonBreaking)").font(Typo.font(13, .bold))
-                + Text(" 새 기본 기기가 되고, 이전 기기는 목록에 남아요. 모르는 기기라면 거절하세요."))
+            (Text("허용하면 ")
+                + Text("키보드·트랙패드 입력이 \("이 기기로 가요.".nonBreaking)").font(Typo.font(13, .bold))
+                // 두 번째 문장은 한 덩어리로 넘겨 끝에 한두 낱말만 남지 않게
+                + Text(" " + "모르는 기기라면 거절하세요.".nonBreaking))
                 .font(Typo.body).lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 8) {
-                Text("\(remaining)초 뒤 자동으로 거절해요")
-                    .font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                    .monospacedDigit()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            DialogButtonRow(note: "\(remaining)초 뒤 자동으로 거절해요") {
                 Button("거절") { deny(timedOut: false) }
                     .buttonStyle(DialogButtonStyle(kind: .plain))
                 Button("허용") { allow() }
                     .buttonStyle(DialogButtonStyle(kind: .primary))
             }
-            .padding(.top, 4)
         }
         .onAppear {
             remaining = seconds
@@ -204,52 +290,46 @@ struct ClipboardConfirmView: View {
 
     var body: some View {
         DialogFrame {
-            Text("아이폰 입력이 영어인지 확인하세요").font(Typo.font(16, .bold))
-            Text("클립보드 보내기는 글자를 하나씩 타이핑해요. 아이폰 입력이 한국어면 영문이 한글 자모로 입력돼요. 아이폰 키보드를 영어로 바꾼 뒤 보내세요.")
-                .font(Typo.body).lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 8) {
-                countRow("보낼 글자", "\(sendable)자", color: .textPrimary)
-                countRow("보내지 않는 글자 (한글 등)", "\(skipped)자", color: skipped > 0 ? .warningStrong : .textPrimary)
-                ClipboardPreview.styled(preview)
-                    .font(.system(size: 12, design: .monospaced))
-                    .lineLimit(1).truncationMode(.tail)
-                    .padding(.top, 4)
-                    .accessibilityLabel("미리보기: \(preview)")
-                if skipped > 0 {
-                    Text("회색 글자는 보내지 않아요").font(Typo.caption).foregroundStyle(Color.textSecondary)
+            VStack(alignment: .leading, spacing: Space.s) {
+                // 왜 영어여야 하는지는 ⓘ로. 화면에는 할 일만 남긴다.
+                DialogTitle("아이폰 입력이 영어인지 확인하세요",
+                            info: "클립보드 보내기는 글자를 하나씩 타이핑해요. 아이폰 입력이 한국어면 영문이 한글 자모로 입력돼요.")
+                Text("아이폰 키보드를 영어로 바꾼 뒤 보내세요.")
+                    .font(Typo.body).lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            DialogBox {
+                VStack(alignment: .leading, spacing: Space.s) {
+                    countRow("보낼 글자", "\(sendable)자", color: .textPrimary)
+                    countRow("보내지 않는 글자 (한글 등)", "\(skipped)자", color: skipped > 0 ? .warningStrong : .textPrimary)
+                    ClipboardPreview.styled(preview)
+                        .font(.system(size: 12, design: .monospaced))
+                        .lineLimit(1).truncationMode(.tail)
+                        .padding(.top, Space.xs)
+                        .accessibilityLabel("미리보기: \(preview)")
+                    if skipped > 0 {
+                        Text("회색 글자는 보내지 않아요").font(Typo.caption).foregroundStyle(Color.textSecondary)
+                    }
                 }
             }
-            .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
-            VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: Space.xs) {
                 Toggle(isOn: $dontAsk) { Text("다시 묻지 않기").font(Typo.body) }
                     .toggleStyle(BoxCheckboxStyle())
+                    .fixedSize()
                 // 빠지는 글자가 있으면 이 설정과 상관없이 다시 묻는다 (requestClipboardSend)
-                Text("보내지 않는 글자가 있을 때는 다시 물어요")
-                    .font(Typo.caption).foregroundStyle(Color.textSecondary)
-                    .padding(.leading, 20)
+                InfoTip("보내지 않는 글자가 있을 때는 이 설정과 상관없이 다시 물어요.")
             }
-            VStack(alignment: .trailing, spacing: 8) {
-                HStack(spacing: 8) {
-                    Spacer()
-                    Button("취소") { handle.close() }
-                        .buttonStyle(DialogButtonStyle(kind: .plain))
-                    Button("보내기") {
-                        handle.close()
-                        model.confirmClipboardSend(dontAskAgain: dontAsk)
-                    }
-                    .buttonStyle(DialogButtonStyle(kind: .primary))
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(sendable == 0)
+            DialogButtonRow(note: sendable == 0 ? "보낼 수 있는 영문·숫자·기호가 없어요" : nil) {
+                Button("취소") { handle.close() }
+                    .buttonStyle(DialogButtonStyle(kind: .plain))
+                Button("보내기") {
+                    handle.close()
+                    model.confirmClipboardSend(dontAskAgain: dontAsk)
                 }
-                if sendable == 0 {
-                    Text("보낼 수 있는 영문·숫자·기호가 없어요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                }
+                .buttonStyle(DialogButtonStyle(kind: .primary))
+                .keyboardShortcut(.defaultAction)
+                .disabled(sendable == 0)
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.top, 4)
         }
     }
 
@@ -331,38 +411,18 @@ struct ShortcutConflictView: View {
     let handle: DialogHandle
 
     var body: some View {
-        DialogFrame(spacing: 0) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.warningStrong)
-                        .padding(.top, 1)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title).font(Typo.font(13, .bold))
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(message)
-                            .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-                HStack(spacing: 8) {
-                    Button("다른 조합 고르기") { handle.close() }
-                        .buttonStyle(DialogButtonStyle(kind: .primary, height: 32))
-                        .keyboardShortcut(.defaultAction)
-                        .accessibilityHint("저장하지 않고 닫아요. 단축키를 다시 기록하세요.")
-                    Button("그래도 쓰기") { useAnyway() }
-                        .buttonStyle(DialogButtonStyle(kind: .plain, height: 32))
-                        .accessibilityHint("\(hotkey.display)를 저장해요")
-                }
-                .padding(.leading, 25)
+        DialogFrame {
+            DialogStatus(systemImage: "exclamationmark.triangle", color: .warningStrong, title: title, message: message)
+            // 주 버튼(다른 조합 고르기)은 맨 오른쪽, 되돌리기 어려운 "그래도 쓰기"는 그 왼쪽
+            DialogButtonRow {
+                Button("그래도 쓰기") { useAnyway() }
+                    .buttonStyle(DialogButtonStyle(kind: .plain))
+                    .accessibilityHint("\(hotkey.display)를 저장해요")
+                Button("다른 조합 고르기") { handle.close() }
+                    .buttonStyle(DialogButtonStyle(kind: .primary))
+                    .keyboardShortcut(.defaultAction)
+                    .accessibilityHint("저장하지 않고 닫아요. 단축키를 다시 기록하세요.")
             }
-            .padding(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.bgWindow))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.warningLine, lineWidth: 1))
         }
     }
 
@@ -388,7 +448,8 @@ struct ShortcutConflictView: View {
 
     private var voiceOverNote: String {
         let onlyCtrlOpt = hotkey.modifiers & Hotkey.all == Hotkey.control | Hotkey.option
-        return onlyCtrlOpt ? " VoiceOver를 쓰고 있다면 ⌃⌥만 쓰는 조합도 피해 주세요." : ""
+        // 따로 한 줄로 (문장 중간에서 줄이 갈리지 않게)
+        return onlyCtrlOpt ? "\nVoiceOver를 쓰고 있다면 ⌃⌥만 쓰는 조합도 피해 주세요." : ""
     }
 }
 
@@ -400,29 +461,25 @@ struct ResetPairingView: View {
     let handle: DialogHandle
 
     var body: some View {
-        DialogFrame(spacing: 16) {
-            Text("페어링을 초기화할까요?").font(Typo.font(16, .bold))
-            VStack(alignment: .leading, spacing: 8) {
-                (Text("지워지는 것: ").font(Typo.bodyBold)
-                    + Text("기본 기기(\((settings.lastDeviceName ?? "없음").nonBreaking)), \("기기별 모델·방향".nonBreaking), \("트랙패드 제스처 등록".nonBreaking)"))
-                    .fixedSize(horizontal: false, vertical: true)
-                (Text("남는 것: ").font(Typo.bodyBold) + Text("단축키, 배치, 돌아오는 위치 등 \("다른 설정".nonBreaking)"))
-                    .fixedSize(horizontal: false, vertical: true)
+        DialogFrame {
+            DialogTitle("페어링을 초기화할까요?")
+            // 이름표 열을 맞춰 두 줄로 넘어가도 내용끼리 시작선이 같게
+            VStack(alignment: .leading, spacing: Space.s) {
+                summaryRow("지워지는 것",
+                           "기본 기기(\((settings.lastDeviceName ?? "없음").nonBreaking)), \("기기별 모델·방향".nonBreaking), \("트랙패드 제스처 등록".nonBreaking)")
+                summaryRow("남는 것", "단축키, 배치, 돌아오는 위치 등 \("다른 설정".nonBreaking)")
             }
-            .font(Typo.body).lineSpacing(4)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("초기화한 뒤 해야 할 일").font(Typo.font(12, .bold))
-                Text("1. Mac: 시스템 설정 › Bluetooth에서 아이폰 옆 ⓘ › 이 기기 지우기")
-                Text("2. 아이폰: 설정 › Bluetooth에서 이 Mac 옆 ⓘ › 이 기기 지우기")
-                Text("3. EdgeLink에서 다시 페어링하기")
+            DialogBox {
+                VStack(alignment: .leading, spacing: Space.s) {
+                    Text("초기화한 뒤 해야 할 일").font(Typo.font(12, .bold))
+                    Text("1. Mac: 시스템 설정 › Bluetooth에서 아이폰 옆 ⓘ › 이 기기 지우기")
+                    Text("2. 아이폰: 설정 › Bluetooth에서 이 Mac 옆 ⓘ › 이 기기 지우기")
+                    Text("3. EdgeLink에서 다시 페어링하기")
+                }
+                .font(Typo.secondary).lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
             }
-            .font(Typo.secondary).lineSpacing(3)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
-            HStack(spacing: 8) {
-                Spacer()
+            DialogButtonRow {
                 Button("취소") { handle.close() }
                     .buttonStyle(DialogButtonStyle(kind: .plain))
                 Button("초기화") {
@@ -432,8 +489,18 @@ struct ResetPairingView: View {
                 .buttonStyle(DialogButtonStyle(kind: .danger))
                 .accessibilityHint("기본 기기와 페어링 기록을 지워요")
             }
-            .padding(.top, 4)
         }
+    }
+
+    private func summaryRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+            Text(label).font(Typo.bodyBold)
+                .frame(width: 70, alignment: .leading)
+            Text(value).font(Typo.body).lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -445,52 +512,57 @@ struct UpdateView: View {
     let handle: DialogHandle
 
     var body: some View {
-        DialogFrame(spacing: 14) {
+        DialogFrame {
             switch updater.state {
             case let .available(release):
-                Text("새 버전 \(release.version)\(Josa.iGa(release.version)) 나왔어요").font(Typo.font(16, .bold))
-                Text("지금 버전은 \(Updater.currentVersion)이에요. 설치하면 EdgeLink가 잠깐 꺼졌다 다시 켜져요.")
-                    .font(Typo.body).foregroundStyle(Color.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: Space.s) {
+                    DialogTitle("새 버전 \(release.version)\(Josa.iGa(release.version)) 나왔어요")
+                    Text("지금 버전은 \(Updater.currentVersion)이에요. 설치하면 EdgeLink가 잠깐 꺼졌다 다시 켜져요.")
+                        .font(Typo.body).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if !release.notes.isEmpty { notes(release.notes) }
-                buttons {
+                HStack(spacing: Space.s) {
+                    // 창 밖으로 나가는 보조 동작은 왼쪽 끝에 따로
                     if let page = release.pageURL {
                         Button("자세히") { NSWorkspace.shared.open(page) }
                             .buttonStyle(DialogButtonStyle(kind: .plain))
                     }
-                    Spacer()
+                    Spacer(minLength: 0)
                     Button("나중에") { handle.close() }
                         .buttonStyle(DialogButtonStyle(kind: .plain))
                     Button("업데이트") { updater.install() }
                         .buttonStyle(DialogButtonStyle(kind: .primary))
                         .keyboardShortcut(.defaultAction)
                 }
+                .padding(.top, Space.xs)
             case let .downloading(progress):
-                Text("내려받는 중…").font(Typo.font(16, .bold))
+                DialogTitle("내려받는 중…")
                 ProgressView(value: progress).tint(Color.brandFill)
-                buttons {
-                    Spacer()
+                DialogButtonRow {
                     Button("취소") { updater.cancelDownload() }
                         .buttonStyle(DialogButtonStyle(kind: .plain))
                 }
             case .installing:
-                Text("설치하는 중…").font(Typo.font(16, .bold))
+                VStack(alignment: .leading, spacing: Space.s) {
+                    DialogTitle("설치하는 중…")
+                    Text("서명을 확인한 뒤 다시 켜요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                }
                 ProgressView().progressViewStyle(.linear).tint(Color.brandFill)
-                Text("서명을 확인한 뒤 다시 켜요.").font(Typo.secondary).foregroundStyle(Color.textSecondary)
             case let .failed(message):
-                Text("업데이트하지 못했어요").font(Typo.font(16, .bold))
-                Text(message).font(Typo.body).foregroundStyle(Color.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                buttons {
-                    Spacer()
+                VStack(alignment: .leading, spacing: Space.s) {
+                    DialogTitle("업데이트하지 못했어요")
+                    Text(message).font(Typo.body).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                DialogButtonRow {
                     Button("닫기") { handle.close() }
                         .buttonStyle(DialogButtonStyle(kind: .primary))
                         .keyboardShortcut(.defaultAction)
                 }
             default:
-                Text("최신 버전이에요").font(Typo.font(16, .bold))
-                buttons {
-                    Spacer()
+                DialogTitle("최신 버전이에요")
+                DialogButtonRow {
                     Button("닫기") { handle.close() }
                         .buttonStyle(DialogButtonStyle(kind: .primary))
                         .keyboardShortcut(.defaultAction)
@@ -506,14 +578,11 @@ struct UpdateView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
-                .padding(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+                .padding(.vertical, Space.m)
+                .padding(.horizontal, Space.l)
         }
         .frame(maxHeight: 180)
         .fixedSize(horizontal: false, vertical: true)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
-    }
-
-    private func buttons<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        HStack(spacing: 8) { content() }.padding(.top, 4)
     }
 }

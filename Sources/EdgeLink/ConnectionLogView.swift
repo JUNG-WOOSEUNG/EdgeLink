@@ -12,28 +12,30 @@ struct ConnectionLogView: View {
     @State private var copied = false
 
     var body: some View {
-        DialogFrame(width: 760, spacing: 14) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("연결 로그").font(Typo.font(16, .bold))
+        DialogFrame(width: 760) {
+            HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+                DialogTitle("연결 로그")
                 Spacer()
                 Text("최근 \(HIDLog.capacity)줄 · 키 입력 내용은 남기지 않아요")
                     .font(Typo.caption).foregroundStyle(Color.textSecondary)
             }
             logBox
-            HStack(spacing: 8) {
-                // 이 로그를 어디에 쓰는지 알린다
-                Text("문제를 알릴 때 ‘복사’해서 붙여 주세요 · 기기 주소 뒷자리는 가려져요")
-                    .font(Typo.caption).foregroundStyle(Color.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: Space.s) {
+                // 이 로그를 어디에 쓰는지 알린다. 복사할 때 가리는 것은 궁금할 때만.
+                HStack(spacing: Space.xs) {
+                    Text("문제를 알릴 때 ‘복사’해서 붙여 주세요")
+                        .font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                    InfoTip("복사하면 기기 주소 뒷자리는 가려져요 (A4:83:5C:**:**:**).")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 Button(copied ? "복사했어요" : "복사") { copy() }
-                    .buttonStyle(DialogButtonStyle(kind: .secondary, height: 32))
+                    .buttonStyle(DialogButtonStyle(kind: .secondary))
                     .disabled(lines.isEmpty)
                 Button("닫기") { handle.close() }
-                    .buttonStyle(DialogButtonStyle(kind: .primary, height: 32))
+                    .buttonStyle(DialogButtonStyle(kind: .primary))
                     .keyboardShortcut(.defaultAction)
             }
-            .padding(.top, 2)
+            .padding(.top, Space.xs)
         }
         .onAppear { reload() }
         .task {
@@ -63,7 +65,8 @@ struct ConnectionLogView: View {
                             .textSelection(.enabled)
                         }
                     }
-                    .padding(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+                    .padding(.vertical, Space.m)
+                    .padding(.horizontal, Space.l)
                     // 짧을 때도 왼쪽 위부터 (두 방향 스크롤은 작은 내용을 가운데로 모은다)
                     .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .topLeading)
                 }
