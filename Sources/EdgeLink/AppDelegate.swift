@@ -198,6 +198,7 @@ final class AppModel: NSObject, ObservableObject {
 
     private var confirmedClipboardChange = -1
     private var reconnectAfterWake = false
+    private let hangWatch = HangWatch()
     /// 연결 요청 확인 창을 띄운 시각 (같은 기기가 5분 안에 다시 시도하면 묻지 않고 거절)
     private var connectionPrompts: [String: Date] = [:]
 
@@ -236,6 +237,7 @@ final class AppModel: NSObject, ObservableObject {
         HIDLog.fileURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Logs/EdgeLink/EdgeLink.log")
         HIDLog.info("EdgeLink 시작 (\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"))")
+        hangWatch.start()
         // 설정 창의 ⌘, 키 감시가 첫 실행부터 동작하게 미리 만든다
         _ = settingsWindow
         // 개발용: 온보딩을 마쳤어도 창을 바로 연다
