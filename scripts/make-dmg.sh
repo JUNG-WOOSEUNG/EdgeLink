@@ -8,9 +8,13 @@ cd "$(dirname "$0")/.."
 [ "$1" = "--build" ] && ./scripts/build-app.sh release
 APP=build/EdgeLink.app
 [ -d "$APP" ] || { echo "$APP이 없어요. ./scripts/build-app.sh release 먼저"; exit 1; }
-if [ ! -x build/.venv/bin/dmgbuild ]; then
-  python3 -m venv build/.venv
-  build/.venv/bin/pip install -q dmgbuild
+# dmgbuild 1.6.7 이상이어야 한다. 1.6.5 이하는 .DS_Store에 배경 북마크(pBBk)를 넣는데,
+# macOS 26 Finder는 그게 있으면 배경을 안 그리고 창을 비워 둔다 (dmgbuild #273).
+# 1.6.7은 Python 3.10 이상이라고 적혀 있지만 Command Line Tools의 3.9에서도 잘 돈다.
+DMGBUILD_VERSION=1.6.7
+[ -x build/.venv/bin/python3 ] || python3 -m venv build/.venv
+if [ "$(build/.venv/bin/python3 -c 'import importlib.metadata as m; print(m.version("dmgbuild"))' 2>/dev/null)" != "$DMGBUILD_VERSION" ]; then
+  build/.venv/bin/pip install -q --disable-pip-version-check --ignore-requires-python "dmgbuild==$DMGBUILD_VERSION"
 fi
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist")
 OUT=build/EdgeLink.dmg
