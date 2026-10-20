@@ -178,8 +178,8 @@ extension AppDialog {
         case .shortcutConflict: return "단축키 겹침"
         case .resetPairing: return "페어링 초기화"
         case .connectionLog: return "연결 로그"
-        case .calibration: return "포인터 보정 도우미"
-        case .gestureSetup: return "아이폰 버튼 등록 도우미"
+        case .calibration: return "돌아오는 위치 맞추기"
+        case .gestureSetup: return "트랙패드 제스처 설정"
         case .update: return "업데이트"
         }
     }

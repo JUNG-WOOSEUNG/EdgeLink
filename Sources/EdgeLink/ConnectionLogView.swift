@@ -21,8 +21,10 @@ struct ConnectionLogView: View {
             }
             logBox
             HStack(spacing: 8) {
-                Text(verbatim: "복사할 때 기기 주소 뒷자리는 가려져요 (\(LogText.mask("A4:83:5C:12:34:56")))")
+                // 이 로그를 어디에 쓰는지 알린다
+                Text("문제를 알릴 때 ‘복사’해서 붙여 주세요 · 기기 주소 뒷자리는 가려져요")
                     .font(Typo.caption).foregroundStyle(Color.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button(copied ? "복사했어요" : "복사") { copy() }
                     .buttonStyle(DialogButtonStyle(kind: .secondary, height: 32))

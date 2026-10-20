@@ -37,7 +37,7 @@ enum ReturnReason: Equatable {
         switch self {
         case .secureInput: return "Mac에서 비밀번호 입력이 시작돼서 Mac으로 돌아왔어요"
         case .screenLocked: return "화면이 잠겨서 Mac으로 돌아왔어요"
-        case .tapDisabled, .transportStalled: return "잠깐 멈춰서 Mac으로 돌아왔어요"
+        case .tapDisabled, .transportStalled: return "연결이 잠깐 멈춰서 Mac으로 돌아왔어요"
         case .disconnected: return "아이폰 연결이 끊겨서 돌아왔어요"
         case .permissionLost: return "권한이 꺼져서 돌아왔어요"
         default: return nil
@@ -54,7 +54,7 @@ enum PracticeEvent: Equatable {
 enum CalibrationEvent: Equatable {
     /// 아이폰 포인터를 왼쪽 위로 보냈어요. 이제 오른쪽 아래까지 옮기고 클릭하세요.
     case ready
-    /// 지금까지 움직인 HID 단위 (화면에 "움직인 양"으로 보여줌)
+    /// 지금까지 움직인 HID 단위 (이용자에게는 숫자를 보여주지 않는다)
     case moved(dx: Int, dy: Int)
     /// 결과: 보정값(HID 단위/pt). 0.2보다 작으면 실패로 보고 저장하지 않는다.
     case finished(unitsPerPoint: Double)
@@ -74,9 +74,9 @@ enum AppDialog: Equatable, Identifiable {
     case resetPairing
     /// 설정 › 연결 › 연결 로그 보기
     case connectionLog
-    /// 보정 도우미 (설정 › 배치, 온보딩 연습)
+    /// 돌아오는 위치 맞추기 (설정 › 배치, 처음 설정 연습)
     case calibration
-    /// 아이폰 버튼 등록 도우미 (설정 › 입력, 온보딩 뒤 선택 단계)
+    /// 트랙패드 제스처 설정 (설정 › 입력, 처음 설정 뒤 선택 단계)
     case gestureSetup
     /// 새 버전 알림 (자동 확인, 설정 › 정보 › 지금 확인)
     case update(version: String)
