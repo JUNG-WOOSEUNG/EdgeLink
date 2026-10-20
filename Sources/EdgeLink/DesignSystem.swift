@@ -296,3 +296,66 @@ struct BoxCheckboxStyle: ToggleStyle {
         .accessibilityAddTraits(configuration.isOn ? [.isSelected] : [])
     }
 }
+
+/// 여백 단계. 화면 안 간격은 이 값만 쓴다 (화면마다 제각각이던 10·14·18·20 같은 값을 정리).
+/// - xs 4: 제목과 바로 붙는 부제, 아이콘과 글자
+/// - s 8: 같은 묶음 안의 줄 사이, 버튼 사이
+/// - m 12: 카드 안 여백(세로), 묶음 제목과 묶음
+/// - l 16: 카드 안 여백(가로), 팝오버 가장자리, 카드와 카드
+/// - xl 24: 섹션과 섹션, 창 가장자리
+/// - xxl 32: 처음 설정처럼 큰 화면의 큰 덩어리 사이
+enum Space {
+    static let xs: CGFloat = 4
+    static let s: CGFloat = 8
+    static let m: CGFloat = 12
+    static let l: CGFloat = 16
+    static let xl: CGFloat = 24
+    static let xxl: CGFloat = 32
+}
+
+/// 긴 설명을 접어 두는 ⓘ. 마우스를 올리거나 누르면 말풍선으로 보여준다.
+/// 꼭 알아야 하는 것(할 일, 경고)은 숨기지 말고 화면에 쓴다. 왜 그런지·자세한 방식처럼 궁금할 때만 보는 것에 쓴다.
+struct InfoTip: View {
+    let text: String
+    var size: CGFloat = 12
+    @State private var shown = false
+    @State private var hovering = false
+
+    init(_ text: String, size: CGFloat = 12) {
+        self.text = text
+        self.size = size
+    }
+
+    var body: some View {
+        Button { shown.toggle() } label: {
+            Image(systemName: "info.circle")
+                .font(.system(size: size, weight: .regular))
+                .foregroundStyle(hovering || shown ? Color.brandText : Color.textDecor)
+                .frame(width: size + 6, height: size + 6)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { inside in
+            hovering = inside
+            if inside {
+                // 지나가다 스치는 것까지 띄우지 않게 잠깐 기다린다
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { if hovering { shown = true } }
+            } else {
+                shown = false
+            }
+        }
+        .popover(isPresented: $shown, arrowEdge: .bottom) {
+            Text(text)
+                .font(Typo.secondary)
+                .foregroundStyle(Color.textPrimary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 260, alignment: .leading)
+                .padding(Space.m)
+        }
+        .help(text)
+        .accessibilityLabel("도움말")
+        .accessibilityValue(text)
+        .accessibilityHint("누르면 설명을 보여줘요")
+    }
+}
