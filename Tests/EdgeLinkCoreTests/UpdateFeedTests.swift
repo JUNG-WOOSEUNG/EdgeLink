@@ -40,4 +40,9 @@ import Testing
         #expect(!UpdateFeed.isNewer("0.2.0", than: "0.2.1"))
         #expect(!UpdateFeed.isNewer("0.3.0-beta", than: "0.3.0"))
     }
+
+    @Test func releaseNotesLines() {
+        let l = ReleaseNotes.lines("## 고친 것\n- 하나\n* 둘\n\n그냥 줄\n")
+        #expect(l == [.heading("고친 것"), .bullet("하나"), .bullet("둘"), .text("그냥 줄")])
+    }
 }

@@ -171,6 +171,8 @@ struct PopoverHeader: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 40, height: 40)
+                // 아이콘 왼쪽 절반이 흰색이라 라이트 모드 흰 바탕에 묻히지 않게 옅은 그림자
+                .shadow(color: .black.opacity(0.18), radius: 1.5, x: 0, y: 0.5)
                 .opacity(isConnected ? 1 : 0.5)
             if isProblem {
                 Circle().fill(Color.warningDot)

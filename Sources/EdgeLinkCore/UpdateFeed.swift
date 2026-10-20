@@ -62,3 +62,26 @@ public enum UpdateFeed {
         }
     }
 }
+
+/// 릴리스 설명(마크다운)을 업데이트 창에 보여줄 줄로 나눈다. "## 제목"은 제목, "- 항목"은 글머리표.
+public enum ReleaseNotes {
+    public enum Line: Equatable {
+        case heading(String)
+        case bullet(String)
+        case text(String)
+    }
+
+    public static func lines(_ markdown: String) -> [Line] {
+        markdown.components(separatedBy: .newlines).compactMap { raw in
+            let s = raw.trimmingCharacters(in: .whitespaces)
+            guard !s.isEmpty else { return nil }
+            if s.hasPrefix("#") {
+                return .heading(String(s.drop { $0 == "#" }).trimmingCharacters(in: .whitespaces))
+            }
+            if s.hasPrefix("- ") || s.hasPrefix("* ") {
+                return .bullet(String(s.dropFirst(2)))
+            }
+            return .text(s)
+        }
+    }
+}

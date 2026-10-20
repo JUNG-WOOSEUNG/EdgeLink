@@ -47,6 +47,7 @@
 | dialog-connection-log | <img src="dialog-connection-log.png" width="320"> | <img src="dialog-connection-log-dark.png" width="320"> |
 | dialog-connection-request | <img src="dialog-connection-request.png" width="320"> | <img src="dialog-connection-request-dark.png" width="320"> |
 | dialog-reset-pairing | <img src="dialog-reset-pairing.png" width="320"> | <img src="dialog-reset-pairing-dark.png" width="320"> |
+| dialog-update | <img src="dialog-update.png" width="320"> | <img src="dialog-update-dark.png" width="320"> |
 | dialog-shortcut-conflict | <img src="dialog-shortcut-conflict.png" width="320"> | <img src="dialog-shortcut-conflict-dark.png" width="320"> |
 
 ## 설정 창

@@ -571,15 +571,34 @@ struct UpdateView: View {
         }
     }
 
+    /// **굵게**, `코드` 같은 줄 안 마크다운만
+    private static func inline(_ s: String) -> AttributedString {
+        (try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s)
+    }
+
     private func notes(_ text: String) -> some View {
         ScrollView {
-            Text(text)
-                .font(Typo.secondary).lineSpacing(3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
-                .padding(.vertical, Space.m)
-                .padding(.horizontal, Space.l)
+            // 마크다운 기호(##, -)를 그대로 보이지 않게: 제목은 굵게, 목록은 글머리표
+            VStack(alignment: .leading, spacing: Space.xs) {
+                ForEach(Array(ReleaseNotes.lines(text).enumerated()), id: \.offset) { i, line in
+                    switch line {
+                    case let .heading(t):
+                        Text(Self.inline(t)).font(Typo.font(12, .bold)).padding(.top, i == 0 ? 0 : Space.xs)
+                    case let .bullet(t):
+                        HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+                            Text("•")
+                            Text(Self.inline(t)).fixedSize(horizontal: false, vertical: true)
+                        }
+                    case let .text(t):
+                        Text(Self.inline(t)).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .font(Typo.secondary).lineSpacing(3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .textSelection(.enabled)
+            .padding(.vertical, Space.m)
+            .padding(.horizontal, Space.l)
         }
         .frame(maxHeight: 180)
         .fixedSize(horizontal: false, vertical: true)
