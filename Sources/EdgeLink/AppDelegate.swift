@@ -9,9 +9,11 @@ import SwiftUI
 @main
 struct EdgeLinkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    /// 캡처 모드에선 메뉴 막대에 두 번째 아이콘이 잠깐 생기지 않게 넣지 않는다
+    @State private var showInMenuBar = Snapshot.directory == nil
 
     var body: some Scene {
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $showInMenuBar) {
             PopoverView()
                 .environmentObject(delegate.model)
                 .environmentObject(delegate.model.settings)
