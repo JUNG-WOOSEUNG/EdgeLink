@@ -150,10 +150,21 @@ final class AppModel: NSObject, ObservableObject {
 
     // MARK: 화면 사이 연결 (Contracts.swift)
 
-    func openSettings(_ tab: SettingsTab = .general) { settingsWindow.show(tab: tab) }
+    func openSettings(_ tab: SettingsTab = .general) {
+        closeMenuBarPopover()
+        settingsWindow.show(tab: tab)
+    }
+
+    /// 메뉴바 팝오버(MenuBarExtra 창)를 닫는다. 다른 창을 열 때 팝오버가 남아 있지 않게.
+    func closeMenuBarPopover() {
+        for w in NSApp.windows where w.isVisible && String(describing: Swift.type(of: w)).contains("MenuBarExtra") {
+            w.close()
+        }
+    }
     func showToast(_ text: String, systemImage: String? = nil) { toasts.show(text, systemImage: systemImage) }
     /// 확인 창은 Mac에서 눌러야 하므로, 아이폰 조작 중이면 먼저 Mac으로 돌아온다
     func present(_ dialog: AppDialog) {
+        closeMenuBarPopover()
         if controlMode != .mac { router.returnToMac(.menu) }
         dialogs.present(dialog)
     }
@@ -432,6 +443,7 @@ final class AppModel: NSObject, ObservableObject {
     // MARK: 창
 
     func openOnboarding(at step: OnboardingStep? = nil) {
+        closeMenuBarPopover()
         onboardingPage = step ?? resumeStep()
         if onboardingWindow == nil {
             let host = NSHostingController(rootView: OnboardingView()
