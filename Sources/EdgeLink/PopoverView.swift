@@ -41,6 +41,7 @@ struct PopoverView: View {
         let state = preview?.state ?? liveState
         return VStack(alignment: .leading, spacing: 0) {
             PopoverHeader(state: state, noDevice: noDevice)
+            UpdateBanner(updater: model.updater)
             content(state)
             PopoverFooter()
         }
@@ -75,6 +76,32 @@ struct PopoverView: View {
                 .padding(EdgeInsets(top: 8, leading: 16, bottom: noDevice ? 20 : 24, trailing: 16))
         case .connected:
             ConnectedPanel(devices: model.devices, menuOpen: preview?.menuOpen ?? false)
+        }
+    }
+}
+
+/// 새 버전이 있으면 팝오버 맨 위에 한 줄 (업데이트 창을 "나중에"로 닫아도 남는다)
+private struct UpdateBanner: View {
+    @EnvironmentObject var model: AppModel
+    @ObservedObject var updater: Updater
+
+    var body: some View {
+        if case let .available(r) = updater.state {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.brand)
+                    .accessibilityHidden(true)
+                Text("새 버전 \(r.version)\(Josa.iGa(r.version)) 나왔어요")
+                    .font(Typo.font(12, .semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button("업데이트") { model.dialogs.present(.update(version: r.version)) }
+                    .buttonStyle(PillButtonStyle(height: 26))
+            }
+            .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 8))
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.brand.opacity(0.1)))
+            .padding(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+            .accessibilityElement(children: .combine)
         }
     }
 }

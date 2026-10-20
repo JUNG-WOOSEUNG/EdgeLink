@@ -573,7 +573,7 @@ struct AboutTab: View {
     private var updateHint: String {
         switch updater.state {
         case .upToDate: return "최신 버전이에요"
-        case let .available(r): return "새 버전 \(r.version)이 있어요"
+        case let .available(r): return "새 버전 \(r.version)\(Josa.iGa(r.version)) 있어요"
         case .failed(let m): return m
         default:
             guard let last = updater.lastChecked else { return "새 버전이 있는지 바로 알아봐요" }

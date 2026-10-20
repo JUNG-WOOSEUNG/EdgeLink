@@ -20,6 +20,7 @@
 | 화면 | 라이트 | 다크 |
 | --- | --- | --- |
 | popover-connected-mac | <img src="popover-connected-mac.png" width="320"> | <img src="popover-connected-mac-dark.png" width="320"> |
+| popover-update-available | <img src="popover-update-available.png" width="320"> | <img src="popover-update-available-dark.png" width="320"> |
 | popover-connected-menu | <img src="popover-connected-menu.png" width="320"> | <img src="popover-connected-menu-dark.png" width="320"> |
 | popover-connected-phone | <img src="popover-connected-phone.png" width="320"> | <img src="popover-connected-phone-dark.png" width="320"> |
 | popover-connecting | <img src="popover-connecting.png" width="320"> | <img src="popover-connecting-dark.png" width="320"> |

@@ -46,11 +46,26 @@ final class Updater: ObservableObject {
         return s.flatMap(URL.init(string:))
     }
 
-    /// 하루 한 번 자동 확인. 켤 때 하루가 지났으면 바로 한 번.
+    /// 켤 때마다 한 번 확인하고(새 버전이면 업데이트 창), 켜 둔 동안은 하루 한 번.
     func startAutomaticChecks() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in self?.checkIfDue() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in self?.checkIfDue() }
+        // 블루투스 연결이 먼저 자리 잡게 몇 초 뒤에
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard let self, self.model.settings.autoUpdateAllowed, self.model.settings.autoUpdateCheck else { return }
+            self.check(userInitiated: false)
+        }
+    }
+
+    /// 캡처용: 새 버전이 있는 상태로
+    func debugSetAvailable(_ release: ReleaseInfo) {
+        guard Snapshot.directory != nil else { return }
+        state = .available(release)
+    }
+
+    func debugSetIdle() {
+        guard Snapshot.directory != nil else { return }
+        state = .idle
     }
 
     private func checkIfDue() {

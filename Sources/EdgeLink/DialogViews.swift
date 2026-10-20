@@ -448,7 +448,7 @@ struct UpdateView: View {
         DialogFrame(spacing: 14) {
             switch updater.state {
             case let .available(release):
-                Text("새 버전 \(release.version)이 나왔어요").font(Typo.font(16, .bold))
+                Text("새 버전 \(release.version)\(Josa.iGa(release.version)) 나왔어요").font(Typo.font(16, .bold))
                 Text("지금 버전은 \(Updater.currentVersion)이에요. 설치하면 EdgeLink가 잠깐 꺼졌다 다시 켜져요.")
                     .font(Typo.body).foregroundStyle(Color.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

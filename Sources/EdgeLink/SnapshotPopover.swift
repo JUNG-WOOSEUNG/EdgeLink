@@ -1,3 +1,4 @@
+import EdgeLinkCore
 import AppKit
 import SwiftUI
 
@@ -39,6 +40,10 @@ extension Snapshot {
         model.debugSetConnection(.connected(name: "지민의 iPhone 16 Pro"))
         model.controlMode = .mac
         save("popover-connected-mac", PopoverView(preview: PopoverPreview(state: .connected)))
+        // 새 버전이 있을 때 맨 위 한 줄
+        model.updater.debugSetAvailable(ReleaseInfo(version: "0.4.0", notes: "", dmgURL: URL(string: "https://example.com/EdgeLink.dmg")!, pageURL: nil))
+        save("popover-update-available", PopoverView(preview: PopoverPreview(state: .connected)))
+        model.updater.debugSetIdle()
         save("popover-connected-menu", PopoverView(preview: PopoverPreview(state: .connected, menuOpen: true)))
         model.controlMode = .phone
         save("popover-connected-phone", PopoverView(preview: PopoverPreview(state: .connected)))
