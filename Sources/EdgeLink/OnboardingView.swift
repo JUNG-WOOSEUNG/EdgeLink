@@ -122,11 +122,16 @@ struct BackButton: View {
 struct StepHeader: View {
     let title: String
     let message: String
+    /// 부제 오른쪽 ⓘ에 접어 둘 보충 설명 (왜 그런지, 예외)
+    var info: String? = nil
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Space.xs) {
             Text(title).font(Typo.onboardingTitle)
-            Text(message).font(Typo.body).foregroundStyle(Color.textSecondary).lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
+                Text(message).font(Typo.body).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let info { InfoTip(info, size: 13) }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -139,18 +144,19 @@ struct WelcomeStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 32) {
+            VStack(spacing: Space.xxl) {
                 WelcomeArt()
-                VStack(spacing: 12) {
+                VStack(spacing: Space.m) {
                     Text("Mac 키보드·트랙패드로 아이폰까지").font(Typo.font(28, .heavy))
                     Text("커서를 화면 끝으로 밀면 아이폰으로 넘어가요.\n아이폰엔 아무것도 설치하지 않아요.")
                         .font(Typo.font(15, .regular)).foregroundStyle(Color.textSecondary)
                         .multilineTextAlignment(.center).lineSpacing(4)
                 }
-                HStack(spacing: 16) {
-                    feature("블루투스·입력 권한 3가지", "Mac 입력을 아이폰에 전달하는 데 필요해요")
+                // 카드마다 설명은 한 줄 (두 줄로 넘어가 마지막 줄에 한 단어만 남지 않게)
+                HStack(spacing: Space.l) {
+                    feature("블루투스·입력 권한 3가지", "아이폰 조작에 필요해요")
                     feature("아이폰 연결", "블루투스 페어링 한 번이면 돼요")
-                    feature("배치와 연습", "아이폰 위치를 정하고 직접 넘어가 봐요")
+                    feature("배치와 연습", "위치를 정하고 넘어가 봐요")
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -169,8 +175,8 @@ struct WelcomeStep: View {
 
     private func feature(_ title: String, _ text: String) -> some View {
         GrayCard(stretch: true) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(Typo.bodyBold)
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text(title).font(Typo.bodyBold).lineLimit(1)
                 Text(text).font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
@@ -222,9 +228,10 @@ struct PermissionsStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Space.l) {
                 StepHeader(title: "Mac 권한 3가지를 허용해 주세요",
-                           message: "허용하면 자동으로 확인돼요. 앱을 다시 켤 필요는 없어요.")
+                           message: "허용하면 자동으로 확인돼요.",
+                           info: "시스템 설정에서 켜면 1초 안에 알아채요. 앱을 다시 켤 필요는 없어요.")
                 VStack(spacing: 0) {
                     ForEach(Permissions.Kind.allCases) { kind in
                         row(kind)
@@ -233,14 +240,15 @@ struct PermissionsStep: View {
                 }
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
 
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "lock").font(.system(size: 12, weight: .medium)).padding(.top, 1)
-                    Text("입력 내용은 저장하거나 인터넷으로 보내지 않아요. 아이폰을 조작할 때만 블루투스로 전달해요.")
-                        .lineSpacing(3)
+                HStack(alignment: .center, spacing: Space.xs) {
+                    Image(systemName: "lock").font(.system(size: 12, weight: .medium))
+                        .padding(.trailing, Space.xs)
+                    Text("입력 내용은 저장하거나 인터넷으로 보내지 않아요.")
+                    InfoTip("아이폰을 조작하는 동안에만 키 입력과 커서 움직임을 블루투스로 아이폰에 전달해요.")
                 }
                 .font(Typo.secondary).foregroundStyle(Color.textSecondary)
             }
-            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
+            .padding(.horizontal, 48).padding(.top, Space.s).padding(.bottom, Space.xl)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -272,13 +280,13 @@ struct PermissionsStep: View {
     @ViewBuilder private func row(_ kind: Permissions.Kind) -> some View {
         let granted = permissions.isGranted(kind)
         let isNext = permissions.firstMissing == kind
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: Space.m) {
+            HStack(spacing: Space.m) {
                 Image(systemName: kind.symbol).font(.system(size: 14, weight: .medium)).foregroundStyle(Color.brandStrong)
                     .frame(width: 32, height: 32)
                     .background(RoundedRectangle(cornerRadius: 8).fill(Color.segmentBg))
                     .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Space.xs) {
                     Text(kind.title).font(Typo.font(14, .bold))
                     Text(kind.why).font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 }
@@ -298,7 +306,7 @@ struct PermissionsStep: View {
                 settingsGuide(kind)
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 14)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }
 
     private func cta(_ kind: Permissions.Kind) -> String {
@@ -308,9 +316,9 @@ struct PermissionsStep: View {
 
     /// 60초가 지나도 안 켜질 때 (회사 정책)
     private var adminHelp: some View {
-        HStack(spacing: 4) {
-            Text("켜지지 않나요? 회사에서 관리하는 Mac이라면 관리자가 막아두었을 수 있어요.")
-                .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: Space.xs) {
+            Text("켜지지 않나요?")
+            InfoTip("회사에서 관리하는 Mac이라면 관리자가 권한을 막아 두었을 수 있어요. 복사한 내용을 관리자에게 보내 허용을 요청하세요.")
             Button(copied ? "복사했어요" : "관리자에게 보낼 내용 복사") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(Permissions.adminRequestText, forType: .string)
@@ -324,9 +332,12 @@ struct PermissionsStep: View {
     /// 캔버스 4-4 블루투스 권한 거부됨
     private var deniedGuide: some View {
         InfoBox {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("블루투스를 허용하지 않았어요").font(Typo.font(12, .bold)).foregroundStyle(Color.brandStrong)
-                Text("시스템 설정 › 개인정보 보호 및 보안 › Bluetooth에서 EdgeLink를 켜 주세요. 켜면 자동으로 다음 권한으로 넘어가요.")
+            VStack(alignment: .leading, spacing: Space.xs) {
+                HStack(spacing: Space.xs) {
+                    Text("블루투스를 허용하지 않았어요").font(Typo.font(12, .bold)).foregroundStyle(Color.brandStrong)
+                    InfoTip("켜면 자동으로 다음 권한으로 넘어가요.")
+                }
+                Text("시스템 설정 › \("개인정보 보호 및 보안".nonBreaking) › Bluetooth에서 EdgeLink를 켜 주세요.")
                     .font(Typo.secondary).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 if permissions.waitingTooLong { adminHelp }
             }
@@ -336,11 +347,14 @@ struct PermissionsStep: View {
 
     private func settingsGuide(_ kind: Permissions.Kind) -> some View {
         InfoBox {
-            HStack(alignment: .center, spacing: 16) {
+            HStack(alignment: .center, spacing: Space.l) {
                 SettingsMiniArt(title: kind.title)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("시스템 설정이 열렸어요").font(Typo.font(12, .bold)).foregroundStyle(Color.brandStrong)
-                    Text("목록에서 EdgeLink를 켜 주세요. 목록에 없으면 아래 + 버튼으로 EdgeLink를 추가하세요.")
+                VStack(alignment: .leading, spacing: Space.xs) {
+                    HStack(spacing: Space.xs) {
+                        Text("시스템 설정이 열렸어요").font(Typo.font(12, .bold)).foregroundStyle(Color.brandStrong)
+                        InfoTip("목록에 EdgeLink가 없으면 목록 아래 + 버튼으로 EdgeLink를 추가하세요.")
+                    }
+                    Text("목록에서 EdgeLink를 켜 주세요.")
                         .font(Typo.secondary).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                     if kind == .inputMonitoring {
                         // macOS는 입력 모니터링을 켜면 다시 열기를 권하지만, EdgeLink는 1초 안에 알아챈다
@@ -397,19 +411,22 @@ struct PairingStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 32) {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("아이폰과 블루투스로 연결해요").font(Typo.onboardingTitle).lineSpacing(2)
-                    (Text("아이폰에서 ") + Text("설정 › Bluetooth").bold().foregroundColor(.textPrimary)
-                     + Text(" 화면을 열어 두면 오른쪽 목록에 나타나요."))
-                        .font(Typo.body).foregroundStyle(Color.textSecondary).lineSpacing(3)
+            HStack(alignment: .top, spacing: Space.xxl) {
+                VStack(alignment: .leading, spacing: Space.l) {
+                    VStack(alignment: .leading, spacing: Space.s) {
+                        Text("아이폰과 블루투스로 연결해요").font(Typo.onboardingTitle).lineSpacing(2)
+                        (Text("아이폰에서 ") + Text("설정 › Bluetooth".nonBreaking).bold().foregroundColor(.textPrimary)
+                         + Text(" 화면을 열어 두면 오른쪽 목록에 나타나요."))
+                            .font(Typo.body).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     PhoneBluetoothArt(code: pairingCode)
                         .frame(maxWidth: .infinity)
                 }
                 .frame(width: 260)
 
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: Space.m) {
+                    HStack(spacing: Space.s) {
                         if devices.searching { Spinner(size: 12) }
                         Text(devices.searching ? "근처 기기 찾는 중" : "기기 목록")
                     }
@@ -429,11 +446,13 @@ struct PairingStep: View {
                     }
                     if case let .failed(message) = model.connection, model.connectingAddress != nil || !model.isConnected {
                         // 오류 원문은 연결 로그에만. 여기선 결과와 할 일만.
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: Space.xs) {
                             Text(ConnectionError(message).friendly).font(Typo.font(12, .semibold)).foregroundStyle(Color.dangerText)
-                            Text("다시 ‘연결’을 눌러 보세요. 계속 안 되면 아이폰 설정 › Bluetooth에서 이 Mac을 지운 뒤 다시 연결하세요.")
-                                .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(2)
-                                .fixedSize(horizontal: false, vertical: true)
+                            HStack(spacing: Space.xs) {
+                                Text("다시 ‘연결’을 눌러 보세요.")
+                                    .font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                                InfoTip("계속 안 되면 아이폰 설정 › Bluetooth에서 이 Mac을 ‘이 기기 지우기’ 한 뒤 다시 연결하세요.")
+                            }
                         }
                     }
 
@@ -461,7 +480,7 @@ struct PairingStep: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
+            .padding(.horizontal, 48).padding(.top, Space.s).padding(.bottom, Space.xl)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -638,26 +657,28 @@ struct AssistiveTouchStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: Space.l) {
                 StepHeader(title: "아이폰에서 마우스 커서를 켜 주세요",
-                           message: "아이폰은 AssistiveTouch를 켜야 마우스 커서가 보여요. 키보드는 이 설정 없이도 돼요.")
+                           message: "아이폰은 AssistiveTouch를 켜야 마우스 커서가 보여요.",
+                           info: "키보드는 이 설정 없이도 돼요. AssistiveTouch는 화면에 회색 동그라미 버튼이 보이면 켜진 거예요.")
                 if isPad {
                     InfoBox {
                         Text("아이패드는 마우스 커서가 기본으로 보여서 이 단계를 건너뛰어도 돼요.")
                             .font(Typo.secondary).foregroundStyle(Color.brandStrong)
                     }
                 }
-                HStack(spacing: 12) {
+                HStack(spacing: Space.m) {
                     ForEach(path.indices, id: \.self) { i in pathCard(i) }
                 }
                 // 다음 배치 단계의 "아이폰 방향"과 맞게: 세워 쓸 때만 회전 잠금
-                tip("lock.rotation", "아이폰을 세워 쓴다면 화면 회전 잠금을 켜 두세요. 돌아오는 위치가 어긋나지 않아요.")
+                tip("lock.rotation", "아이폰을 세워 쓴다면 화면 회전 잠금을 켜 두세요.",
+                    info: "화면이 돌아가면 커서가 Mac으로 돌아오는 위치가 어긋나요.")
                 Toggle(isOn: $checked) {
                     Text("아이폰에서 AssistiveTouch를 켰어요").font(Typo.font(14, .semibold))
                 }
                 .toggleStyle(BoxCheckboxStyle())
             }
-            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
+            .padding(.horizontal, 48).padding(.top, Space.s).padding(.bottom, Space.xl)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -708,12 +729,15 @@ struct AssistiveTouchStep: View {
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.bgSidebar))
     }
 
-    private func tip(_ icon: String, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+    private func tip(_ icon: String, _ text: String, info: String? = nil) -> some View {
+        HStack(alignment: .center, spacing: Space.s) {
             Image(systemName: icon).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.brand)
-                .frame(width: 16).padding(.top, 1)
-            Text(text).font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 16)
+            HStack(spacing: Space.xs) {
+                Text(text).font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let info { InfoTip(info) }
+            }
         }
     }
 }
@@ -730,14 +754,14 @@ struct TestStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 40) {
+            HStack(alignment: .top, spacing: Space.xxl) {
                 PhoneCircleArt()
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Space.l) {
                     StepHeader(title: "아이폰 화면을 보세요",
                                message: "EdgeLink가 아이폰 커서를 원 모양으로 움직이고 있어요. 커서가 보이나요?")
                     if !model.isConnected {
                         Notice(title: "아이폰 연결이 끊겼어요.", message: "연결되면 커서를 다시 움직여요.")
-                        HStack(spacing: 12) {
+                        HStack(spacing: Space.m) {
                             Button("다시 연결") {
                                 if let a = settings.lastDeviceAddress { model.connect(address: a) }
                             }
@@ -764,12 +788,15 @@ struct TestStep: View {
                     // 연결이 끊겼을 땐 할 일을 하나로 (다시 연결)
                     if model.isConnected {
                         GrayCard(padding: 0) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("키보드도 시험해 볼까요? (선택)").font(Typo.font(12, .bold))
-                                Text("아이폰에서 메모 앱을 열고 입력 칸을 누른 뒤 버튼을 누르면 ‘EdgeLink’가 입력돼요. 아이폰 키보드가 한국어면 한글 자모로 들어가는데, 그래도 성공이에요.")
+                            VStack(alignment: .leading, spacing: Space.s) {
+                                HStack(spacing: Space.xs) {
+                                    Text("키보드도 시험해 볼까요? (선택)").font(Typo.font(12, .bold))
+                                    InfoTip("아이폰 키보드가 한국어면 ‘EdgeLink’가 한글 자모로 들어가는데, 그래도 성공이에요.")
+                                }
+                                Text("아이폰 메모 앱의 입력 칸을 누른 뒤 아래 버튼을 누르면 ‘EdgeLink’가 입력돼요.")
                                     .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                                     .fixedSize(horizontal: false, vertical: true)
-                                HStack(spacing: 8) {
+                                HStack(spacing: Space.s) {
                                     Button(typed ? "다시 입력해 보기" : "아이폰에 입력해 보기") {
                                         model.stopCircle()
                                         circlePaused = true
@@ -789,12 +816,12 @@ struct TestStep: View {
                                     Text("입력하는 동안 커서를 멈췄어요.").font(Typo.caption).foregroundStyle(Color.textSecondary)
                                 }
                             }
-                            .padding(.horizontal, 16).padding(.vertical, 14)
+                            .padding(.horizontal, Space.l).padding(.vertical, Space.m)
                         }
                     }
                 }
             }
-            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
+            .padding(.horizontal, 48).padding(.top, Space.s).padding(.bottom, Space.xl)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -813,12 +840,12 @@ struct TestStep: View {
 
     private var troubleCard: some View {
         Card {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Space.s) {
                 Text("이것부터 확인해 보세요").font(Typo.bodyBold)
                 check(1, "아이폰 잠금을 풀고 홈 화면을 띄워 두세요.")
                 check(2, "AssistiveTouch가 켜져 있는지 확인하세요. 화면에 회색 동그라미 버튼이 보이면 켜진 거예요.")
                 check(3, "아이폰 설정 › Bluetooth에서 이 Mac이 ‘연결됨’인지 확인하세요.")
-                HStack(spacing: 8) {
+                HStack(spacing: Space.s) {
                     Button("다시 움직이기") {
                         model.startCircle()
                         circlePaused = false
@@ -828,13 +855,13 @@ struct TestStep: View {
                     Button("AssistiveTouch 안내 다시 보기") { model.onboardingPage = .assistiveTouch }
                         .buttonStyle(PillButtonStyle(kind: .plain, height: 36))
                 }
-                .padding(.top, 4)
+                .padding(.top, Space.xs)
             }
         }
     }
 
     private func check(_ n: Int, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: Space.s) {
             Text("\(n)").font(Typo.font(10, .heavy))
                 .frame(width: 18, height: 18).background(Circle().fill(Color.segmentBg))
             Text(text).font(Typo.secondary).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
@@ -885,24 +912,21 @@ struct LayoutStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("아이폰을 어디에 두셨나요?").font(Typo.onboardingTitle)
-                    Text("실제로 놓은 위치를 골라 주세요.").font(Typo.body).foregroundStyle(Color.textSecondary)
-                }
+            VStack(alignment: .leading, spacing: Space.m) {
+                StepHeader(title: "아이폰을 어디에 두셨나요?", message: "실제로 놓은 위치를 골라 주세요.")
                 ArrangementView(screens: model.screens, placements: placements, selected: selected, landscape: settings.profile.landscape)
                     .frame(height: 196)
 
                 if placements.isEmpty {
                     // 설정 › 배치와 같은 회복 방법: 디스플레이 설정 열기, 그동안은 단축키로 계속
                     Notice(title: "놓을 수 있는 가장자리가 없어요.",
-                           message: "모니터가 모두 맞닿아 있으면 아이폰을 놓을 빈 가장자리가 없어요. 디스플레이 설정에서 배치를 바꿔 주세요. 그동안은 단축키로만 넘어갈 수 있어요.")
+                           message: "디스플레이 설정에서 모니터 배치를 바꿔 주세요. 그동안은 단축키로만 넘어가요.")
                     Button("디스플레이 설정 열기") {
                         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Displays-Settings.extension")!)
                     }
                     .buttonStyle(PillButtonStyle(kind: .plain, height: 32))
                 } else {
-                    FlowRow(spacing: 8) {
+                    FlowRow(spacing: Space.s) {
                         ForEach(placements) { p in
                             Button(label(p)) { selected = p }
                                 .buttonStyle(OptionChipStyle(on: p == selected))
@@ -912,10 +936,11 @@ struct LayoutStep: View {
                     }
                 }
                 if let s = selected, let conflict = Layout.conflict(s) {
-                    Notice(title: conflict, message: "조금 더 길게 밀어야 넘어가요. Dock을 옆으로 옮기면 더 편해요.")
+                    // 메뉴 막대 쪽이면 Dock 이야기는 맞지 않는다
+                    Notice(title: conflict, message: s.edge == .top ? "조금 더 길게 밀어야 넘어가요." : "조금 더 길게 밀어야 넘어가요. Dock을 옆으로 옮기면 더 편해요.")
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: Space.xs) {
+                    HStack(spacing: Space.m) {
                         // 돌아오는 위치 계산에 아이폰 화면 크기가 필요하다. 기기 이름으로 알면 묻지 않는다.
                         if showModelPicker {
                             Text("어떤 아이폰인가요?").font(Typo.body).foregroundStyle(Color.textSecondary)
@@ -929,7 +954,10 @@ struct LayoutStep: View {
                             .frame(width: 200)
                             Spacer()
                         }
-                        Text("아이폰 방향").font(Typo.body).foregroundStyle(Color.textSecondary)
+                        HStack(spacing: Space.xs) {
+                            Text("아이폰 방향").font(Typo.body).foregroundStyle(Color.textSecondary)
+                            InfoTip("실제로 놓은 방향을 고르면 Mac으로 돌아오는 위치가 맞아요.")
+                        }
                         Picker("방향", selection: $settings.profile.landscape) {
                             Text("세로").tag(false)
                             Text("가로").tag(true)
@@ -939,11 +967,10 @@ struct LayoutStep: View {
                         .labelsHidden()
                         .frame(width: 150)
                     }
-                    Text("놓은 방향을 고르면 돌아오는 위치가 맞아요.").font(Typo.caption).foregroundStyle(Color.textSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 48).padding(.bottom, 24)
+            .padding(.horizontal, 48).padding(.top, Space.s).padding(.bottom, Space.xl)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -1139,10 +1166,12 @@ struct PracticeStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 32) {
-                VStack(alignment: .leading, spacing: 16) {
-                    StepHeader(title: "직접 넘어가 볼까요?",
-                               message: "하나씩 해 보면 자동으로 체크돼요. 이 창은 그대로 두고 해 보세요.")
+            // 그림은 화면 가운데에 떠 있지 않게 미션 목록 옆에 붙인다
+            VStack(alignment: .leading, spacing: Space.l) {
+                StepHeader(title: "직접 넘어가 볼까요?",
+                           message: "하나씩 해 보면 자동으로 체크돼요. 이 창은 그대로 두고 해 보세요.")
+            HStack(alignment: .top, spacing: Space.xxl) {
+                VStack(alignment: .leading, spacing: Space.l) {
                     VStack(spacing: 0) {
                         mission(1, .go, "아이폰으로 넘어가기", "\(placementLabel) 끝에서 커서를 꾹 밀어요")
                         Rectangle().fill(Color.lineSoft).frame(height: 1)
@@ -1153,7 +1182,7 @@ struct PracticeStep: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
                     // Mac으로 돌아와 본 뒤에만 한 줄로 (대부분은 필요 없다)
                     if done.contains(.back), model.isConnected {
-                        HStack(spacing: 6) {
+                        HStack(spacing: Space.xs) {
                             Text("돌아온 위치가 커서와 다르면").foregroundStyle(Color.textSecondary)
                             Button("위치 맞추기") { model.present(.calibration) }
                                 .buttonStyle(LinkButtonStyle(size: 12))
@@ -1162,9 +1191,12 @@ struct PracticeStep: View {
                         .transition(.opacity)
                     }
                 }
+                // 그림 위쪽 빈 칸(44)만큼 올려 모니터가 목록 첫 줄 높이에서 시작하게
                 PushArt(mirrored: current?.edge == .left).frame(width: 200)
+                    .padding(.top, -Space.xxl)
             }
-            .padding(.horizontal, 48).padding(.top, 8).padding(.bottom, 24)
+            }
+            .padding(.horizontal, 48).padding(.top, Space.s).padding(.bottom, Space.xl)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -1199,15 +1231,16 @@ struct PracticeStep: View {
     private var returnEdge: String { (current?.edge ?? .right).returnLabel }
 
     private func mission(_ n: Int, _ key: PracticeMission, _ title: String, _ hint: String) -> some View {
-        HStack(spacing: 14) {
+        // 권한 단계 줄과 같은 여백·간격
+        HStack(spacing: Space.m) {
             NumberDot(text: "\(n)", state: done.contains(key) ? .done : .todo, size: 26)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Space.xs) {
                 Text(title).font(Typo.font(14, .bold))
                 Text(hint).font(Typo.secondary).foregroundStyle(Color.textSecondary)
             }
             Spacer()
         }
-        .padding(.horizontal, 16).padding(.vertical, 14)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }
 }
 
@@ -1247,8 +1280,9 @@ struct PushArt: View {
             .frame(width: 200, height: 200, alignment: .topLeading)
             Text("파란 구간에서 바깥쪽으로\n꾹 밀어 보세요").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 .multilineTextAlignment(.center).lineSpacing(3)
+                // 그림 아래 빈 칸(40)을 줄여 설명이 그림에 붙게
+                .padding(.top, -Space.xl)
         }
-        .frame(maxHeight: .infinity)
         .accessibilityHidden(true)
     }
 }
@@ -1263,21 +1297,21 @@ struct DoneStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: Space.l) {
+                HStack(spacing: Space.l) {
                     Circle().fill(Color.success).frame(width: 48, height: 48)
                         .overlay(Image(systemName: "checkmark").font(.system(size: 20, weight: .heavy)).foregroundStyle(.white))
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Space.xs) {
                         Text("준비 끝났어요").font(Typo.font(24, .heavy))
                         Text("이제 커서를 밀기만 하면 아이폰으로 넘어가요.").font(Typo.body).foregroundStyle(Color.textSecondary)
                     }
                 }
-                HStack(spacing: 12) {
+                HStack(spacing: Space.m) {
                     summary("권한", permissions.allGranted ? "3가지 모두 허용" : "꺼진 권한이 있어요")
                     summary("기기", settings.lastDeviceName ?? "연결된 기기 없음")
                     summary("위치", model.currentPlacement?.label ?? "정하지 않음")
                 }
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Space.s) {
                     Text("기억해 두면 좋은 단축키").font(Typo.font(12, .semibold)).foregroundStyle(Color.textSecondary)
                     VStack(spacing: 0) {
                         shortcut("Mac ↔ 아이폰 전환", keys(.toggleRemote))
@@ -1286,21 +1320,21 @@ struct DoneStep: View {
                         Rectangle().fill(Color.lineSoft).frame(height: 1)
                         shortcut("가장자리 전환 켜기/끄기", keys(.toggleEdge))
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Space.l)
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
                 }
                 // 선택 기능: 아래쪽 "이전" 옆에 두면 내비게이션처럼 보여서 본문 카드로
                 GrayCard(padding: 0) {
-                    HStack(spacing: 12) {
-                        Text("트랙패드 제스처로 아이폰 홈·앱 전환 열기 (선택)").font(Typo.body)
+                    HStack(spacing: Space.m) {
+                        Text("트랙패드 제스처로 아이폰 홈·앱 전환 열기 (선택)").font(Typo.body).lineLimit(1)
                         Spacer()
                         Button("설정하기") { model.settingsWindow.showGestureSetup() }
                             .buttonStyle(PillButtonStyle(kind: .secondary, height: 30))
                     }
-                    .padding(.horizontal, 16).padding(.vertical, 8)
+                    .padding(.horizontal, Space.l).padding(.vertical, Space.s)
                 }
-                HStack(spacing: 16) {
-                    HStack(spacing: 10) {
+                HStack(spacing: Space.l) {
+                    HStack(spacing: Space.s) {
                         MenuBarMiniArt()
                         Text("설정은 메뉴 막대 아이콘에서 바꿀 수 있어요.")
                             .font(Typo.secondary).foregroundStyle(Color.textSecondary)
@@ -1316,7 +1350,8 @@ struct DoneStep: View {
                     .tint(Color.brand)
                 }
             }
-            .padding(.horizontal, 64).padding(.top, 8).padding(.bottom, 24)
+            // 다른 단계와 같은 왼쪽 시작선(48)
+            .padding(.horizontal, 48).padding(.top, Space.s).padding(.bottom, Space.xl)
             .frame(maxHeight: .infinity, alignment: .top)
 
             Footer {
@@ -1331,8 +1366,8 @@ struct DoneStep: View {
     }
 
     private func summary(_ label: String, _ value: String) -> some View {
-        Card(padding: 14) {
-            VStack(alignment: .leading, spacing: 4) {
+        Card(padding: Space.m) {
+            VStack(alignment: .leading, spacing: Space.xs) {
                 Text(label).font(Typo.font(11, .regular)).foregroundStyle(Color.textSecondary)
                 Text(value).font(Typo.bodyBold).lineLimit(1)
             }
