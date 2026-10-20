@@ -28,7 +28,7 @@ struct PopoverPreview {
     var setupStep: Int?
 }
 
-/// 메뉴바 팝오버. 너비 360, 높이는 내용에 맞춤(최대 640).
+/// 메뉴 막대 팝오버. 너비 360, 높이는 내용에 맞춤(최대 640).
 struct PopoverView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var settings: AppSettings
@@ -125,18 +125,7 @@ struct PopoverHeader: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
-            if case .connected = state {
-                Button { model.openSettings() } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color.textSecondary)
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(HoverFillStyle(radius: 8))
-                .accessibilityLabel("설정 열기")
-                .help("설정 열기 (⌘,)")
-            }
+            // 설정은 바닥의 "설정… ⌘," 하나로 연다
         }
         .padding(EdgeInsets(top: 16, leading: 16, bottom: 12, trailing: 16))
     }
@@ -168,8 +157,9 @@ struct PopoverHeader: View {
 
     @ViewBuilder private var status: some View {
         switch state {
-        case let .problem(p):
-            Text(Self.problemStatus(p))
+        case .problem:
+            // 무슨 문제인지는 바로 아래 카드 제목이 말한다
+            Text("문제 있음 · 전환을 멈췄어요")
                 .font(Typo.font(12, .semibold))
                 .foregroundStyle(Color.warningStrong)
         default:
@@ -183,19 +173,10 @@ struct PopoverHeader: View {
         }
     }
 
-    static func problemStatus(_ p: PopoverProblem) -> String {
-        switch p {
-        case .permission: return "권한이 꺼져 있어요"
-        case .policy: return "권한을 켤 수 없어요"
-        case .bluetoothOff: return "Mac 블루투스가 꺼져 있어요"
-        case .bluetoothDenied: return "블루투스 권한이 없어요"
-        }
-    }
-
-    /// 연결 실패는 문제 있음과 같은 주황 계열로 (빨강은 카드의 "오류" 줄에만)
+    /// 연결 실패는 문제 있음과 같은 주황 계열로 (빨강은 카드의 오류 줄에만). 연결됐다가 끊긴 건 실패로 보지 않는다.
     private var isFailed: Bool {
-        guard case .disconnected = state, case .failed = model.connection else { return false }
-        return true
+        guard case .disconnected = state, case let .failed(message) = model.connection else { return false }
+        return !ConnectionError(message).dropped
     }
 
     private var dotColor: Color {
@@ -208,19 +189,19 @@ struct PopoverHeader: View {
 
     private var statusText: String {
         switch state {
-        case .setup: return "설정 중 · 연결된 기기 없음"
+        case .setup: return "설정 중"
         case .disconnected:
             switch model.connection {
             case .connecting: return "연결하는 중…"
             case .pairing: return "페어링하는 중…"
-            case .failed: return "연결 실패"
+            case .failed: return isFailed ? "연결 실패" : "연결 끊김"
             default: return noDevice ? "연결된 기기 없음" : "연결 끊김"
             }
         case .connected:
             switch model.controlMode {
             case .mac: return "연결됨 · Mac 조작 중"
             case .phone: return "연결됨 · \(settings.profile.model.isPad ? "아이패드" : "아이폰") 조작 중"
-            case .calibrating: return "연결됨 · 보정 중"
+            case .calibrating: return "연결됨 · 위치 맞추는 중"
             }
         case .problem: return ""
         }
@@ -410,9 +391,11 @@ struct SetupCard: View {
     var body: some View {
         let step = previewStep ?? settings.onboardingStep
         let next = previewStep.map { OnboardingStep(rawValue: min($0 + 1, OnboardingStep.done.rawValue)) ?? .welcome } ?? model.resumeStep()
-        let total = OnboardingStep.allCases.count
         // 마지막 단계만 남았으면 "조금 남았어요" 대신
         let almost = next == .done
+        // 처음 설정 창 위쪽 진행 표시와 같은 4묶음 기준 (시작 화면은 첫 묶음 앞)
+        let groupCount = StepIndicator.labels.count
+        let group = next.group ?? (next == .welcome ? 0 : groupCount - 1)
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(almost ? "거의 다 됐어요" : "설정이 조금 남았어요").font(Typo.screenTitle)
@@ -423,9 +406,9 @@ struct SetupCard: View {
                 HStack {
                     Text("다음: \(almost ? "마무리" : next.title)").font(Typo.font(12, .bold)).foregroundStyle(Color.brandStrong)
                     Spacer()
-                    Text("\(next.rawValue) / \(total)단계").font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                    Text("\(group + 1) / \(groupCount)단계").font(Typo.secondary).foregroundStyle(Color.textSecondary)
                 }
-                ProgressBar(value: Double(next.rawValue) / Double(total))
+                ProgressBar(value: Double(doneGroups(step: step)) / Double(groupCount))
                 Button { model.openOnboarding() } label: { Text(almost ? "마무리하기" : "설정 이어하기") }
                     .buttonStyle(WidePillStyle(height: 38))
                     .padding(.top, 2)
@@ -438,15 +421,21 @@ struct SetupCard: View {
         }
     }
 
-    /// 캔버스 2-2: 끝낸 묶음은 한 줄씩 ✓, 남은 묶음은 빈 원 하나에 한 줄로 ("아이폰 연결 · 배치 · 연습")
-    private func checklist(step: Int) -> some View {
+    private func groups(step: Int) -> [(String, Bool)] {
         let permsDone = previewStep.map { $0 >= OnboardingStep.permissions.rawValue } ?? permissions.allGranted
-        let groups: [(String, Bool)] = [
+        return [
             ("Mac 권한 3가지", permsDone),
             ("아이폰 연결", step >= OnboardingStep.test.rawValue),
             ("배치", step >= OnboardingStep.layout.rawValue),
             ("연습", step >= OnboardingStep.practice.rawValue),
         ]
+    }
+
+    private func doneGroups(step: Int) -> Int { groups(step: step).filter(\.1).count }
+
+    /// 캔버스 2-2: 끝낸 묶음은 한 줄씩 ✓, 남은 묶음은 빈 원 하나에 한 줄로 ("아이폰 연결 · 배치 · 연습")
+    private func checklist(step: Int) -> some View {
+        let groups = groups(step: step)
         let done = groups.filter(\.1).map(\.0)
         let left = groups.filter { !$0.1 }.map(\.0)
         return VStack(alignment: .leading, spacing: 6) {
@@ -498,8 +487,7 @@ struct ProblemCard: View {
     @State private var copied = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 15, weight: .semibold))
@@ -518,58 +506,32 @@ struct ProblemCard: View {
                 Text(copy.hint.keepingWords).font(Typo.caption).foregroundStyle(Color.warningText).lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color.warningBg))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.warningLine, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("지금 쓸 수 없는 기능").font(Typo.font(12, .semibold)).foregroundStyle(Color.textSecondary)
-                VStack(spacing: 0) {
-                    let items = ["아이폰으로 전환", "모서리 전환", "클립보드 보내기"]
-                    ForEach(Array(items.enumerated()), id: \.offset) { i, name in
-                        HStack {
-                            Text(name).font(Typo.body)
-                            Spacer()
-                            Text("멈춤").font(Typo.secondary)
-                        }
-                        .frame(minHeight: 44)
-                        .accessibilityElement(children: .combine)
-                        if i < items.count - 1 { Rectangle().fill(Color.lineSoft).frame(height: 1) }
-                    }
-                }
-                // textDecor는 다크에서 대비가 모자라 보조 글자 색을 흐리게 쓴다
-                .foregroundStyle(Color.textSecondary.opacity(0.7))
-                .padding(.horizontal, 12)
-                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
-                Text("해결되면 자동으로 다시 동작해요. 앱을 다시 켤 필요는 없어요.")
-                    .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 2)
-            }
-        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.warningBg))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.warningLine, lineWidth: 1))
     }
 
     private var copy: (title: String, body: String, cta: String, hint: String) {
         switch problem {
         case .policy:
             return ("회사 정책으로 막혀 있을 수 있어요",
-                    "1분이 지나도 권한이 켜지지 않았어요. 회사에서 관리하는 Mac이라면 관리자가 막아 둔 걸 수 있어요.",
+                    "1분이 지나도 권한이 켜지지 않았어요. 회사에서 관리하는 Mac이라면 관리자가 막아 둔 걸 수 있어요. 그동안 아이폰으로 넘어갈 수 없어요.",
                     "관리자에게 보낼 내용 복사",
-                    "복사되는 내용: 앱 이름, 번들 ID, 필요한 권한 3가지와 이유.")
+                    "앱 이름과 필요한 권한 3가지, 그 이유가 복사돼요.")
         case let .permission(kind):
             return ("\(kind.title) 권한이 꺼졌어요",
-                    "이 권한이 없으면 아이폰 조작 중에도 입력이 Mac으로 가요. 그래서 전환을 멈췄어요.",
+                    "이 권한이 없으면 아이폰 조작 중에도 입력이 Mac으로 가요. 그래서 아이폰으로 넘어가기를 멈췄어요.",
                     "시스템 설정에서 다시 켜기",
-                    "목록에서 EdgeLink를 켜 주세요. 켜면 1초 안에 다시 동작해요.")
+                    "시스템 설정 › \("개인정보 보호 및 보안".nonBreaking) › \(kind.settingsName.nonBreaking)에서 EdgeLink를 켜 주세요. 켜면 바로 다시 동작해요.")
         case .bluetoothDenied:
             return ("블루투스 권한이 없어요",
-                    "블루투스 권한이 있어야 아이폰에 키보드·마우스로 연결할 수 있어요.",
+                    "블루투스 권한이 있어야 아이폰에 키보드·마우스로 연결할 수 있어요. 그동안 아이폰으로 넘어갈 수 없어요.",
                     "시스템 설정에서 켜기",
-                    "시스템 설정 › \("개인정보 보호 및 보안".nonBreaking) › 블루투스에서 EdgeLink를 켜 주세요.")
+                    "시스템 설정 › \("개인정보 보호 및 보안".nonBreaking) › Bluetooth에서 EdgeLink를 켜 주세요.")
         case .bluetoothOff:
             let name = settings.lastDeviceName.map { "기본 기기(\($0.nonBreaking))" } ?? "기본 기기"
             return ("Mac 블루투스가 꺼져 있어요",
-                    "블루투스가 켜져야 아이폰에 키보드·마우스로 \("연결할 수 있어요.".nonBreaking) 그동안 다시 연결 시도도 멈춰요.",
+                    "블루투스가 켜져야 아이폰에 \("연결할 수 있어요.".nonBreaking) 그동안 아이폰으로 넘어갈 수 없어요.",
                     "블루투스 설정 열기",
                     "켜면 \(name)에 \("자동으로 다시 연결해요.".nonBreaking)")
         }
@@ -684,26 +646,53 @@ struct DisconnectedCard: View {
             }
             .buttonStyle(WidePillStyle(height: 38))
             .disabled(busy)
-            VStack(alignment: .leading, spacing: 6) {
+            if showCancel(now: now) {
+                // 연결이 오래 걸리면 멈출 수 있게
+                Button("취소") { model.disconnectByUser(toast: "연결을 취소했어요") }
+                    .buttonStyle(LinkButtonStyle(size: 12, color: .textSecondary))
+                    .frame(maxWidth: .infinity)
+            }
+            if let e = failure {
+                failureHelp(e, now: now)
+            } else {
                 Text(reason(now: now).keepingWords).font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
-                if case let .failed(message) = model.connection {
-                    let e = ConnectionError(message)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("오류: \(e.friendly)".keepingWords).font(Typo.font(12, .semibold)).foregroundStyle(Color.dangerText)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if let raw = e.raw {
-                            Text(verbatim: raw).font(Typo.caption).foregroundStyle(Color.textSecondary)
-                                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .accessibilityElement(children: .combine)
-                }
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.line, lineWidth: 1))
+    }
+
+    /// 연결하지 못했을 때 (연결됐다가 끊긴 건 nil). 오류 원문은 연결 로그에만 남긴다.
+    private var failure: ConnectionError? {
+        guard case let .failed(message) = model.connection else { return nil }
+        let e = ConnectionError(message)
+        return e.dropped ? nil : e
+    }
+
+    /// 무엇이 안 됐는지 한 줄, 그다음 할 일
+    private func failureHelp(_ e: ConnectionError, now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(e.friendly.keepingWords).font(Typo.font(12, .semibold)).foregroundStyle(Color.dangerText)
+                .fixedSize(horizontal: false, vertical: true)
+            Group {
+                Text("계속 안 되면 아이폰 설정 › Bluetooth에서 이 Mac을 지운 뒤 새로 페어링하세요.".keepingWords)
+                // 같은 실패가 이어질 때만 (처음부터 원인 후보를 늘어놓지 않는다)
+                if model.failureStreak >= 3 {
+                    Text("회사에서 관리하는 Mac은 보안 정책으로 블루투스 키보드를 막기도 해요.".keepingWords)
+                }
+                Text(retrySentence(now: now).keepingWords)
+            }
+            .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
+            .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 16) {
+                Button("새로 페어링") { model.openOnboarding(at: .pairing) }
+                Button("연결 로그 보기") { model.present(.connectionLog) }
+            }
+            .buttonStyle(LinkButtonStyle(size: 12))
+            .padding(.top, 2)
+        }
     }
 
     /// 캔버스 4-3: 페어링한 기기가 없을 때
@@ -728,12 +717,20 @@ struct DisconnectedCard: View {
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.line, lineWidth: 1))
     }
 
-    /// 머리글(연결하는 중·연결 실패·연결 끊김)과 겹치지 않게, 끊긴 시각을 알면 시각만
+    /// 머리글(연결하는 중·연결 실패·연결 끊김)과 맞게. 끊긴 시각을 알면 시각만.
     private func subtitle(now: Date) -> String {
         switch model.connection {
         case .connecting, .pairing: return "기본 기기"
-        default: return "기본 기기" + (ago(now: now).map { " · \($0)" } ?? "")
+        default:
+            if failure != nil { return "기본 기기 · 연결하지 못했어요" }
+            return "기본 기기" + (ago(now: now).map { " · \($0)" } ?? "")
         }
+    }
+
+    /// 연결을 시작하고 5초가 지나면 "취소"를 보인다
+    private func showCancel(now: Date) -> Bool {
+        guard busy, let since = model.connectingSince else { return false }
+        return now.timeIntervalSince(since) >= 5
     }
 
     /// "3분 전에 끊겼어요" (끊긴 시각을 알 때만)
@@ -751,10 +748,11 @@ struct DisconnectedCard: View {
         return max(0, at.timeIntervalSince(now))
     }
 
-    /// "1분 뒤에 자동으로 다시 시도해요."
+    /// "1분 뒤에 자동으로 다시 시도해요." 예약이 없으면 할 일을 말한다.
     private func retrySentence(now: Date) -> String {
+        if model.disconnectedByUser { return "위 버튼을 누르면 다시 연결해요." }
         guard settings.autoReconnect else { return "자동 다시 연결이 꺼져 있어요. 설정 › 연결에서 켤 수 있어요." }
-        guard let r = retryIn(now: now) else { return "자동으로 다시 시도해요." }
+        guard let r = retryIn(now: now) else { return "위 버튼을 누르면 바로 연결해요." }
         if r < 1 { return "곧 자동으로 다시 시도해요." }
         if r < 60 { return "\(Int(r.rounded(.up)))초 뒤에 자동으로 다시 시도해요." }
         return "\(Int((r / 60).rounded(.up)))분 뒤에 자동으로 다시 시도해요."
@@ -773,26 +771,35 @@ struct DisconnectedCard: View {
         switch model.connection {
         case .connecting, .pairing:
             return "아이폰 화면과 블루투스가 켜져 있는지 확인해 주세요."
-        case .failed:
-            return "아이폰 블루투스가 꺼져 있거나 멀리 있을 수 있어요. 회사에서 관리하는 Mac은 보안 정책으로 블루투스 키보드를 막기도 해요. \(retry)"
+        case let .failed(message):
+            // 연결됐다가 끊김 ("아이폰에서 연결을 해제했어요" 등)
+            return "\(ConnectionError(message).friendly). \(retry)"
         default:
+            if model.disconnectedByUser { return "연결을 끊었어요. \(retry)" }
             return "아이폰 블루투스가 꺼져 있거나 멀리 있을 수 있어요. \(retry)"
         }
     }
 }
 
-/// 연결 실패 문구를 사용자 말로 바꾼다. 원문(단계·코드)은 따로 작게 보여준다.
+/// 연결 실패 문구를 사용자 말로 바꾼다. 원문(단계·오류 코드)은 연결 로그에만 남긴다.
 struct ConnectionError {
     let friendly: String
-    let raw: String?
+    /// 연결됐다가 끊긴 것 (연결하지 못한 게 아님)
+    let dropped: Bool
 
     init(_ message: String) {
-        // AppModel이 만드는 "인터럽트 채널(0x13) 실패 (기기 없음)" 같은 문구만 바꾸고, 이미 사용자 말이면 그대로
+        // AppModel이 그대로 넘기는 사용자 말 (BluetoothHID 끊김 이유)
+        if message == "연결이 끊겼어요" || message == "아이폰에서 연결을 해제했어요" {
+            friendly = message; dropped = true; return
+        }
+        dropped = false
+        // "인터럽트 채널(0x13) 실패 (기기 없음)" 같은 문구만 바꾸고, 이미 사용자 말이면 그대로
         let technical = message.range(of: #"\(.*\)|0x[0-9a-fA-F]+|실패"#, options: .regularExpression) != nil
-        guard technical else { friendly = message; raw = nil; return }
-        raw = message
+        guard technical else { friendly = message; return }
         if message.contains("채널") {
             friendly = "아이폰이 키보드 연결을 받지 않았어요"
+        } else if message.contains("페어링") {
+            friendly = "페어링하지 못했어요"
         } else if message.contains("기기 연결") || message.contains("기기 없음") {
             friendly = "아이폰을 찾지 못했어요"
         } else if message.contains("시간") || message.contains("timeout") {
@@ -850,6 +857,11 @@ struct ConnectedPanel: View {
     }
 
     private var deviceWord: String { settings.profile.model.isPad ? "iPad" : "iPhone" }
+    /// "아이폰 화면 왼쪽" (자리를 모르면 "Mac 쪽")
+    private var returnSide: String {
+        guard let edge = model.currentPlacement?.edge else { return "Mac 쪽" }
+        return "\(settings.profile.model.isPad ? "아이패드" : "아이폰") 화면 \(edge.returnLabel)"
+    }
     private var toggleKey: String { (settings.hotkeys[.toggleRemote] ?? Hotkey.defaults[.toggleRemote]!).display }
 
     // 조작 기기 전환
@@ -873,15 +885,15 @@ struct ConnectedPanel: View {
             .accessibilityLabel("조작할 기기")
             Group {
                 if calibrating {
-                    Text("보정 중에는 바꿀 수 없어요. 보정 도우미를 끝내면 다시 쓸 수 있어요.")
+                    Text("돌아오는 위치를 맞추는 동안엔 바꿀 수 없어요. 끝나면 다시 쓸 수 있어요.")
                 } else if model.controlMode == .phone {
-                    // 아이폰 조작 중: 어떻게 돌아오는지
-                    (settings.edgeEnabled ? Text("Mac 쪽 화면 끝으로 밀거나 ") : Text(""))
+                    // 아이폰 조작 중: 아이폰 화면의 어느 끝으로 밀면 돌아오는지
+                    (settings.edgeEnabled ? Text("\(returnSide) 끝으로 밀거나 ") : Text(""))
                         + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 Mac에 돌아와요.")
                 } else if settings.edgeEnabled {
-                    Text("모서리로 밀거나 ") + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 전환해요.")
+                    Text("화면 끝으로 밀거나 ") + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 넘어가요.")
                 } else {
-                    Text("모서리 전환이 꺼져 있어요. ") + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 전환해요.")
+                    Text("가장자리 전환이 꺼져 있어요. ") + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 넘어가요.")
                 }
             }
             .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(2)
@@ -911,12 +923,11 @@ struct ConnectedPanel: View {
         .help(on ? "\(title) 조작 중이에요" : "\(title) 조작으로 바꿔요 (\(toggleKey))")
     }
 
-    // 스위치 3개
+    // 자주 바꾸는 스위치 2개 (유리 효과 같은 꾸밈 설정은 설정 › 일반에)
 
     private var toggles: some View {
         VStack(spacing: 0) {
-            Toggle(isOn: $settings.edgeEnabled) { switchLabel("모서리 전환", "끄면 단축키로만 넘어가요") }
-            Toggle(isOn: $settings.glassEnabled) { switchLabel("모서리 유리 효과", "밀 때 가장자리가 볼록해져요") }
+            Toggle(isOn: $settings.edgeEnabled) { switchLabel("가장자리 전환", "끄면 단축키로만 넘어가요") }
             Toggle(isOn: $settings.mediaKeysToPhone) { switchLabel("미디어 키를 아이폰으로", "볼륨·재생 키를 아이폰에 보내요") }
         }
         .toggleStyle(PillSwitchStyle())
@@ -939,11 +950,11 @@ struct ConnectedPanel: View {
                 Button { model.requestClipboardSend() } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.on.clipboard").font(.system(size: 13))
-                        Text("클립보드 보내기")
+                        Text("클립보드를 아이폰에 입력")
                     }
                 }
                 .buttonStyle(WidePillStyle(kind: .secondary, height: 40))
-                .accessibilityLabel("클립보드 보내기")
+                .accessibilityLabel("클립보드를 아이폰에 입력")
                 .help("클립보드의 영문·숫자·기호를 아이폰에 타이핑해요 (\((settings.hotkeys[.sendClipboard] ?? Hotkey.defaults[.sendClipboard]!).display))")
             }
             Button { menuOpen.toggle() } label: {
@@ -954,6 +965,8 @@ struct ConnectedPanel: View {
                 }
             }
             .buttonStyle(WidePillStyle(kind: .plain, height: 40))
+            // 클립보드 버튼 글자가 잘리지 않게 기기 버튼 폭을 정한다 (이름은 가운데를 줄임)
+            .frame(width: settings.clipboardTypingAllowed ? 116 : nil)
             .accessibilityLabel("기기 선택, \(model.connectedName ?? deviceWord) 연결됨")
         }
     }
@@ -984,7 +997,7 @@ struct ConnectedPanel: View {
             }
             MenuRow(title: "연결 끊기") {
                 menuOpen = false
-                model.disconnect()
+                model.disconnectByUser()
             }
         }
         .padding(6)
@@ -1062,7 +1075,7 @@ struct LayoutSummary: View {
     private func subtitle(_ p: Placement?) -> String {
         let count = "모니터 \(model.screens.count)대"
         guard p != nil else { return "\(count) · 지금은 단축키로만 넘어가요" }
-        return settings.edgeEnabled ? "\(count) · 파란 구간에서 넘어가요" : "\(count) · 모서리 전환이 꺼져 있어요"
+        return settings.edgeEnabled ? "\(count) · 파란 구간에서 넘어가요" : "\(count) · 가장자리 전환이 꺼져 있어요"
     }
 }
 
