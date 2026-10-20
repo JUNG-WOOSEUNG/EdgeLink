@@ -120,7 +120,7 @@ private struct ToastView: View {
     let systemImage: String?
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Space.s) {
             if let systemImage {
                 Image(systemName: systemImage)
                     .font(.system(size: 14, weight: .semibold))
@@ -133,7 +133,7 @@ private struct ToastView: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 14).padding(.vertical, 8)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.s)
         .frame(maxWidth: 420)
         .fixedSize()
         .toastChrome()
@@ -148,13 +148,13 @@ private struct ProgressToastView: View {
     let footnote: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.s) {
                 Image(systemName: "doc.on.clipboard")
                     .font(.system(size: 14, weight: .semibold))
                     .accessibilityHidden(true)
                 Text(title).font(Typo.font(13, .bold))
-                Spacer(minLength: 8)
+                Spacer(minLength: Space.s)
                 Text("\(remaining)자 남음").font(Typo.secondary).foregroundStyle(Color.textSecondary)
             }
             GeometryReader { g in
@@ -168,7 +168,7 @@ private struct ProgressToastView: View {
             Text(footnote).font(Typo.caption).foregroundStyle(Color.textSecondary)
         }
         .foregroundStyle(Color.textPrimary)
-        .padding(.horizontal, 18).padding(.vertical, 14)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
         .frame(width: 380)
         .toastChrome()
         .accessibilityElement(children: .combine)
