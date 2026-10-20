@@ -570,6 +570,29 @@ extension AppModel: BluetoothHIDDelegate {
         router.returnToMac(.transportStalled)
     }
 
+    /// 아이폰 블루투스를 껐다 켠 뒤 재연결이 계속 거절되면 앱을 조용히 다시 띄운다.
+    /// 같은 프로세스에선 IOBluetooth의 예전 채널 상태가 남아 풀리지 않았고, 새로 띄우면 바로 붙었다.
+    /// 반복을 막으려고 2분에 한 번까지만.
+    func hidNeedsFreshProcess(_ hid: BluetoothHID) {
+        let key = "lastAutoRestart"
+        let last = UserDefaults.standard.double(forKey: key)
+        let now = Date().timeIntervalSince1970
+        guard now - last > 120 else {
+            HIDLog.warn("2분 안에 이미 다시 띄웠어서 이번엔 그대로 둬요")
+            return
+        }
+        UserDefaults.standard.set(now, forKey: key)
+        router.returnToMac(.disconnected)
+        HIDLog.info("앱을 다시 띄워요")
+        let path = Bundle.main.bundlePath
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        // 지금 앱이 완전히 끝난 뒤에 새로 띄운다 (중복 실행 확인에 걸리지 않게)
+        p.arguments = ["-c", "sleep 1.5; /usr/bin/open \"$0\"", path]
+        try? p.run()
+        NSApp.terminate(nil)
+    }
+
     func hid(_ hid: BluetoothHID, didReceive leds: KeyboardLEDs) {}
 
     private func stopCircleIfNeeded() {

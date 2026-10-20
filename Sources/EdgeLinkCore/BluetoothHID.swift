@@ -8,12 +8,16 @@ public protocol BluetoothHIDDelegate: AnyObject {
     func hid(_ hid: BluetoothHID, didReceive leds: KeyboardLEDs)
     /// 쓰기 한 번이 50ms를 넘는 일이 3번 연속 생겼을 때. 앱은 Mac 조작으로 돌아와야 한다.
     func hidTransportStalled(_ hid: BluetoothHID)
+    /// 같은 프로세스 안에서 한 번 연결됐던 기기가 채널을 계속 거절할 때.
+    /// IOBluetooth가 예전 채널 상태를 붙들고 있어서 프로세스를 새로 띄워야만 풀렸다 (실기기 6번 중 6번).
+    func hidNeedsFreshProcess(_ hid: BluetoothHID)
 }
 
 public extension BluetoothHIDDelegate {
     func hid(_ hid: BluetoothHID, shouldAccept device: IOBluetoothDevice) -> Bool { true }
     func hid(_ hid: BluetoothHID, didReceive leds: KeyboardLEDs) {}
     func hidTransportStalled(_ hid: BluetoothHID) {}
+    func hidNeedsFreshProcess(_ hid: BluetoothHID) {}
 }
 
 /// Mac을 블루투스 HID 키보드·마우스로 보이게 한다.
@@ -80,6 +84,8 @@ public final class BluetoothHID: NSObject {
     private var userDisconnecting = false
     private var reconnectTimer: Timer?
     private var openTimer: Timer?
+    /// 이 프로세스에서 한 번이라도 연결된 적이 있는지
+    private var hadConnected = false
 
     // 아래는 writeQueue에서만 만진다
     private let writeQueue = DispatchQueue(label: "com.edgelink.hid.write", qos: .userInteractive)
@@ -257,24 +263,13 @@ public final class BluetoothHID: NSObject {
         // 채널을 열다 실패하면 블루투스 등록을 앱을 새로 켠 것처럼 되돌린 뒤 다시 시도한다.
         // (실기기: 아이폰 블루투스를 껐다 켠 뒤 재연결하면 채널이 계속 거절됐고, 앱을 다시 켜면 바로 붙었다.
         //  IOBluetooth가 예전 채널을 찾아 다시 쓰는 흔적이 스택에 있었다)
-        if stage.contains("채널") { refreshBluetoothRegistration() }
+        let stale = stage.contains("채널") && code == kIOReturnError && hadConnected
         if !userDisconnecting { teardown(reason: .openFailed(stage: stage, code: code)) }
+        if stale {
+            HIDLog.warn("한 번 연결됐던 기기가 채널을 거절해요. 앱을 새로 띄워 블루투스 상태를 비워요")
+            delegate?.hidNeedsFreshProcess(self)
+        }
         return .openFailed(stage: stage, code: code)
-    }
-
-    /// SDP 레코드와 연결 받기 등록을 새로 한다 (메인)
-    private func refreshBluetoothRegistration() {
-        let hadRecord = serviceRecord != nil
-        let wasListening = !openNotifications.isEmpty
-        if hadRecord {
-            removeServiceRecord()
-            do { try publishServiceRecord() } catch { HIDLog.error("SDP 다시 등록 실패: \(error)") }
-        }
-        if wasListening {
-            stopListening()
-            listen()
-        }
-        HIDLog.info("블루투스 등록을 새로 했어요")
     }
 
     // MARK: 연결 받기 (아이폰 → Mac)
@@ -599,6 +594,7 @@ public final class BluetoothHID: NSObject {
         let address = device?.addressString ?? ""
         openTimer?.invalidate()
         openTimer = nil
+        hadConnected = true
         state = .connected(address: address)
         HIDLog.info("HID 연결 성공 (\(device?.nameOrAddress ?? address), MTU \(i.outgoingMTU))")
         sendEmptyReports()
