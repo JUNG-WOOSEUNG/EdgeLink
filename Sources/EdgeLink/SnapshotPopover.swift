@@ -28,6 +28,8 @@ extension Snapshot {
         save("popover-no-device", PopoverView(preview: PopoverPreview(state: .disconnected, noDevice: true)))
         model.debugSetConnection(.failed(message: "인터럽트 채널 열기 실패 (0xe00002bc)"))
         save("popover-failed", PopoverView(preview: PopoverPreview(state: .disconnected)))
+        model.debugSetConnection(.failed(message: "인터럽트 채널 열기 실패 (0xe00002bc)"), failureStreak: 3)
+        save("popover-failed-repeated", PopoverView(preview: PopoverPreview(state: .disconnected)))
         model.debugSetConnection(.connecting)
         save("popover-connecting", PopoverView(preview: PopoverPreview(state: .disconnected)))
         save("popover-problem-permission", PopoverView(preview: PopoverPreview(state: .problem(.permission(.accessibility)))))

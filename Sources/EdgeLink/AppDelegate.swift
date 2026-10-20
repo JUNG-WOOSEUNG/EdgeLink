@@ -168,9 +168,10 @@ final class AppModel: NSObject, ObservableObject {
     }
 
     /// 개발용 화면 캡처에서만: 연결 상태를 흉내 낸다
-    func debugSetConnection(_ phase: ConnectionPhase) {
+    func debugSetConnection(_ phase: ConnectionPhase, failureStreak streak: Int = 0) {
         guard Snapshot.directory != nil else { return }
         connection = phase
+        failureStreak = streak
     }
 
     // MARK: 화면 사이 연결 (Contracts.swift)

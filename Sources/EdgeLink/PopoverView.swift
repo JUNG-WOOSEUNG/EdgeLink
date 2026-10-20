@@ -641,8 +641,8 @@ struct DisconnectedCard: View {
                     .buttonStyle(LinkButtonStyle(size: 12, color: .textSecondary))
                     .frame(maxWidth: .infinity)
             }
-            if let e = failure {
-                failureHelp(e, now: now)
+            if failure != nil {
+                if hasFailureHelp(now: now) { failureHelp(now: now) }
             } else {
                 Text(reason(now: now).keepingWords).font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -660,27 +660,25 @@ struct DisconnectedCard: View {
         return e.dropped ? nil : e
     }
 
-    /// 무엇이 안 됐는지 한 줄, 그다음 할 일
-    private func failureHelp(_ e: ConnectionError, now: Date) -> some View {
+    /// 처음엔 다음 시도 시각만. 실패가 이어질 때만 할 일을 더한다 (원인 문구는 연결 로그에만).
+    private func hasFailureHelp(now: Date) -> Bool {
+        (!model.disconnectedByUser && retryIn(now: now) != nil) || model.failureStreak >= 3
+    }
+
+    private func failureHelp(now: Date) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(e.friendly.keepingWords).font(Typo.font(12, .semibold)).foregroundStyle(Color.dangerText)
-                .fixedSize(horizontal: false, vertical: true)
-            Group {
-                Text("계속 안 되면 아이폰 설정 › Bluetooth에서 이 Mac을 지운 뒤 새로 페어링하세요.".keepingWords)
-                // 같은 실패가 이어질 때만 (처음부터 원인 후보를 늘어놓지 않는다)
-                if model.failureStreak >= 3 {
-                    Text("회사에서 관리하는 Mac은 보안 정책으로 블루투스 키보드를 막기도 해요.".keepingWords)
-                }
+            // 버튼이 할 일을 이미 말하므로, 자동으로 다시 시도할 때만 언제인지 적는다
+            if !model.disconnectedByUser, retryIn(now: now) != nil {
                 Text(retrySentence(now: now).keepingWords)
+                    .font(Typo.secondary).foregroundStyle(Color.textSecondary)
             }
-            .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
-            .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 16) {
-                Button("새로 페어링") { model.openOnboarding(at: .pairing) }
+            if model.failureStreak >= 3 {
+                Text("계속 안 되면 아이폰 설정 › Bluetooth에서 이 Mac을 지우고, 아래 ‘새 기기 페어링’으로 다시 연결하세요.".keepingWords)
+                    .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button("연결 로그 보기") { model.present(.connectionLog) }
+                    .buttonStyle(LinkButtonStyle(size: 12))
             }
-            .buttonStyle(LinkButtonStyle(size: 12))
-            .padding(.top, 2)
         }
     }
 
@@ -711,7 +709,7 @@ struct DisconnectedCard: View {
         switch model.connection {
         case .connecting, .pairing: return "기본 기기"
         default:
-            if failure != nil { return "기본 기기 · 연결하지 못했어요" }
+            if failure != nil { return "연결하지 못했어요" }
             return "기본 기기" + (ago(now: now).map { " · \($0)" } ?? "")
         }
     }
@@ -756,16 +754,18 @@ struct DisconnectedCard: View {
     }
 
     private func reason(now: Date) -> String {
-        let retry = retrySentence(now: now)
+        // 버튼이 할 일을 이미 말하므로 "위 버튼을 누르면…"은 붙이지 않는다
+        let retry = (!model.disconnectedByUser && retryIn(now: now) != nil) || !settings.autoReconnect
+            ? " " + retrySentence(now: now) : ""
         switch model.connection {
         case .connecting, .pairing:
             return "아이폰 화면과 블루투스가 켜져 있는지 확인해 주세요."
         case let .failed(message):
             // 연결됐다가 끊김 ("아이폰에서 연결을 해제했어요" 등)
-            return "\(ConnectionError(message).friendly). \(retry)"
+            return "\(ConnectionError(message).friendly).\(retry)"
         default:
-            if model.disconnectedByUser { return "연결을 끊었어요. \(retry)" }
-            return "아이폰 블루투스가 꺼져 있거나 멀리 있을 수 있어요. \(retry)"
+            if model.disconnectedByUser { return "연결을 끊었어요." }
+            return "아이폰 블루투스가 꺼져 있거나 멀리 있을 수 있어요.\(retry)"
         }
     }
 }

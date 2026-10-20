@@ -25,6 +25,7 @@
 | popover-connecting | <img src="popover-connecting.png" width="320"> | <img src="popover-connecting-dark.png" width="320"> |
 | popover-disconnected | <img src="popover-disconnected.png" width="320"> | <img src="popover-disconnected-dark.png" width="320"> |
 | popover-failed | <img src="popover-failed.png" width="320"> | <img src="popover-failed-dark.png" width="320"> |
+| popover-failed-repeated | <img src="popover-failed-repeated.png" width="320"> | <img src="popover-failed-repeated-dark.png" width="320"> |
 | popover-no-device | <img src="popover-no-device.png" width="320"> | <img src="popover-no-device-dark.png" width="320"> |
 | popover-problem-bluetooth | <img src="popover-problem-bluetooth.png" width="320"> | <img src="popover-problem-bluetooth-dark.png" width="320"> |
 | popover-problem-permission | <img src="popover-problem-permission.png" width="320"> | <img src="popover-problem-permission-dark.png" width="320"> |
