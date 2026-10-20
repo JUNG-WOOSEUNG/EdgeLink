@@ -185,7 +185,7 @@ struct KeyboardStateTests {
 struct MiscTests {
     @Test func reconnectBackoff() {
         var p = ReconnectPolicy()
-        #expect([p.nextDelay(), p.nextDelay(), p.nextDelay(), p.nextDelay()] == [15, 60, 300, 300])
+        #expect((0..<6).map { _ in p.nextDelay() } == [15, 15, 30, 60, 300, 300])
         p.reset()
         #expect(p.nextDelay() == 15)
     }

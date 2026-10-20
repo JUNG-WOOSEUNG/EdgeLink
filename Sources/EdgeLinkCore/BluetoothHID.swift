@@ -286,12 +286,35 @@ public final class BluetoothHID: NSObject {
                 HIDLog.error("PSM 0x\(String(psm, radix: 16)) 수신 등록 실패")
             }
         }
+        // 아이폰 설정에서 이 Mac을 누르면 기본 연결만 들어오고 HID 채널은 열리지 않는다 → 알아채서 우리가 연다
+        if connectNotification == nil {
+            connectNotification = IOBluetoothDevice.register(forConnectNotifications: self,
+                                                             selector: #selector(deviceConnected(_:device:)))
+        }
         HIDLog.info("아이폰의 연결을 기다려요 (PSM 0x11, 0x13)")
     }
 
     public func stopListening() {
         openNotifications.forEach { $0.unregister() }
         openNotifications = []
+        connectNotification?.unregister()
+        connectNotification = nil
+    }
+
+    private var connectNotification: IOBluetoothUserNotification?
+
+    /// 어떤 기기든 기본 연결이 생기면 불린다. 기본 기기가 연결해 왔고 우리가 연결 중이 아니면 HID 채널을 연다.
+    @objc private func deviceConnected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
+        guard let address = device.addressString, let def = defaultAddress,
+              address.lowercased() == def.lowercased() else { return }
+        switch state {
+        case .connected, .connecting: return
+        default: break
+        }
+        HIDLog.info("아이폰이 연결해 왔어요 (기본 연결) → HID 채널을 열어요")
+        cancelReconnect()
+        reconnectPolicy.reset()
+        do { try connect(address: address) } catch { HIDLog.error("\(error)") }
     }
 
     @objc private func channelOpened(_ notification: IOBluetoothUserNotification, channel: IOBluetoothL2CAPChannel) {
@@ -684,6 +707,8 @@ extension BluetoothHID: IOBluetoothL2CAPChannelDelegate {
             HIDLog.info("채널 PSM 0x\(String(ch.psm, radix: 16)) 닫힘")
             guard !self.userDisconnecting, self.device != nil else { return }
             self.teardown(reason: .channelClosed)
+            // 뜻하지 않게 끊겼으면 이 프로세스에선 재연결이 거절되므로(실기기 확인) 바로 새로 띄운다
+            if self.hadConnected { self.delegate?.hidNeedsFreshProcess(self) }
         }
     }
 
@@ -756,7 +781,8 @@ struct PendingMotion {
 
 /// 재연결 간격: 15초 → 1분 → 5분 (이후 5분 유지).
 public struct ReconnectPolicy {
-    public static let delays: [TimeInterval] = [15, 60, 300]
+    /// 처음 1분은 자주 (아이폰 블루투스를 다시 켜는 데 걸리는 시간), 그 뒤엔 점점 드물게
+    public static let delays: [TimeInterval] = [15, 15, 30, 60, 300]
     private var attempt = 0
     public init() {}
     public mutating func nextDelay() -> TimeInterval {
