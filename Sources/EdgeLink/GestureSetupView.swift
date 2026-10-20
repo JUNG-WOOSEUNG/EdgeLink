@@ -2,8 +2,8 @@ import AppKit
 import EdgeLinkCore
 import SwiftUI
 
-/// 아이폰 버튼 등록 도우미 (720×560, 캔버스 1-9 · 설계 문서 › 아이폰 버튼 등록 도우미)
-/// 버튼 4~8을 차례로 보내고, 아이폰에서 동작을 고르면 "등록했어요"로 다음 버튼으로 넘어간다.
+/// 트랙패드 제스처 설정 (720×560, 캔버스 1-9 · 설계 문서 › 아이폰 버튼 등록 도우미)
+/// 버튼 4~8을 차례로 보내고, 아이폰에서 동작을 고르면 "등록했어요, 다음"으로 다음 버튼으로 넘어간다.
 struct GestureSetupView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var settings: AppSettings
@@ -129,16 +129,31 @@ struct GestureSetupView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("아이폰에 버튼을 등록해요").font(Typo.onboardingTitle)
                     .accessibilityAddTraits(.isHeader)
-                (Text("아이폰에서 ")
-                 + Text("설정 › 손쉬운 사용 › 터치 › AssistiveTouch › 기기 › \(hostName)(이\u{00A0}Mac의\u{00A0}이름) › 추가 버튼 사용자화").fontWeight(.bold).foregroundColor(.textPrimary)
-                 + Text("를 열고, ‘버튼을 누르세요’가 뜨면 아래 버튼을 누르세요."))
-                    .font(Typo.secondary)
-                    .foregroundStyle(Color.textSecondary)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
+                // 긴 메뉴 경로를 한 문장에 넣지 않고 단계로 나눈다
+                VStack(alignment: .leading, spacing: 4) {
+                    guideLine(1) {
+                        // Mac 이름 앞에서 줄을 바꿔 이름이 둘로 갈리지 않게 한다
+                        Text("아이폰에서 ")
+                            + Text("설정 › 손쉬운 사용 › 터치 › AssistiveTouch › 기기 ›\n\(hostName.nonBreaking)")
+                                .fontWeight(.semibold).foregroundColor(.textPrimary)
+                            + Text("(이\u{00A0}Mac의\u{00A0}이름)")
+                            + Text(" › 추가\u{00A0}버튼\u{00A0}사용자화").fontWeight(.semibold).foregroundColor(.textPrimary)
+                            + Text("를 여세요")
+                    }
+                    guideLine(2) { Text("‘버튼을 누르세요’가 뜨면 아래 표에서 보내기를 누르세요") }
+                    // 버튼 번호는 아이폰이 붙이는 이름이라 4부터 시작해요
+                    guideLine(3) { Text("아이폰 화면에 ‘버튼 4’처럼 번호가 뜨면 표대로 동작을 고르세요. 다른 동작을 골라도 괜찮아요.") }
+                }
+                .font(Typo.secondary)
+                .foregroundStyle(Color.textSecondary)
+                .lineSpacing(2)
             }
 
             VStack(alignment: .leading, spacing: 8) {
+                // 연결이 안 됐을 때 이유는 줄마다 쓰지 않고 표 위에 한 번만
+                if !model.isConnected && !allDone {
+                    DisabledReason(text: "아이폰을 연결하면 버튼을 보낼 수 있어요")
+                }
                 VStack(spacing: 0) {
                     ForEach(steps.indices, id: \.self) { i in
                         if i > 0 { RowDivider() }
@@ -148,13 +163,18 @@ struct GestureSetupView: View {
                 .background(RoundedRectangle(cornerRadius: 8).fill(Color.settingsCard))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
             }
-
-            Text("아이폰에서 다른 동작을 골라도 괜찮아요. Mac은 버튼 번호만 보내고, 동작은 아이폰 설정을 따라요.")
-                .font(Typo.caption).foregroundStyle(Color.textSecondary)
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// 안내 한 단계: 번호 + 문장
+    private func guideLine<C: View>(_ n: Int, @ViewBuilder _ content: () -> C) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("\(n)").font(Typo.font(12, .bold)).foregroundStyle(Color.brandText)
+                .frame(width: 10, alignment: .leading)
+            content().fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func stepRow(_ i: Int) -> some View {
@@ -181,39 +201,42 @@ struct GestureSetupView: View {
                     }
                     .buttonStyle(DimmablePillStyle(height: 32))
                     .disabled(!model.isConnected)
-                    // 흐린 버튼 바로 아래 이유 한 줄
-                    if !model.isConnected { DisabledReason(text: "아이폰을 연결하면 보낼 수 있어요") }
                 }
                 .fixedSize()
             } else if isCurrent && sent {
-                HStack(spacing: 10) {
-                    // 아이폰이 신호를 놓쳤을 때만 쓰는 보조 동작이라 작고 흐리게 둔다
-                    Button("다시 보내기") { model.router.sendButton(n) }
-                        .buttonStyle(TextLinkStyle(color: .textSecondary))
-                        .font(Typo.font(12, .regular))
-                        .disabled(!model.isConnected)
-                    Button("등록했어요") { confirm() }
-                        .buttonStyle(PillButtonStyle(kind: .secondary, height: 32))
-                }
-                .fixedSize()
+                // 다음으로 넘어가는 주요 행동. 다시 보내기는 아래 안내 줄에 둔다.
+                Button("등록했어요, 다음") { confirm() }
+                    .buttonStyle(PillButtonStyle(height: 32))
+                    .accessibilityHint("다음 버튼으로 넘어가요")
+                    .fixedSize()
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .frame(minHeight: 52)
+        .padding(.vertical, 6)
+        .frame(minHeight: 46)
         // 아이폰이 못 알아챌 때: 아이폰 조작 중에 단축키로 보내면 확실히 알아챔 (실기기 확인)
         if isCurrent && sent {
-            fallbackHint(hotkey)
+            fallbackHint(hotkey, button: n)
         }
         }
     }
 
-    private func fallbackHint(_ hotkey: Hotkey) -> some View {
+    private func fallbackHint(_ hotkey: Hotkey, button n: Int) -> some View {
         HStack(alignment: .top, spacing: 6) {
             Image(systemName: "lightbulb").font(.system(size: 11)).foregroundStyle(Color.brand)
-            Text("아이폰이 못 알아채면 \(toggleKey)로 아이폰 조작으로 넘어간 뒤 \(hotkey.display)를 눌러 보세요.")
-                .font(Typo.caption).foregroundStyle(Color.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text("아이폰에 번호가 뜨지 않았나요?")
+                    Button("다시 보내기") { model.router.sendButton(n) }
+                        .buttonStyle(TextLinkStyle(color: .brandText))
+                        .font(Typo.font(11.5, .semibold))
+                        .disabled(!model.isConnected)
+                }
+                Text("그래도 안 되면 \(toggleKey)로 넘어가서 \(hotkey.display)를 눌러 보세요.")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(Typo.caption).foregroundStyle(Color.textSecondary)
         }
         .padding(.leading, 52).padding(.trailing, 14).padding(.bottom, 8)
     }
@@ -255,29 +278,35 @@ struct GestureSetupView: View {
 
     // MARK: 시험해보기
 
+    /// 시험 표에는 제스처가 있는 것만. 잠금 화면(단축키만)은 따로 한 줄로 쓴다.
+    private var gestureSteps: [Step] { steps.filter { $0.gesture != .lockOnly } }
+
+    private func hotkeyFor(_ g: PhoneGesture) -> Hotkey {
+        settings.hotkeys[g.hotkeyAction] ?? Hotkey.defaults[g.hotkeyAction]!
+    }
+
     private var testPane: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("제스처를 해봐요").font(Typo.onboardingTitle)
+                Text("제스처를 해 봐요").font(Typo.onboardingTitle)
                     .accessibilityAddTraits(.isHeader)
-                Text("아이폰 조작 중에 트랙패드로 아래 제스처를 해봐요. 아이폰에서 그 동작이 열리면 성공이에요. 단축키로도 해볼 수 있어요.")
+                Text("아이폰 조작 중에 트랙패드로 아래 제스처를 해 보세요. 아이폰에서 그 동작이 열리면 성공이에요. 단축키로도 해 볼 수 있어요.")
                     .font(Typo.secondary).foregroundStyle(Color.textSecondary)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
             VStack(spacing: 0) {
-                ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
+                ForEach(Array(gestureSteps.enumerated()), id: \.offset) { i, step in
                     if i > 0 { RowDivider() }
-                    let hotkey = settings.hotkeys[step.gesture.hotkeyAction] ?? Hotkey.defaults[step.gesture.hotkeyAction]!
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(step.gesture == .lockOnly ? "단축키만" : step.gesture.label).font(Typo.bodyBold)
+                            Text(step.gesture.label).font(Typo.bodyBold)
                             Text("버튼 \(step.gesture.buttonNumber(settings)) → \(step.action)")
                                 .font(Typo.caption).foregroundStyle(Color.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         // 키 캡 최소 너비 60, 글자는 가운데
-                        Text(hotkey.display)
+                        Text(hotkeyFor(step.gesture).display)
                             .font(Typo.bodyBold)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
@@ -291,10 +320,14 @@ struct GestureSetupView: View {
             }
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.settingsCard))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
-            Text("동작하지 않으면 아이폰 AssistiveTouch가 켜져 있는지, 아이폰에 등록한 버튼 번호가 맞는지 확인해요.")
-                .font(Typo.caption).foregroundStyle(Color.textSecondary)
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("잠금 화면은 단축키 \(hotkeyFor(.lockOnly).display)로만 열어요.")
+                Text("Mac에서 Mission Control이나 Launchpad가 대신 열리면 시스템 설정 › 트랙패드 › 추가 제스처에서 그 제스처를 끄세요.")
+                Text("동작하지 않으면 아이폰에서 AssistiveTouch가 켜져 있는지, 등록한 버튼 번호가 맞는지 확인하세요.")
+            }
+            .font(Typo.caption).foregroundStyle(Color.textSecondary)
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -321,9 +354,13 @@ struct GestureSetupView: View {
                         .buttonStyle(PillButtonStyle(height: 40))
                         .keyboardShortcut(.defaultAction)
                 } else {
-                    Text("\(min(index, steps.count)) / \(steps.count) 등록")
-                        .font(Typo.secondary).foregroundStyle(Color.textSecondary)
-                    Button("시험해보기") { testing = true }
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(min(index, steps.count)) / \(steps.count) 등록")
+                            .font(Typo.secondary).foregroundStyle(Color.textSecondary)
+                        // 흐린 버튼 옆에 이유 한 줄
+                        if !allDone { DisabledReason(text: "모두 등록하면 시험할 수 있어요") }
+                    }
+                    Button("시험해 보기") { testing = true }
                         .buttonStyle(DimmablePillStyle(height: 40))
                         .disabled(!allDone)
                 }

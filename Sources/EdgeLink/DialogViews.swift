@@ -205,23 +205,32 @@ struct ClipboardConfirmView: View {
     var body: some View {
         DialogFrame {
             Text("아이폰 입력이 영어인지 확인하세요").font(Typo.font(16, .bold))
-            Text("클립보드 보내기는 글자를 하나씩 타이핑해요. 아이폰 입력이 한국어면 영문이 한글 자모로 입력돼요.")
+            Text("클립보드 보내기는 글자를 하나씩 타이핑해요. 아이폰 입력이 한국어면 영문이 한글 자모로 입력돼요. 아이폰 키보드를 영어로 바꾼 뒤 보내세요.")
                 .font(Typo.body).lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 8) {
                 countRow("보낼 글자", "\(sendable)자", color: .textPrimary)
-                countRow("빼고 보낼 글자 (한글 등)", "\(skipped)자", color: skipped > 0 ? .warningStrong : .textPrimary)
+                countRow("보내지 않는 글자 (한글 등)", "\(skipped)자", color: skipped > 0 ? .warningStrong : .textPrimary)
                 ClipboardPreview.styled(preview)
                     .font(.system(size: 12, design: .monospaced))
                     .lineLimit(1).truncationMode(.tail)
                     .padding(.top, 4)
                     .accessibilityLabel("미리보기: \(preview)")
+                if skipped > 0 {
+                    Text("회색 글자는 보내지 않아요").font(Typo.caption).foregroundStyle(Color.textSecondary)
+                }
             }
             .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.bgSidebar))
-            Toggle(isOn: $dontAsk) { Text("다시 묻지 않기").font(Typo.body) }
-                .toggleStyle(.checkbox)
+            VStack(alignment: .leading, spacing: 2) {
+                Toggle(isOn: $dontAsk) { Text("다시 묻지 않기").font(Typo.body) }
+                    .toggleStyle(.checkbox)
+                // 빠지는 글자가 있으면 이 설정과 상관없이 다시 묻는다 (requestClipboardSend)
+                Text("보내지 않는 글자가 있을 때는 다시 물어요")
+                    .font(Typo.caption).foregroundStyle(Color.textSecondary)
+                    .padding(.leading, 20)
+            }
             VStack(alignment: .trailing, spacing: 8) {
                 HStack(spacing: 8) {
                     Spacer()
@@ -395,17 +404,17 @@ struct ResetPairingView: View {
             Text("페어링을 초기화할까요?").font(Typo.font(16, .bold))
             VStack(alignment: .leading, spacing: 8) {
                 (Text("지워지는 것: ").font(Typo.bodyBold)
-                    + Text("기본 기기(\((settings.lastDeviceName ?? "없음").nonBreaking)), \("기기별 모델·방향".nonBreaking), \("버튼 등록 기록".nonBreaking)"))
+                    + Text("기본 기기(\((settings.lastDeviceName ?? "없음").nonBreaking)), \("기기별 모델·방향".nonBreaking), \("트랙패드 제스처 등록".nonBreaking)"))
                     .fixedSize(horizontal: false, vertical: true)
-                (Text("남는 것: ").font(Typo.bodyBold) + Text("단축키, 배치, 보정값 등 \("다른 설정".nonBreaking)"))
+                (Text("남는 것: ").font(Typo.bodyBold) + Text("단축키, 배치, 돌아오는 위치 등 \("다른 설정".nonBreaking)"))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .font(Typo.body).lineSpacing(4)
             VStack(alignment: .leading, spacing: 6) {
                 Text("초기화한 뒤 해야 할 일").font(Typo.font(12, .bold))
-                Text("1. Mac: 시스템 설정 › 블루투스에서 아이폰 옆 ⓘ › 이 기기 지우기")
+                Text("1. Mac: 시스템 설정 › Bluetooth에서 아이폰 옆 ⓘ › 이 기기 지우기")
                 Text("2. 아이폰: 설정 › Bluetooth에서 이 Mac 옆 ⓘ › 이 기기 지우기")
-                Text("3. EdgeLink에서 다시 페어링")
+                Text("3. EdgeLink에서 다시 페어링하기")
             }
             .font(Typo.secondary).lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)

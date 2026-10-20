@@ -164,7 +164,7 @@ final class InputRouter {
         if mode == .mac { enterPhone(.menu) } else { returnToMac(.menu) }
     }
 
-    /// 아이폰 버튼 등록 도우미: 추가 버튼 n(4~8)을 한 번 누른다
+    /// 트랙패드 제스처 설정: 추가 버튼 n(4~8)을 한 번 누른다
     /// 아이폰은 포인터를 쓰고 있지 않을 때(Mac 조작 중) 들어온 버튼을 무시했다 (실기기 확인).
     /// 그래서 Mac 조작 중이면 아이폰 포인터를 살짝 움직여 깨운 뒤 누른다.
     func sendButton(_ n: Int) {
@@ -194,8 +194,8 @@ final class InputRouter {
         let c = st.config
         guard st.tap != nil else { return "권한이 꺼져 있어서 넘어갈 수 없어요" }
         guard c.connected else { return "아이폰이 연결되지 않았어요" }
-        guard c.mayEnter else { return "설정을 마치면 넘어갈 수 있어요" }
-        guard let p = c.placement else { return "아이폰을 놓을 모서리가 없어요" }
+        guard c.mayEnter else { return "처음 설정을 마치면 넘어갈 수 있어요. 메뉴 막대 아이콘에서 이어서 하세요." }
+        guard let p = c.placement else { return "아이폰을 놓을 가장자리가 없어요" }
         // 비밀번호 입력 중이면 넘어가지 않는다 (넘어가기 직전 확인)
         guard !IsSecureEventInputEnabled() else { return "Mac에서 비밀번호를 입력 중이라 넘어갈 수 없어요" }
 
@@ -328,14 +328,14 @@ final class InputRouter {
                 case .disconnected: result = .failed(reason: "아이폰 연결이 끊겼어요")
                 case .permissionLost: result = .failed(reason: "권한이 꺼졌어요")
                 case .screensChanged: result = .failed(reason: "모니터 구성이 바뀌었어요")
-                case .transportStalled, .tapDisabled: result = .failed(reason: "잠깐 멈춰서 보정을 끝냈어요")
-                case .screenLocked, .sleep: result = .failed(reason: "화면이 잠겨서 보정을 끝냈어요")
-                case .secureInput: result = .failed(reason: "비밀번호 입력이 시작돼서 보정을 끝냈어요")
+                case .transportStalled, .tapDisabled: result = .failed(reason: "연결이 잠깐 멈춰서 위치 맞추기를 중단했어요. 다시 해 주세요.")
+                case .screenLocked, .sleep: result = .failed(reason: "화면이 잠겨서 위치 맞추기를 중단했어요")
+                case .secureInput: result = .failed(reason: "비밀번호 입력이 시작돼서 위치 맞추기를 중단했어요")
                 default: break
                 }
             }
             if case let .finished(raw) = result, raw < 0.2 {
-                result = .failed(reason: "움직인 양이 너무 작아요")
+                result = .failed(reason: "커서를 끝까지 옮기지 않았어요")
             }
             if case let .finished(raw) = result {
                 let v = min(4.0, max(0.6, raw))  // 보정값 범위 0.6~4.0
@@ -993,7 +993,7 @@ final class InputRouter {
     // MARK: - 보정 도우미
 
     func startCalibration(_ update: @escaping (CalibrationEvent) -> Void) {
-        guard model.isConnected else { return update(.failed(reason: "아이폰을 연결하면 쓸 수 있어요")) }
+        guard model.isConnected else { return update(.failed(reason: "아이폰이 연결되지 않았어요")) }
         rebuildConfig()
         lock.lock()
         guard st.tap != nil else {
@@ -1002,12 +1002,12 @@ final class InputRouter {
         }
         guard st.mode != .calibrating else {
             lock.unlock()
-            return update(.failed(reason: "이미 보정 중이에요"))
+            return update(.failed(reason: "이미 위치를 맞추는 중이에요"))
         }
         let c = st.config
         guard let p = c.placement else {
             lock.unlock()
-            return update(.failed(reason: "아이폰을 놓을 모서리가 없어요"))
+            return update(.failed(reason: "아이폰을 놓을 가장자리가 없어요"))
         }
         calibrationUpdate = update
         let fromMac = st.mode == .mac
@@ -1150,7 +1150,7 @@ final class InputRouter {
 
     private func toggleEdge() {
         model.settings.edgeEnabled.toggle()
-        showToast(model.settings.edgeEnabled ? "모서리 전환을 켰어요" : "모서리 전환을 껐어요. 단축키로만 넘어가요",
+        showToast(model.settings.edgeEnabled ? "가장자리 전환을 켰어요" : "가장자리 전환을 껐어요. 단축키로만 넘어가요",
                   systemImage: model.settings.edgeEnabled ? "rectangle.righthalf.inset.filled" : "keyboard")
     }
 
@@ -1341,7 +1341,7 @@ private struct TapState {
 private extension EnterReason {
     var logLabel: String {
         switch self {
-        case .edge: return "모서리"
+        case .edge: return "가장자리"
         case .hotkey: return "단축키"
         case .menu: return "메뉴"
         }
@@ -1351,7 +1351,7 @@ private extension EnterReason {
 private extension ReturnReason {
     var logLabel: String {
         switch self {
-        case .edge: return "모서리"
+        case .edge: return "가장자리"
         case .hotkey: return "단축키"
         case .menu: return "메뉴"
         case .secureInput: return "비밀번호 입력"
