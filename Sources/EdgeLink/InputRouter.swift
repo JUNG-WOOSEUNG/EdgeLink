@@ -823,11 +823,15 @@ final class InputRouter {
     }
 
     private func handleMediaKeyLocked(_ event: CGEvent, calibrating: Bool) -> Bool {
-        guard let ns = NSEvent(cgEvent: event), ns.type == .systemDefined, Int(ns.subtype.rawValue) == MediaKey.subtype else { return true }
-        let m = MediaKey.parse(data1: ns.data1)
+        // 미디어 키를 아이폰으로 보내지 않으면 내용을 볼 필요 없이 Mac에 그대로 둔다.
+        // (NSEvent(cgEvent:)는 탭 스레드에서 만들면 안 된다: Caps Lock 처리 중 TSM이 메인 큐를 확인하다 앱이 꺼졌음)
+        guard st.config.mediaKeysToPhone, !calibrating else { return true }
+        guard let info = Self.systemDefinedInfoOnMain(event) else { return true }
+        guard info.subtype == MediaKey.subtype else { return true }
+        let m = MediaKey.parse(data1: info.data1)
         // 밝기는 항상 Mac
         if MediaKey.isBrightness(m.keyType) { return true }
-        guard st.config.mediaKeysToPhone, !calibrating, let usage = MediaKey.consumerUsage(m.keyType) else { return true }
+        guard let usage = MediaKey.consumerUsage(m.keyType) else { return true }
         if m.down {
             if !m.isRepeat { model.hid.send(ConsumerReport(usage: usage)) }
         } else {
@@ -836,25 +840,47 @@ final class InputRouter {
         return false
     }
 
-    private func recognizeGestureLocked(_ event: CGEvent) {
-        // 손가락 정보는 gesture 종류에만 있다 (다른 종류에서 읽으면 예외)
-        guard var s = st.session, let ns = NSEvent(cgEvent: event), ns.type == .gesture else { return }
-        let all = ns.allTouches()
-        // 손가락 정보가 없는 제스처 이벤트(확대·회전 등)는 건너뛴다
-        guard !all.isEmpty else { return }
-        let touching = all.filter { !$0.phase.contains(.ended) && !$0.phase.contains(.cancelled) }
-            .map { GestureRecognizer.Touch(x: Double($0.normalizedPosition.x), y: Double($0.normalizedPosition.y)) }
-        let found = s.gestures.update(touching)
-        st.session = s
-        guard let found else { return }
-        let g: PhoneGesture
-        switch found {
-        case .threeFingerUp: g = .threeFingerUp
-        case .threeFingerDown: g = .threeFingerDown
-        case .fourFingerDown: g = .fourFingerDown
-        case .fourFingerPinch: g = .fourFingerPinch
+    /// system-defined 이벤트의 subtype·data1을 메인 스레드에서 읽는다. 30ms 안에 못 읽으면 nil (그 키는 Mac에 둠).
+    private static func systemDefinedInfoOnMain(_ event: CGEvent) -> (subtype: Int, data1: Int)? {
+        guard let copy = event.copy() else { return nil }
+        var result: (Int, Int)?
+        let done = DispatchSemaphore(value: 0)
+        DispatchQueue.main.async {
+            if let ns = NSEvent(cgEvent: copy), ns.type == .systemDefined {
+                result = (Int(ns.subtype.rawValue), ns.data1)
+            }
+            done.signal()
         }
-        performGestureLocked(g, viaHotkey: false)
+        guard done.wait(timeout: .now() + 0.03) == .success, let r = result else { return nil }
+        return (subtype: r.0, data1: r.1)
+    }
+
+    /// 제스처는 아이폰 조작 중 늘 Mac에서 막으므로 바로 판단할 필요가 없다.
+    /// 손가락 정보는 메인 스레드에서 NSEvent로 읽고, 결과만 잠금 안에서 반영한다.
+    private func recognizeGestureLocked(_ event: CGEvent) {
+        guard st.session != nil, let copy = event.copy() else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let ns = NSEvent(cgEvent: copy), ns.type == .gesture else { return }
+            let all = ns.allTouches()
+            // 손가락 정보가 없는 제스처 이벤트(확대·회전 등)는 건너뛴다
+            guard !all.isEmpty else { return }
+            let touching = all.filter { !$0.phase.contains(.ended) && !$0.phase.contains(.cancelled) }
+                .map { GestureRecognizer.Touch(x: Double($0.normalizedPosition.x), y: Double($0.normalizedPosition.y)) }
+            self.lock.lock()
+            defer { self.lock.unlock() }
+            guard self.st.mode == .phone, var s = self.st.session else { return }
+            let found = s.gestures.update(touching)
+            self.st.session = s
+            guard let found else { return }
+            let g: PhoneGesture
+            switch found {
+            case .threeFingerUp: g = .threeFingerUp
+            case .threeFingerDown: g = .threeFingerDown
+            case .fourFingerDown: g = .fourFingerDown
+            case .fourFingerPinch: g = .fourFingerPinch
+            }
+            self.performGestureLocked(g, viaHotkey: false)
+        }
     }
 
     /// 제스처 → 추가 버튼 클릭. 아이패드 옵션이면 홈은 ⌘H, 앱 전환기는 ⌘Tab.
