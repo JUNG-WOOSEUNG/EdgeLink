@@ -21,9 +21,12 @@ git add $PLIST
 git commit -m "버전 $V"
 git tag "v$V"
 git push origin HEAD "v$V"
-if [ "$1" = "-F" ]; then
-  gh release create "v$V" build/EdgeLink.dmg --title "EdgeLink $V" --notes-file "$2"
-else
-  gh release create "v$V" build/EdgeLink.dmg --title "EdgeLink $V" --notes "${1:-EdgeLink $V}"
-fi
+# GitHub가 가끔 500을 주므로 한 번 더 시도한다 (태그는 이미 올라가 있다)
+NOTES_ARG="--notes"; NOTES_VAL="${1:-EdgeLink $V}"
+[ "$1" = "-F" ] && { NOTES_ARG="--notes-file"; NOTES_VAL="$2"; }
+for try in 1 2 3; do
+  gh release create "v$V" build/EdgeLink.dmg --title "EdgeLink $V" "$NOTES_ARG" "$NOTES_VAL" --verify-tag && break
+  [ "$try" = 3 ] && { echo "릴리스를 만들지 못했어요. 나중에 gh release create v$V build/EdgeLink.dmg 로 다시 해 주세요"; exit 1; }
+  echo "다시 시도해요 ($try)"; sleep 5
+done
 echo "릴리스 v$V를 올렸어요"

@@ -16,6 +16,9 @@ ed25519*
 # 에이전트 작업 폴더
 /.claude/worktrees/
 
-# 대화 기록·메모리는 비공개 저장소 ai-wsjung에 (scripts/save-claude-session.sh)
+# 개인 작업 자료는 비공개 저장소 ai-wsjung(session-backup/)에 백업한다
 /.claude-session/
 /.claude-memory/
+/CLAUDE.md
+/.claude/settings.json
+/scripts/hooks/
