@@ -163,11 +163,25 @@ final class InputRouter {
     }
 
     /// 아이폰 버튼 등록 도우미: 추가 버튼 n(4~8)을 한 번 누른다
+    /// 아이폰은 포인터를 쓰고 있지 않을 때(Mac 조작 중) 들어온 버튼을 무시했다 (실기기 확인).
+    /// 그래서 Mac 조작 중이면 아이폰 포인터를 살짝 움직여 깨운 뒤 누른다.
     func sendButton(_ n: Int) {
         guard model.isConnected else { return showToast("아이폰이 연결되지 않았어요") }
         guard (1...8).contains(n) else { return }
-        model.hid.click(button: n)
-        HIDLog.info("추가 버튼 \(n) 보냄")
+        lock.lock()
+        let onMac = st.mode == .mac
+        lock.unlock()
+        if onMac {
+            model.hid.move(dx: 2, dy: 0)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { self.model.hid.move(dx: -2, dy: 0) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                self.model.hid.click(button: n)
+                HIDLog.info("추가 버튼 \(n) 보냄 (포인터 깨운 뒤)")
+            }
+        } else {
+            model.hid.click(button: n)
+            HIDLog.info("추가 버튼 \(n) 보냄")
+        }
     }
 
     // MARK: - 넘어가기 · 돌아오기 (lock을 잡은 채 부른다, 어느 스레드든)

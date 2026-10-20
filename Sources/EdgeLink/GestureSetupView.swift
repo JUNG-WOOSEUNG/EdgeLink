@@ -163,7 +163,8 @@ struct GestureSetupView: View {
         let done = i < index, isCurrent = i == index
         let hotkey = settings.hotkeys[step.gesture.hotkeyAction] ?? Hotkey.defaults[step.gesture.hotkeyAction]!
         let hint = step.gesture == .lockOnly ? "단축키 \(hotkey.display)" : "\(step.gesture.label) · \(hotkey.display)"
-        return HStack(spacing: 12) {
+        return VStack(alignment: .leading, spacing: 0) {
+        HStack(spacing: 12) {
             stepDot(n, done: done, current: isCurrent)
             VStack(alignment: .leading, spacing: 2) {
                 Text("버튼 \(n) → \(step.action)").font(Typo.bodyBold)
@@ -200,6 +201,25 @@ struct GestureSetupView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .frame(minHeight: 52)
+        // 아이폰이 못 알아챌 때: 아이폰 조작 중에 단축키로 보내면 확실히 알아챔 (실기기 확인)
+        if isCurrent && sent {
+            fallbackHint(hotkey)
+        }
+        }
+    }
+
+    private func fallbackHint(_ hotkey: Hotkey) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "lightbulb").font(.system(size: 11)).foregroundStyle(Color.brand)
+            Text("아이폰이 못 알아채면 \(toggleKey)로 아이폰 조작으로 넘어간 뒤 \(hotkey.display)를 눌러 보세요.")
+                .font(Typo.caption).foregroundStyle(Color.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.leading, 52).padding(.trailing, 14).padding(.bottom, 8)
+    }
+
+    private var toggleKey: String {
+        (settings.hotkeys[.toggleRemote] ?? Hotkey.defaults[.toggleRemote]!).display
     }
 
     /// 번호 원. 끝낸 단계는 진한 초록(#28A745) 위 흰 ✓ 12pt bold — 다크에서도 연초록으로 바꾸지 않는다 (대비).
