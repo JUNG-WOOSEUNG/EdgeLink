@@ -388,6 +388,9 @@ public final class BluetoothHID: NSObject {
     /// 다음 자동 재연결 예약 시각 (없으면 nil). 팝오버의 "1분 뒤에 다시 시도해요"에 쓴다.
     public private(set) var nextReconnectAt: Date?
 
+    /// 사용자가 직접 다시 연결하면 재연결 간격을 처음(15초)부터 다시 센다
+    public func resetReconnectPolicy() { reconnectPolicy.reset() }
+
     public func cancelReconnect() {
         nextReconnectAt = nil
         reconnectTimer?.invalidate()

@@ -327,6 +327,7 @@ final class AppModel: NSObject, ObservableObject {
         let paired = IOBluetoothDevice(addressString: address)?.isPaired() ?? false
         if paired {
             connection = .connecting
+            hid.resetReconnectPolicy()  // 직접 다시 연결하면 다음 자동 시도는 15초부터
             do { try hid.connect(address: address) } catch {
                 connection = .failed(message: "\(error)")
             }
