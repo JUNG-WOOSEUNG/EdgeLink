@@ -186,10 +186,13 @@ final class InputRouter {
         let surface = c.surface(p)
         let along = macAlong ?? (p.glow.passage.start + p.glow.passage.end) / 2
         let fraction = surface.phoneFraction(macAlong: along)
-        let plan = EntryPlan.moves(surface: surface, phoneFraction: fraction)
+        // 모서리로 넘어가면 진입 모서리 바로 안쪽, 단축키·메뉴면 화면 가운데에 놓는다
+        // (모서리에 두면 넘어가자마자 조금만 움직여도 "모서리로 밀었다"고 보고 돌아왔음)
+        let depthPoints = reason == .edge ? EntryPlan.insetPoints : EntryPlan.centerDepthPoints(surface)
+        let plan = EntryPlan.moves(surface: surface, phoneFraction: fraction, depthPoints: depthPoints)
 
         var session = PhoneSession(placement: p, enterReason: reason, glowAlong: along)
-        session.pointer = EntryPlan.pointerAfter(surface: surface, phoneFraction: fraction)
+        session.pointer = EntryPlan.pointerAfter(surface: surface, phoneFraction: fraction, depthPoints: depthPoints)
         session.savedCursor = CGEvent(source: nil)?.location
         session.capsLockAtEntry = CGEventSource.flagsState(.hidSystemState).contains(.maskAlphaShift)
         // 넘어가는 순간 Mac에서 눌려 있던 키: 그 키의 뗌은 Mac에 보낸다 (단축키 키는 따로 삼킨다)
@@ -263,6 +266,12 @@ final class InputRouter {
         lock.unlock()
         guard current else { return }
         freezeCursor(at: placement.centerQuartz)
+        // 절전(App Nap)이 타이머를 묶어 움직임 전송이 30~60ms씩 늦어지던 것을 막는다
+        if latencyActivity == nil {
+            latencyActivity = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiated, .latencyCritical, .idleSystemSleepDisabled],
+                reason: "아이폰 조작 중 입력 전달")
+        }
         model.settings.remoteActive = true
         model.controlMode = calibrating ? .calibrating : .phone
         startWatchdog()
@@ -288,6 +297,7 @@ final class InputRouter {
         // 그 사이 다시 넘어갔으면 커서는 새 상태가 맡는다
         if backOnMac {
             unfreezeCursor(warpTo: info.point)
+            if let a = latencyActivity { ProcessInfo.processInfo.endActivity(a); latencyActivity = nil }
             model.settings.remoteActive = false
             model.controlMode = .mac
             stopWatchdog()
@@ -435,6 +445,10 @@ final class InputRouter {
     }
 
     /// 아이폰 조작 중 0.25초마다: 비밀번호 입력, 탭 상태
+    private var watchTicks = 0
+    /// 아이폰 조작 중 절전 막기
+    private var latencyActivity: NSObjectProtocol?
+
     private func startWatchdog() {
         guard watchdog == nil else { return }
         let t = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in self?.watch() }
@@ -451,7 +465,13 @@ final class InputRouter {
         lock.lock()
         let remote = st.mode != .mac
         let tap = st.tap
+        watchTicks += 1
+        let moves = watchTicks % 8 == 0 ? st.moveEvents.take() : nil
         lock.unlock()
+        // 2초마다 움직임 진단 (움직였을 때만): Mac 쪽 이벤트 간격과 블루투스 전송 간격을 같이 남긴다
+        if let moves, moves.count > 10, let send = model.hid.takeMotionDiagnostics() {
+            HIDLog.info("이동 진단 · Mac 이벤트 \(moves) | 전송 \(send.sends) | 쪼갬 최대 \(send.maxSplit) · 쓰기 최대 \(String(format: "%.1f", send.maxWriteMs))ms")
+        }
         guard remote else { return stopWatchdog() }
         if IsSecureEventInputEnabled() { return returnToMac(.secureInput) }
         if !model.isConnected { return returnToMac(.disconnected) }
@@ -707,6 +727,7 @@ final class InputRouter {
         case CGEventType.mouseMoved.rawValue, CGEventType.leftMouseDragged.rawValue,
              CGEventType.rightMouseDragged.rawValue, CGEventType.otherMouseDragged.rawValue:
             guard var s = st.session else { return false }
+            st.moveEvents.tick()
             let m = s.remainder.take(dx: event.getDoubleValueField(.mouseEventDeltaX),
                                      dy: event.getDoubleValueField(.mouseEventDeltaY))
             st.session = s
@@ -1253,6 +1274,8 @@ private struct ReturnInfo {
 
 private struct TapState {
     var mode: ControlMode = .mac
+    /// 움직임 끊김 진단: Mac 마우스 이벤트 간격
+    var moveEvents = GapMeter()
     var generation = 0
     var config = RouterConfig()
 

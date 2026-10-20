@@ -281,10 +281,12 @@ public enum EntryPlan {
         return (d.dx < 0 ? -1 : 1, d.dy < 0 ? -1 : 1)
     }
 
-    public static func moves(surface: PhoneSurface, phoneFraction: Double, stepUnits: Int = stepUnits) -> [HIDMove] {
+    /// - Parameter depthPoints: 진입 모서리에서 안쪽으로 놓을 거리(pt). 모서리로 넘어가면 4pt, 단축키·메뉴면 화면 가운데.
+    public static func moves(surface: PhoneSurface, phoneFraction: Double, depthPoints: Double = insetPoints,
+                             stepUnits: Int = stepUnits) -> [HIDMove] {
         let s = cornerSign(surface)
         var out = cornerMoves(dx: s.dx, dy: s.dy)
-        let depthTotal = Int((insetPoints * surface.unitsPerPoint).rounded())
+        let depthTotal = Int((min(depthPoints * surface.unitsPerPoint, surface.depthUnits)).rounded())
         let alongTotal = Int((min(max(phoneFraction, 0), 1) * surface.alongUnits).rounded())
         var leftDepth = depthTotal, leftAlong = alongTotal
         let step = max(stepUnits, 1)
@@ -298,11 +300,16 @@ public enum EntryPlan {
     }
 
     /// 계획을 다 보낸 뒤의 위치 추정값
-    public static func pointerAfter(surface: PhoneSurface, phoneFraction: Double) -> PhonePointer {
+    public static func pointerAfter(surface: PhoneSurface, phoneFraction: Double, depthPoints: Double = insetPoints) -> PhonePointer {
         let alongTotal = (min(max(phoneFraction, 0), 1) * surface.alongUnits).rounded()
         let f = surface.alongUnits > 0 ? alongTotal / surface.alongUnits : 0
         return PhonePointer(surface: surface, phoneFraction: f,
-                            depth: (insetPoints * surface.unitsPerPoint).rounded())
+                            depth: min(depthPoints * surface.unitsPerPoint, surface.depthUnits).rounded())
+    }
+
+    /// 화면 가운데까지의 안쪽 거리(pt). 단축키·메뉴로 넘어갈 때 쓴다.
+    public static func centerDepthPoints(_ surface: PhoneSurface) -> Double {
+        surface.unitsPerPoint > 0 ? surface.depthUnits / surface.unitsPerPoint / 2 : insetPoints
     }
 }
 

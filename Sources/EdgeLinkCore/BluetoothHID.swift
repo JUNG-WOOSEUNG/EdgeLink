@@ -406,12 +406,19 @@ public final class BluetoothHID: NSObject {
     }
 
     /// 움직임은 모았다가 8ms마다 한 번에 보낸다.
+    /// 마지막 움직임 전송이 8ms 넘게 지났으면 바로 보내고, 아니면 타이머가 보낸다.
+    /// (타이머만 믿으면 절전 등으로 늦어질 때 움직임이 끊겨 보였음)
     public func move(dx: Int, dy: Int) {
         writeQueue.async {
             guard self.writeChannel != nil else { return }
             self.pending.dx += dx; self.pending.dy += dy
+            let now = DispatchTime.now().uptimeNanoseconds
+            if now &- self.lastMotionFlush >= 8_000_000 { self.flushMotion() }
         }
     }
+
+    // writeQueue에서만
+    private var lastMotionFlush: UInt64 = 0
 
     public func scroll(wheel: Int, pan: Int = 0) {
         writeQueue.async {
@@ -485,7 +492,29 @@ public final class BluetoothHID: NSObject {
         guard !pending.isEmpty else { return }
         let reports = MouseReport.split(dx: pending.dx, dy: pending.dy, wheel: pending.wheel, pan: pending.pan, buttons: buttons)
         pending = PendingMotion()
+        lastMotionFlush = DispatchTime.now().uptimeNanoseconds
+        motionSends.tick()
+        maxSplit = max(maxSplit, reports.count)
         for r in reports { write(r.bytes) }
+    }
+
+    // 움직임 끊김 진단 (writeQueue에서만)
+    private var motionSends = GapMeter()
+    private var maxSplit = 0
+    private var maxWriteMs: Double = 0
+
+    /// 움직임 전송 진단: 8ms 묶음 전송 간격, 한 번에 쪼갠 리포트 수 최대, 쓰기 한 번 최대 시간. 읽으면 비운다.
+    public func takeMotionDiagnostics() -> (sends: GapMeter.Summary, maxSplit: Int, maxWriteMs: Double)? {
+        var result: (GapMeter.Summary, Int, Double)?
+        let done = DispatchSemaphore(value: 0)
+        writeQueue.async {
+            result = (self.motionSends.take(), self.maxSplit, self.maxWriteMs)
+            self.maxSplit = 0
+            self.maxWriteMs = 0
+            done.signal()
+        }
+        guard done.wait(timeout: .now() + 0.1) == .success, let r = result else { return nil }
+        return (sends: r.0, maxSplit: r.1, maxWriteMs: r.2)
     }
 
     // writeQueue에서만
@@ -496,6 +525,7 @@ public final class BluetoothHID: NSObject {
         let r = buf.withUnsafeMutableBytes { channel.writeSync($0.baseAddress, length: UInt16($0.count)) }
         let elapsed = TimeInterval(DispatchTime.now().uptimeNanoseconds - start) / 1e9
         stats.record(elapsed, ok: r == kIOReturnSuccess)
+        maxWriteMs = max(maxWriteMs, elapsed * 1000)
         if r != kIOReturnSuccess {
             HIDLog.error("리포트 전송 실패: \(BluetoothHID.describe(r))")
         }

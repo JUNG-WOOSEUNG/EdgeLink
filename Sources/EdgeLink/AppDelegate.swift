@@ -221,6 +221,10 @@ final class AppModel: NSObject, ObservableObject {
 
     func launch() {
         if Snapshot.directory != nil { return Snapshot.run(model: self) }
+        // 연결 로그를 파일로도 남긴다 (문제를 살펴볼 때 씀, 주소 뒷자리는 가림)
+        HIDLog.fileURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/EdgeLink/EdgeLink.log")
+        HIDLog.info("EdgeLink 시작 (\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"))")
         // 설정 창의 ⌘, 키 감시가 첫 실행부터 동작하게 미리 만든다
         _ = settingsWindow
         // 개발용: 온보딩을 마쳤어도 창을 바로 연다

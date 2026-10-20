@@ -499,10 +499,35 @@ public enum HIDLog {
         default: logger.info("\(masked, privacy: .public)")
         }
         lock.lock()
+        appendToFile(maskAddress(line))
         buffer.append(line)
         if buffer.count > capacity { buffer.removeFirst(buffer.count - capacity) }
         lock.unlock()
         echo?(line)
+    }
+
+    /// 로그 파일 (앱이 정함). 2MB를 넘으면 .1로 넘기고 새로 쓴다. 키 입력·클립보드 내용은 원래 로그에 없다.
+    public static var fileURL: URL?
+    private static var fileHandle: FileHandle?
+
+    // lock 안에서만
+    private static func appendToFile(_ line: String) {
+        guard let url = fileURL else { return }
+        if fileHandle == nil {
+            try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if !FileManager.default.fileExists(atPath: url.path) { FileManager.default.createFile(atPath: url.path, contents: nil) }
+            fileHandle = try? FileHandle(forWritingTo: url)
+            _ = try? fileHandle?.seekToEnd()
+        }
+        guard let h = fileHandle, let data = (line + "\n").data(using: .utf8) else { return }
+        h.write(data)
+        if let size = try? h.offset(), size > 2_000_000 {
+            try? h.close()
+            fileHandle = nil
+            let old = url.appendingPathExtension("1")
+            try? FileManager.default.removeItem(at: old)
+            try? FileManager.default.moveItem(at: url, to: old)
+        }
     }
 
     /// 최근 로그. 복사용이면 블루투스 주소 뒷자리를 가린다.

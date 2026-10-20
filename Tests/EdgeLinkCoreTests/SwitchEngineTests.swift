@@ -519,3 +519,30 @@ struct SwitchMiscTests {
         #expect(ScreenCoordinates.quartzY(cocoaY: ScreenCoordinates.cocoaY(quartzY: 123, mainHeight: 982), mainHeight: 982) == 123)
     }
 }
+
+@Suite("단축키로 넘어갈 때 위치")
+struct HotkeyEntryDepthTests {
+    let s = PhoneSurface(width: 393, height: 852, unitsPerPoint: 2, macEdge: .right,
+                         passage: EdgeSegment(start: 24, end: 958))
+
+    @Test func centerDepthIsHalfScreen() {
+        #expect(EntryPlan.centerDepthPoints(s) == 393.0 / 2)
+    }
+
+    @Test func pointerAfterCenterIsFarFromReturn() {
+        var p = EntryPlan.pointerAfter(surface: s, phoneFraction: 0.5, depthPoints: EntryPlan.centerDepthPoints(s))
+        let start = p.innerDistance
+        #expect(start > 300)
+        // Mac 쪽(돌아오는 방향)으로 200단위 움직여도 돌아오지 않는다
+        p.move(dx: -100, dy: 0)
+        p.move(dx: -100, dy: 0)
+        #expect(p.innerDistance < start)
+        #expect(!p.shouldReturn(buttonsDown: false))
+    }
+
+    @Test func edgeEntryStaysNearEdge() {
+        let p = EntryPlan.pointerAfter(surface: s, phoneFraction: 0.5)
+        #expect(p.innerDistance == 8)
+    }
+}
+
