@@ -58,6 +58,10 @@ extension Snapshot {
                                                               hotkey: Hotkey(keyCode: 0x31, modifiers: Hotkey.control | Hotkey.option),
                                                               conflictsWith: "입력 소스 전환", handle: h))
         save("dialog-reset-pairing", ResetPairingView(handle: h))
+        model.updater.debugSetAvailable(ReleaseInfo(version: "0.4.0", notes: "## 고친 것\n- 아이폰 블루투스를 껐다 켠 뒤 다시 연결되는 동안 메뉴 막대가 멈추던 문제\n- 홈 화면이 두 장씩 넘어가던 문제",
+                                                    dmgURL: URL(string: "https://example.com/EdgeLink.dmg")!, pageURL: URL(string: "https://example.com")))
+        save("dialog-update", UpdateView(updater: model.updater, handle: h))
+        model.updater.debugSetIdle()
         save("dialog-connection-log", ConnectionLogView(handle: h, fixedLines: [
             "10:20:01.120 [INFO] SDP 레코드 등록됨",
             "10:20:01.480 [INFO] 지민의 iPhone 16 Pro에 연결 중…",
