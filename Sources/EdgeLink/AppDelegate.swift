@@ -175,10 +175,11 @@ final class AppModel: NSObject, ObservableObject {
     }
 
     /// 개발용 화면 캡처에서만: 연결 상태를 흉내 낸다
-    func debugSetConnection(_ phase: ConnectionPhase, failureStreak streak: Int = 0) {
+    func debugSetConnection(_ phase: ConnectionPhase, failureStreak streak: Int = 0, address: String? = nil) {
         guard Snapshot.directory != nil else { return }
         connection = phase
         failureStreak = streak
+        connectingAddress = address
     }
 
     // MARK: 화면 사이 연결 (Contracts.swift)
@@ -385,12 +386,17 @@ final class AppModel: NSObject, ObservableObject {
             }
             return
         }
+        // 근처 기기 찾기와 페어링을 같이 하면 연결이 끊겨 아이폰에 "근처에 있는지 확인"이 뜬다 (회사 Mac 첫 페어링).
+        // 페어링하는 동안엔 찾기를 멈추고, 실패하면 다시 찾는다.
+        let wasSearching = devices.searching
+        devices.stop()
         let p = Pairer()
         p.onCode = { [weak self] code in self?.connection = .pairing(code: code) }
         p.onFinish = { [weak self] result in
             guard let self else { return }
             self.pairer = nil
             self.devices.reloadPaired()
+            if result != kIOReturnSuccess, wasSearching, self.acceptingNewDevice { self.devices.start() }
             if result == kIOReturnSuccess {
                 // 아이폰이 먼저 연결해 왔으면 그대로 둔다
                 switch self.hid.state {

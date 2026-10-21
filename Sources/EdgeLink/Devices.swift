@@ -131,13 +131,23 @@ final class Pairer: NSObject, IOBluetoothDevicePairDelegate {
         DispatchQueue.main.async { _ = p }
     }
 
+    func devicePairingStarted(_ sender: Any!) {
+        HIDLog.info("페어링: 연결됨, 인증 시작")
+    }
+
+    func devicePairingConnecting(_ sender: Any!) {
+        HIDLog.info("페어링: 기기에 연결하는 중")
+    }
+
     func devicePairingUserConfirmationRequest(_ sender: Any!, numericValue: BluetoothNumericValue) {
+        HIDLog.info("페어링: 번호 확인 요청 받음 (Mac 쪽은 자동으로 확인)")
         onCode?(Int(numericValue))
         // 번호 확인은 아이폰 쪽에서 한다
         pair?.replyUserConfirmation(true)
     }
 
     func devicePairingUserPasskeyNotification(_ sender: Any!, passkey: BluetoothPasskey) {
+        HIDLog.info("페어링: 패스키 알림 받음")
         onCode?(Int(passkey))
     }
 

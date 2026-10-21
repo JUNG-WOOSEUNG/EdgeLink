@@ -434,13 +434,20 @@ struct PairingStep: View {
 
                     deviceList
 
-                    if let code = pairingCode {
+                    if isPairing {
+                        // macOS가 자기 "연결 요청" 창을 띄우기도 해서(번호가 앱에 안 올 때) Mac 쪽도 누르라고 알린다
                         InfoBox {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("두 화면의 번호가 같은지 확인하세요").font(Typo.bodyBold).foregroundStyle(Color.brandStrong)
-                                (Text("Mac에 ") + Text(Self.format(code)).fontWeight(.heavy)
-                                 + Text("이 보여요. 아이폰에도 같은 번호가 뜨면 아이폰에서 ‘페어링’을 누르세요."))
-                                    .font(Typo.secondary).lineSpacing(3)
+                            VStack(alignment: .leading, spacing: Space.xs) {
+                                Text("Mac과 아이폰 양쪽에서 확인해 주세요").font(Typo.bodyBold).foregroundStyle(Color.brandStrong)
+                                Group {
+                                    if let code = pairingCode {
+                                        Text("두 화면에 ") + Text(Self.format(code)).fontWeight(.heavy) + Text("이 같게 보이면 아이폰에서 ‘페어링’을 누르세요.")
+                                    } else {
+                                        Text("두 화면의 번호가 같으면 Mac의 ‘연결 요청’ 창에서 ‘연결’을, 아이폰에서 ‘페어링’을 누르세요.")
+                                    }
+                                }
+                                .font(Typo.secondary).lineSpacing(3)
+                                .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     }
@@ -509,6 +516,8 @@ struct PairingStep: View {
         }
         .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(2)
     }
+
+    private var isPairing: Bool { if case .pairing = model.connection { return true } else { return false } }
 
     private var pairingCode: Int? {
         if case let .pairing(code) = model.connection { return code }

@@ -42,6 +42,14 @@ enum Snapshot {
             render(view.frame(height: 560), size: NSSize(width: 720, height: 560), appearance: appearance,
                    to: dir.appendingPathComponent(String(format: "onboarding-%d%@.png", step.rawValue, suffix)))
         }
+        // 아이폰 연결 단계의 페어링 중 (Mac·아이폰 양쪽 확인 안내)
+        model.onboardingPage = .pairing
+        model.debugSetConnection(.pairing(code: nil), address: sampleDevice.address)
+        render(OnboardingView().environmentObject(model).environmentObject(model.settings)
+                .environmentObject(model.permissions).environmentObject(model.devices).frame(height: 560),
+               size: NSSize(width: 720, height: 560), appearance: appearance,
+               to: dir.appendingPathComponent("onboarding-3-pairing\(suffix).png"))
+        model.debugSetConnection(.idle)
         // 담당별 캡처 (설정 창, 팝오버 상태별, 확인 창 등): 각 파일의 extension Snapshot에서 한 줄씩 추가
         // 예: renderSettings(model: model, dir: dir, appearance: appearance, suffix: suffix)
         renderSettings(model: model, dir: dir, appearance: appearance, suffix: suffix)

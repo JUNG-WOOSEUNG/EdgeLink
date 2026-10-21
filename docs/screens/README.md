@@ -9,6 +9,7 @@
 | onboarding-1 | <img src="onboarding-1.png" width="320"> | <img src="onboarding-1-dark.png" width="320"> |
 | onboarding-2 | <img src="onboarding-2.png" width="320"> | <img src="onboarding-2-dark.png" width="320"> |
 | onboarding-3 | <img src="onboarding-3.png" width="320"> | <img src="onboarding-3-dark.png" width="320"> |
+| onboarding-3-pairing | <img src="onboarding-3-pairing.png" width="320"> | <img src="onboarding-3-pairing-dark.png" width="320"> |
 | onboarding-4 | <img src="onboarding-4.png" width="320"> | <img src="onboarding-4-dark.png" width="320"> |
 | onboarding-5 | <img src="onboarding-5.png" width="320"> | <img src="onboarding-5-dark.png" width="320"> |
 | onboarding-6 | <img src="onboarding-6.png" width="320"> | <img src="onboarding-6-dark.png" width="320"> |
