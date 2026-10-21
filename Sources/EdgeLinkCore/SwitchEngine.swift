@@ -362,6 +362,8 @@ public struct KeyCombo: Equatable, Hashable {
 public enum ModifierKeys {
     public static let capsLockKeyCode: UInt16 = 0x39
     public static let fnKeyCode: UInt16 = 0x3F
+    /// 한국어 배열 외장 키보드의 한/영 키 (macOS에선 kVK_JIS_Kana로 들어온다)
+    public static let hangulKeyCode: UInt16 = 0x68
     public static let escapeKeyCode: UInt16 = 0x35
     static let secondaryFn: UInt64 = 0x800000
 

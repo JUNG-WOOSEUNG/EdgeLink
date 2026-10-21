@@ -692,6 +692,15 @@ final class InputRouter {
                 return false
             }
             guard var s = st.session else { return false }
+            // 외장 키보드의 한/영 키: 그대로(LANG1) 보내면 아이폰이 한/영을 바꾸지 않을 수 있어서
+            // Caps Lock 한/영과 같은 ⌃Space로 보낸다. 뗌은 아이폰에 보낼 게 없으니 삼킨다.
+            if code == ModifierKeys.hangulKeyCode {
+                if !isRepeat {
+                    st.swallowKeyUp.insert(code)
+                    model.hid.send(CapsLockRule.reports(hangul: true, current: s.keys.report), gap: 0.02)
+                }
+                return false
+            }
             if s.held.keyDown(code, isRepeat: isRepeat) == .phone, let usage = HIDUsage.fromMacKeyCode(code) {
                 s.phoneCodes.insert(code)
                 if let r = s.keys.press(usage) { model.hid.send(r) }
