@@ -146,6 +146,9 @@ public final class HIDHelperClient {
     private var connectOnLaunch = false
     private var restartScheduled = false
     private var lastFreshRestart: Date?
+    /// 마지막으로 연결된 뒤 연결 시도가 실패한 횟수. 한 번 끊긴 뒤 같은 도우미로는 다시 붙지 않고
+    /// 새로 띄우면 바로 붙는 일이 실기기에서 거듭 있었다(블루투스 껐다 켜기, 자리 옮겨 끊긴 뒤).
+    private var failuresSinceConnected = 0
     private var shuttingDown = false
     private var silentReported = false
     private var watchTimer: DispatchSourceTimer?
@@ -233,6 +236,18 @@ public final class HIDHelperClient {
         guard Self.isValidAddress(address) else { throw BluetoothHID.HIDError.invalidAddress(address) }
         wantedAddress = address
         nextReconnectAt = nil
+        // 실패한 뒤 직접 다시 연결하면 도우미부터 새로 띄운다 (같은 도우미로는 다시 붙지 않던 일이 있었다)
+        if failuresSinceConnected > 0, let old = takeLink() {
+            generation += 1
+            old.terminate()
+            failWaiters()
+            lastFreshRestart = Date()
+            connectOnLaunch = true
+            HIDLog.info("연결이 실패한 뒤라 블루투스 도우미를 새로 띄우고 연결해요")
+            setState(.connecting(address: address))
+            scheduleLaunch(after: timing.freshRestartDelay)
+            return
+        }
         if currentLink() == nil, restartScheduled {
             connectOnLaunch = true   // 도우미가 다시 뜨면 바로 연결
         } else {
@@ -521,11 +536,19 @@ public final class HIDHelperClient {
             silentReported = false
         case .state(let s):
             switch s {
-            case .connected(let a): wantedAddress = a
+            case .connected(let a):
+                wantedAddress = a
+                failuresSinceConnected = 0
             case .disconnected(.user), .disconnected(.virtualCableUnplug): wantedAddress = nil
+            case .disconnected(.openFailed):
+                failuresSinceConnected += 1
             default: break
             }
             setState(s)
+            // 자동 재연결이 두 번 연달아 실패하면 다음 시도는 새 도우미로 (30초에 한 번까지)
+            if case .disconnected(.openFailed) = s, failuresSinceConnected >= 2, failuresSinceConnected % 2 == 0 {
+                freshRestart()
+            }
         case .reconnectScheduled(let seconds):
             nextReconnectAt = seconds.map { Date().addingTimeInterval($0) }
         case let .incomingRejected(address, name):

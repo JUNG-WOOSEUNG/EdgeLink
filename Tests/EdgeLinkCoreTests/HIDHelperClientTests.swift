@@ -231,6 +231,37 @@ struct HIDHelperClientTests {
         #expect(b.links.count == 2)
     }
 
+    @Test func reconnectAfterFailureUsesFreshHelper() throws {
+        let b = Bench()
+        b.onQueue { b.client.defaultAddress = address }
+        try b.onQueue { try b.client.connect(address: address) }
+        b.links[0].emit(.state(.disconnected(.openFailed(stage: "기기 연결", code: -536870186))))
+        #expect(b.wait { b.state != .connecting(address: address) })
+        // 실패한 뒤 직접 다시 연결: 지금 도우미는 끝내고 새 도우미로 연결
+        try b.onQueue { try b.client.connect(address: address) }
+        #expect(b.wait { b.links.count == 2 })
+        #expect(b.links[0].terminated)
+        #expect(b.links[1].sent.last == .connect(address: address))
+        // 연결되면 셈을 비워서, 그 뒤 직접 연결은 같은 도우미로
+        b.links[1].emit(.state(.connected(address: address)))
+        #expect(b.wait { b.state == .connected(address: address) })
+        try b.onQueue { try b.client.connect(address: address) }
+        usleep(150_000)
+        #expect(b.links.count == 2)
+    }
+
+    @Test func twoAutomaticFailuresUseFreshHelper() throws {
+        let b = Bench()
+        b.onQueue { b.client.autoReconnect = true; b.client.defaultAddress = address }
+        try b.onQueue { try b.client.connect(address: address) }
+        b.links[0].emit(.state(.disconnected(.openFailed(stage: "기기 연결", code: -536870186))))
+        usleep(100_000)
+        #expect(b.links.count == 1)
+        b.links[0].emit(.state(.disconnected(.openFailed(stage: "기기 연결", code: -536870186))))
+        #expect(b.wait { b.links.count == 2 })
+        #expect(b.links[1].sent.last == .connect(address: address))
+    }
+
     @Test func forwardsRejectedIncomingAndFailures() throws {
         let b = Bench()
         try b.onQueue { try b.client.connect(address: address) }
