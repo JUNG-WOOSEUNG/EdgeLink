@@ -24,4 +24,8 @@ text_size = 13
 icon_locations = {
     os.path.basename(app): (165, 190),
     "Applications": (495, 190),
+    # 숨김 파일 보기를 켠 Mac에서도 창 안에 보이지 않게 창(660×400) 바깥 먼 곳에 둔다
+    ".background.tiff": (1400, 190),
+    ".VolumeIcon.icns": (1600, 190),
+    ".fseventsd": (1800, 190),
 }
