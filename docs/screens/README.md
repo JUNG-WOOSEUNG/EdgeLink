@@ -10,6 +10,7 @@
 | onboarding-2 | <img src="onboarding-2.png" width="320"> | <img src="onboarding-2-dark.png" width="320"> |
 | onboarding-3 | <img src="onboarding-3.png" width="320"> | <img src="onboarding-3-dark.png" width="320"> |
 | onboarding-3-pairing | <img src="onboarding-3-pairing.png" width="320"> | <img src="onboarding-3-pairing-dark.png" width="320"> |
+| onboarding-3-keyboard | <img src="onboarding-3-keyboard.png" width="320"> | <img src="onboarding-3-keyboard-dark.png" width="320"> |
 | onboarding-4 | <img src="onboarding-4.png" width="320"> | <img src="onboarding-4-dark.png" width="320"> |
 | onboarding-5 | <img src="onboarding-5.png" width="320"> | <img src="onboarding-5-dark.png" width="320"> |
 | onboarding-6 | <img src="onboarding-6.png" width="320"> | <img src="onboarding-6-dark.png" width="320"> |
@@ -28,6 +29,7 @@
 | popover-disconnected | <img src="popover-disconnected.png" width="320"> | <img src="popover-disconnected-dark.png" width="320"> |
 | popover-failed | <img src="popover-failed.png" width="320"> | <img src="popover-failed-dark.png" width="320"> |
 | popover-failed-repeated | <img src="popover-failed-repeated.png" width="320"> | <img src="popover-failed-repeated-dark.png" width="320"> |
+| popover-failed-keyboard | <img src="popover-failed-keyboard.png" width="320"> | <img src="popover-failed-keyboard-dark.png" width="320"> |
 | popover-no-device | <img src="popover-no-device.png" width="320"> | <img src="popover-no-device-dark.png" width="320"> |
 | popover-problem-bluetooth | <img src="popover-problem-bluetooth.png" width="320"> | <img src="popover-problem-bluetooth-dark.png" width="320"> |
 | popover-problem-permission | <img src="popover-problem-permission.png" width="320"> | <img src="popover-problem-permission-dark.png" width="320"> |

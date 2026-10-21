@@ -49,6 +49,12 @@ enum Snapshot {
                 .environmentObject(model.permissions).environmentObject(model.devices).frame(height: 560),
                size: NSSize(width: 720, height: 560), appearance: appearance,
                to: dir.appendingPathComponent("onboarding-3-pairing\(suffix).png"))
+        // 같은 Apple 계정이라 "페어링됨"인데 아이폰이 키보드 연결을 거절할 때
+        model.debugSetConnection(.failed(message: "제어 채널(0x11) 실패: 일반 오류"), address: sampleDevice.address, keyboardPairing: true)
+        render(OnboardingView().environmentObject(model).environmentObject(model.settings)
+                .environmentObject(model.permissions).environmentObject(model.devices).frame(height: 560),
+               size: NSSize(width: 720, height: 560), appearance: appearance,
+               to: dir.appendingPathComponent("onboarding-3-keyboard\(suffix).png"))
         model.debugSetConnection(.idle)
         // 담당별 캡처 (설정 창, 팝오버 상태별, 확인 창 등): 각 파일의 extension Snapshot에서 한 줄씩 추가
         // 예: renderSettings(model: model, dir: dir, appearance: appearance, suffix: suffix)

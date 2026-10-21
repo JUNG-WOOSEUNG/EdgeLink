@@ -451,7 +451,9 @@ struct PairingStep: View {
                             }
                         }
                     }
-                    if case let .failed(message) = model.connection, model.connectingAddress != nil || !model.isConnected {
+                    if model.needsKeyboardPairing, !model.isConnected {
+                        KeyboardPairingHelp()
+                    } else if case let .failed(message) = model.connection, model.connectingAddress != nil || !model.isConnected {
                         // 오류 원문은 연결 로그에만. 여기선 결과와 할 일만.
                         VStack(alignment: .leading, spacing: Space.xs) {
                             Text(ConnectionError(message).friendly).font(Typo.font(12, .semibold)).foregroundStyle(Color.dangerText)
@@ -1411,5 +1413,24 @@ struct MenuBarMiniArt: View {
         .frame(height: 26)
         .background(RoundedRectangle(cornerRadius: 6).fill(Color.segmentBg))
         .accessibilityHidden(true)
+    }
+}
+
+/// 같은 Apple 계정이라 Mac엔 "페어링됨"인데 아이폰이 이 Mac을 키보드로 모를 때 (처음 설정, 팝오버 공용)
+struct KeyboardPairingHelp: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.xs) {
+                Text("아이폰에서 이 Mac을 키보드로 연결해 주세요").font(Typo.font(12, .semibold)).foregroundStyle(Color.dangerText)
+                InfoTip("같은 Apple 계정의 아이폰은 iCloud로 처음부터 ‘페어링됨’으로 보이지만, 키보드·마우스로 페어링된 건 아니에요. 아이폰에서 한 번 연결해 주면 그다음부턴 자동으로 붙어요. Mac의 Bluetooth 설정을 열어 두면 아이폰 목록에 이 Mac이 더 빨리 나타나요.")
+            }
+            Text("아이폰 설정 › Bluetooth › ‘다른 기기’에서 이 Mac을 누르세요.".keepingWords)
+                .font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Mac Bluetooth 설정 열기") { model.openMacBluetoothSettings() }
+                .buttonStyle(PillButtonStyle(kind: .secondary, height: 30))
+        }
     }
 }

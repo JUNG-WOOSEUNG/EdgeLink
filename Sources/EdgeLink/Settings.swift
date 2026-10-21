@@ -7,6 +7,7 @@ final class AppSettings: ObservableObject {
 
     enum Key {
         static let lastDeviceAddress = "lastDeviceAddress"
+        static let hidConnectedAddresses = "hidConnectedAddresses"
         static let lastDeviceName = "lastDeviceName"
         static let onlyDefaultDevice = "onlyDefaultDevice"
         static let phoneLayout = "phoneLayout"
@@ -97,6 +98,13 @@ final class AppSettings: ObservableObject {
 
     @Published var lastDeviceAddress: String? { didSet { defaults.set(lastDeviceAddress, forKey: Key.lastDeviceAddress) } }
     @Published var lastDeviceName: String? { didSet { defaults.set(lastDeviceName, forKey: Key.lastDeviceName) } }
+
+    /// 이 Mac에서 키보드·마우스 연결에 성공한 적이 있는 기기 (소문자 주소).
+    /// 같은 Apple 계정의 아이폰은 iCloud로 처음부터 "페어링됨"이지만 키보드로 페어링된 건 아니라서, 그걸 가려내는 데 쓴다.
+    var hidConnectedAddresses: Set<String> {
+        get { Set(defaults.stringArray(forKey: Key.hidConnectedAddresses) ?? []) }
+        set { defaults.set(Array(newValue).sorted(), forKey: Key.hidConnectedAddresses) }
+    }
     /// 마지막으로 끝낸 단계 번호 (0 = 아직 시작 안 함)
     @Published var onboardingStep: Int { didSet { defaults.set(onboardingStep, forKey: Key.onboardingStep) } }
     @Published var onboardingDone: Bool { didSet { defaults.set(onboardingDone, forKey: Key.onboardingDone) } }

@@ -79,6 +79,9 @@ final class AppModel: NSObject, ObservableObject {
     /// 사용자가 기기 메뉴에서 직접 끊음 (자동으로 다시 연결하지 않는다)
     @Published private(set) var disconnectedByUser = false
     @Published private(set) var connectingAddress: String?
+    /// 아이폰이 이 Mac을 아직 키보드로 모름: "페어링됨"인데(같은 Apple 계정의 iCloud 페어링) 키보드 연결을 거절했고,
+    /// 이 Mac에서 연결에 성공한 적도 없다. 아이폰 설정 › Bluetooth › 다른 기기에서 이 Mac을 눌러야 한다.
+    @Published private(set) var needsKeyboardPairing = false
     /// 마지막으로 끊긴 시각 (팝오버 "3분 전에 끊겼어요")
     @Published private(set) var disconnectedAt: Date?
     @Published var onboardingPage: OnboardingStep = .welcome {
@@ -175,11 +178,12 @@ final class AppModel: NSObject, ObservableObject {
     }
 
     /// 개발용 화면 캡처에서만: 연결 상태를 흉내 낸다
-    func debugSetConnection(_ phase: ConnectionPhase, failureStreak streak: Int = 0, address: String? = nil) {
+    func debugSetConnection(_ phase: ConnectionPhase, failureStreak streak: Int = 0, address: String? = nil, keyboardPairing: Bool = false) {
         guard Snapshot.directory != nil else { return }
         connection = phase
         failureStreak = streak
         connectingAddress = address
+        needsKeyboardPairing = keyboardPairing
     }
 
     // MARK: 화면 사이 연결 (Contracts.swift)
@@ -255,6 +259,8 @@ final class AppModel: NSObject, ObservableObject {
             d.perform(Selector(("remove")))
         }
         settings.resetPairing()
+        settings.hidConnectedAddresses = []
+        needsKeyboardPairing = false
         // 지운 기기로 다시 연결하지 않게: 재연결 예약 취소, 기본 주소 지우기, 연결 기다리기 멈춤
         hid.defaultAddress = nil
         hid.cancelReconnect()
@@ -590,6 +596,8 @@ extension AppModel: HIDHelperClientDelegate {
             let name = device?.name ?? address
             settings.lastDeviceAddress = address
             settings.lastDeviceName = name
+            settings.hidConnectedAddresses.insert(address.lowercased())
+            needsKeyboardPairing = false
             if !settings.profile.manual, let m = DeviceProfile.Model.infer(from: name), m != settings.profile.model {
                 settings.profile.model = m
             }
@@ -633,7 +641,17 @@ extension AppModel: HIDHelperClientDelegate {
 
     /// SDP 등록 실패 등
     func hid(_ hid: HIDHelperClient, didFail message: String) {
+        if message.contains("채널"), let a = connectingAddress ?? settings.lastDeviceAddress,
+           !settings.hidConnectedAddresses.contains(a.lowercased()) {
+            if !needsKeyboardPairing { HIDLog.warn("이 Mac에서 연결된 적 없는 기기가 키보드 연결을 거절해요. 아이폰에서 이 Mac을 키보드로 페어링해야 해요") }
+            needsKeyboardPairing = true
+        }
         connection = .failed(message: message)
+    }
+
+    /// 아이폰이 이 Mac을 빨리 찾게 Mac의 Bluetooth 설정을 연다 (그 화면이 열려 있는 동안 주변에서 보인다)
+    func openMacBluetoothSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.BluetoothSettings") { NSWorkspace.shared.open(url) }
     }
 
     private func stopCircleIfNeeded() {

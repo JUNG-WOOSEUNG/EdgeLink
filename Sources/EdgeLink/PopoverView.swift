@@ -672,7 +672,8 @@ struct DisconnectedCard: View {
                     .frame(maxWidth: .infinity)
             }
             if failure != nil {
-                if hasFailureHelp(now: now) { failureHelp(now: now) }
+                if model.needsKeyboardPairing { KeyboardPairingHelp() }
+                else if hasFailureHelp(now: now) { failureHelp(now: now) }
             } else {
                 Text(reason(now: now).keepingWords).font(Typo.secondary).foregroundStyle(Color.textSecondary).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
