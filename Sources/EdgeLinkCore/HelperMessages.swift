@@ -6,7 +6,7 @@ import Foundation
 /// 마우스 움직임처럼 초당 수백 개 오가는 것도 있어서 JSON 대신 고정 형식으로 쓴다 (움직임 1개 = 13바이트).
 public enum HelperProtocol {
     /// 앱과 도우미가 서로 다른 빌드면 hello에서 알아챈다
-    public static let version: UInt16 = 1
+    public static let version: UInt16 = 2
     /// 이보다 긴 메시지는 깨진 것으로 본다
     public static let maxFrame = 1 << 20
 
@@ -62,6 +62,8 @@ public enum HelperCommand: Equatable {
     case resetReconnectPolicy
     /// 아이폰 쪽에서 연결해 올 때 받을지: 이 주소면 받고, acceptAll이면 누구든 받는다
     case setAcceptPolicy(address: String?, acceptAll: Bool)
+    /// 아이폰 조작 중: 보낸 게 없어도 100ms마다 움직임 0 리포트를 보내 블루투스가 절전(스니프)에 들어가지 않게
+    case setKeepAlive(Bool)
     case keyboard(KeyboardReport)
     case keyboardSequence([KeyboardReport], gapMs: UInt16)
     case consumer(UInt16)
@@ -78,7 +80,7 @@ public enum HelperCommand: Equatable {
 
     private enum Tag: UInt8 {
         case ping = 1, publish, unpublish, listen, stopListening, connect, disconnect, setDefaultAddress,
-             setAutoReconnect, cancelReconnect, resetReconnectPolicy, setAcceptPolicy
+             setAutoReconnect, cancelReconnect, resetReconnectPolicy, setAcceptPolicy, setKeepAlive
         case keyboard = 40, keyboardSequence, consumer, move, scroll, buttons, click, emptyReports, flush, motionDiagnostics
         case shutdown = 90
     }
@@ -98,6 +100,7 @@ public enum HelperCommand: Equatable {
         case .cancelReconnect: w.u8(Tag.cancelReconnect.rawValue)
         case .resetReconnectPolicy: w.u8(Tag.resetReconnectPolicy.rawValue)
         case let .setAcceptPolicy(a, all): w.u8(Tag.setAcceptPolicy.rawValue); w.optionalString(a); w.bool(all)
+        case .setKeepAlive(let on): w.u8(Tag.setKeepAlive.rawValue); w.bool(on)
         case .keyboard(let r): w.u8(Tag.keyboard.rawValue); w.keyboard(r)
         case let .keyboardSequence(rs, gap):
             w.u8(Tag.keyboardSequence.rawValue); w.u16(gap); w.u16(UInt16(min(rs.count, Int(UInt16.max))))
@@ -135,6 +138,7 @@ public enum HelperCommand: Equatable {
         case .setAcceptPolicy:
             guard let a = r.optionalString(), let all = r.bool() else { return nil }
             cmd = .setAcceptPolicy(address: a, acceptAll: all)
+        case .setKeepAlive: cmd = r.bool().map { .setKeepAlive($0) }
         case .keyboard: cmd = r.keyboard().map { .keyboard($0) }
         case .keyboardSequence:
             guard let gap = r.u16(), let n = r.u16() else { return nil }

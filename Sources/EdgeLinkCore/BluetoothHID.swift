@@ -434,20 +434,26 @@ public final class BluetoothHID: NSObject {
         send(ConsumerReport(usage: 0))
     }
 
-    /// 움직임은 모았다가 8ms마다 한 번에 보낸다.
-    /// 마지막 움직임 전송이 8ms 넘게 지났으면 바로 보내고, 아니면 타이머가 보낸다.
-    /// (타이머만 믿으면 절전 등으로 늦어질 때 움직임이 끊겨 보였음)
+    /// 움직임은 받는 즉시 보낸다 (8ms씩 모아 보내던 것을 없애 평균 몇 ms를 줄였다).
+    /// 트랙패드 이벤트가 원래 8~16ms 간격이라 리포트 수는 크게 늘지 않는다. 스크롤은 타이머가 모아 보낸다.
     public func move(dx: Int, dy: Int) {
         writeQueue.async {
             guard self.writeChannel != nil else { return }
             self.pending.dx += dx; self.pending.dy += dy
-            let now = DispatchTime.now().uptimeNanoseconds
-            if now &- self.lastMotionFlush >= 8_000_000 { self.flushMotion() }
+            self.flushMotion()
         }
     }
 
     // writeQueue에서만
     private var lastMotionFlush: UInt64 = 0
+    private var lastWriteAt: UInt64 = 0
+    private var keepAlive = false
+
+    /// 아이폰 조작 중엔 켠다. 입력이 잠깐 없으면 블루투스 연결이 절전(스니프) 상태가 돼서
+    /// 다시 움직이기 시작하는 순간 커서가 굼떴다. 100ms 동안 보낸 게 없으면 움직임 0 리포트를 보낸다.
+    public func setKeepAlive(_ on: Bool) {
+        writeQueue.async { self.keepAlive = on }
+    }
 
     public func scroll(wheel: Int, pan: Int = 0) {
         writeQueue.async {
@@ -557,7 +563,8 @@ public final class BluetoothHID: NSObject {
         var buf = bytes
         let start = DispatchTime.now().uptimeNanoseconds
         let r = buf.withUnsafeMutableBytes { channel.writeSync($0.baseAddress, length: UInt16($0.count)) }
-        let elapsed = TimeInterval(DispatchTime.now().uptimeNanoseconds - start) / 1e9
+        lastWriteAt = DispatchTime.now().uptimeNanoseconds
+        let elapsed = TimeInterval(lastWriteAt - start) / 1e9
         stats.record(elapsed, ok: r == kIOReturnSuccess)
         maxWriteMs = max(maxWriteMs, elapsed * 1000)
         if r != kIOReturnSuccess {
@@ -614,7 +621,13 @@ public final class BluetoothHID: NSObject {
         motionTimer?.cancel()
         let t = DispatchSource.makeTimerSource(flags: .strict, queue: writeQueue)
         t.schedule(deadline: .now() + BluetoothHID.motionInterval, repeating: BluetoothHID.motionInterval, leeway: .milliseconds(1))
-        t.setEventHandler { [weak self] in self?.flushMotion() }
+        t.setEventHandler { [weak self] in
+            guard let self else { return }
+            self.flushMotion()
+            if self.keepAlive, DispatchTime.now().uptimeNanoseconds &- self.lastWriteAt >= 100_000_000 {
+                self.write(MouseReport(buttons: self.buttons).bytes)
+            }
+        }
         t.resume()
         motionTimer = t
     }

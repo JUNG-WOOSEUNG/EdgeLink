@@ -119,9 +119,9 @@ struct HIDHelperClientTests {
         b.onQueue { b.client.listen() }
         #expect(b.links.count == 1)
         let sent = b.links[0].sent
-        #expect(Array(sent.prefix(4)) == [
-            .setAutoReconnect(true), .setDefaultAddress(address), .setAcceptPolicy(address: address, acceptAll: false),
-            .publish(name: "EdgeLink"),
+        #expect(Array(sent.prefix(5)) == [
+            .setAutoReconnect(true), .setKeepAlive(false), .setDefaultAddress(address),
+            .setAcceptPolicy(address: address, acceptAll: false), .publish(name: "EdgeLink"),
         ])
         #expect(sent.contains(.listen))
     }

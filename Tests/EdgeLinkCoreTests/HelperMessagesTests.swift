@@ -8,7 +8,7 @@ struct HelperMessagesTests {
         .ping(7), .publish(name: "EdgeLink"), .unpublish, .listen, .stopListening,
         .connect(address: "00-11-22-33-44-55"), .disconnect,
         .setDefaultAddress("00-11-22-33-44-55"), .setDefaultAddress(nil),
-        .setAutoReconnect(true), .setAutoReconnect(false), .cancelReconnect, .resetReconnectPolicy,
+        .setAutoReconnect(true), .setAutoReconnect(false), .setKeepAlive(true), .setKeepAlive(false), .cancelReconnect, .resetReconnectPolicy,
         .setAcceptPolicy(address: nil, acceptAll: true), .setAcceptPolicy(address: "00-11-22-33-44-55", acceptAll: false),
         .keyboard(KeyboardReport(modifiers: 0x01, keys: [0x2C])), .keyboard(KeyboardReport()),
         .keyboardSequence([KeyboardReport(modifiers: 1), KeyboardReport(modifiers: 1, keys: [0x2C]), KeyboardReport()], gapMs: 20),

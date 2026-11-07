@@ -117,6 +117,10 @@ public final class HIDHelperClient {
     public var autoReconnect = false {
         didSet { if autoReconnect != oldValue { sendNow(.setAutoReconnect(autoReconnect)) } }
     }
+    /// 아이폰 조작 중 블루투스를 깨워 두기 (도우미가 다시 떠도 다시 보낸다)
+    public var keepAlive = false {
+        didSet { if keepAlive != oldValue { sendNow(.setKeepAlive(keepAlive)) } }
+    }
     public var acceptPolicy = AcceptPolicy() {
         didSet { if acceptPolicy != oldValue { sendNow(.setAcceptPolicy(address: acceptPolicy.address, acceptAll: acceptPolicy.acceptAll)) } }
     }
@@ -430,6 +434,7 @@ public final class HIDHelperClient {
 
         // 설정 다시 보내기: 받기 규칙과 기본 주소를 SDP·연결 받기보다 먼저
         sendNow(.setAutoReconnect(autoReconnect))
+        sendNow(.setKeepAlive(keepAlive))
         sendNow(.setDefaultAddress(defaultAddress))
         sendNow(.setAcceptPolicy(address: acceptPolicy.address, acceptAll: acceptPolicy.acceptAll))
         if let name = serviceName { sendNow(.publish(name: name)) }

@@ -117,6 +117,9 @@ final class AppModel: NSObject, ObservableObject {
         updateAcceptPolicy()
         settings.$lastDeviceAddress.combineLatest(settings.$onlyDefaultDevice)
             .sink { [weak self] _ in DispatchQueue.main.async { self?.updateAcceptPolicy() } }.store(in: &bag)
+        // 아이폰 조작 중엔 블루투스를 깨워 둬서 다시 움직이기 시작할 때 커서가 굼뜨지 않게 (Mac 조작 중엔 끈다)
+        $controlMode.removeDuplicates()
+            .sink { [weak self] mode in self?.hid.keepAlive = mode != .mac }.store(in: &bag)
         // 하위 객체가 바뀌면 메뉴바 아이콘도 다시 그린다
         placements = Layout.placements(screens)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)

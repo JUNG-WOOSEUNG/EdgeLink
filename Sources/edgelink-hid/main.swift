@@ -122,6 +122,7 @@ final class HelperServer: NSObject, BluetoothHIDDelegate {
         case .disconnect: hid.disconnect()
         case .setDefaultAddress(let a): hid.defaultAddress = a
         case .setAutoReconnect(let on): hid.autoReconnect = on
+        case .setKeepAlive(let on): hid.setKeepAlive(on)
         case .cancelReconnect: hid.cancelReconnect()
         case .resetReconnectPolicy: hid.resetReconnectPolicy()
         case let .setAcceptPolicy(address, all):
