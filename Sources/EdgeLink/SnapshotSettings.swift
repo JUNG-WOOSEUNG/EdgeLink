@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 개발용 캡처: 설정 창 5개 탭, 빈 상태, 단축키 기록 중·겹침, 아이폰 버튼 등록 도우미.
+/// 개발용 캡처: 설정 창 5개 탭, 빈 상태, 단축키 기록 중·겹침.
 /// 설정값(UserDefaults)은 바꾸지 않는다. 연결 상태와 기기 목록만 흉내 낸다.
 extension Snapshot {
     static func renderSettings(model: AppModel, dir: URL, appearance: NSAppearance?, suffix: String) {
@@ -43,21 +43,8 @@ extension Snapshot {
             .toggleEdge: .rejected(attempt: attempt, message: "‘클립보드 보내기’에서 이미 쓰는 조합이에요"),
         ]))), "settings-input-recording")
 
-        // 아이폰 버튼 등록 도우미
-        let gSize = NSSize(width: 720, height: 560)
-        func gesture(_ p: (index: Int, sent: Bool, testing: Bool)) -> some View {
-            GestureSetupView(onClose: {}, preview: p)
-                .environmentObject(model)
-                .environmentObject(model.settings)
-        }
-        save(gesture((0, false, false)), "gesture-setup", gSize)
-        save(gesture((1, true, false)), "gesture-setup-sent", gSize)
-        save(gesture((5, false, false)), "gesture-setup-done", gSize)
-        save(gesture((5, false, true)), "gesture-setup-test", gSize)
-
-        // 연결 안 됨: 보정 도우미·버튼 보내기가 흐려지고 이유가 보인다
+        // 연결 안 됨: 보정 도우미가 흐려지고 이유가 보인다
         model.debugSetConnection(.idle)
         save(settingsView(.layout), "settings-layout-offline-full", tall)
-        save(gesture((0, false, false)), "gesture-setup-offline", gSize)
     }
 }

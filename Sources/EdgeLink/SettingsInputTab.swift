@@ -13,27 +13,22 @@ struct InputTab: View {
     @State private var showBlockedList = false
     /// "모두 기본값으로" 직전 단축키 (되돌리기용)
     @State private var undoHotkeys: [HotkeyAction: Hotkey]?
-    /// Mac이 먼저 가져가는 트랙패드 제스처 (창을 열 때 한 번 읽는다)
-    @State private var macGestures: Set<PhoneGesture> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xl) {
             shortcuts
             phoneToggles
-            gestures
-            phoneShortcuts
         }
-        .onAppear { macGestures = TrackpadGestures.usedByMac() }
     }
 
-    // MARK: 단축키 (Mac 쪽 3개. 아이폰 동작 단축키 5개는 트랙패드 제스처 아래)
+    // MARK: 단축키
 
     private var shortcuts: some View {
         SettingsSection(title: "단축키",
                         info: "버튼을 누르고 새 조합을 입력하면 바뀌어요. 다른 동작이나 macOS 단축키와 겹치면 저장하지 않아요. 오른쪽 클릭하면 기본값으로 되돌릴 수 있어요.") {
             HStack(spacing: Space.s) {
                 if let undo = undoHotkeys, settings.hotkeys == Hotkey.defaults {
-                    // 확인 없이 8개를 한 번에 되돌리므로, 바로 되살릴 수 있게 한다
+                    // 확인 없이 3개를 한 번에 되돌리므로, 바로 되살릴 수 있게 한다
                     Text("모두 기본값으로 바꿨어요").font(Typo.caption).foregroundStyle(Color.textSecondary)
                     Button("되돌리기") {
                         settings.hotkeys = undo
@@ -50,18 +45,14 @@ struct InputTab: View {
             }
         } content: {
             VStack(alignment: .leading, spacing: Space.s) {
-                hotkeyGroup(HotkeyAction.allCases.filter { $0.gesture == nil })
+                SettingsGroup {
+                    ForEach(Array(HotkeyAction.allCases.enumerated()), id: \.element.id) { i, action in
+                        if i > 0 { RowDivider() }
+                        HotkeyRecorderRow(action: action, title: action.label, active: $recording,
+                                          initialPhase: previewPhases[action] ?? .idle)
+                    }
+                }
                 blockedHelp
-            }
-        }
-    }
-
-    private func hotkeyGroup(_ actions: [HotkeyAction]) -> some View {
-        SettingsGroup {
-            ForEach(Array(actions.enumerated()), id: \.element.id) { i, action in
-                if i > 0 { RowDivider() }
-                HotkeyRecorderRow(action: action, title: action.settingsLabel, active: $recording,
-                                  initialPhase: previewPhases[action] ?? .idle)
             }
         }
     }
@@ -141,113 +132,5 @@ struct InputTab: View {
             Text(what).font(Typo.secondary).foregroundStyle(Color.textSecondary)
         }
         .accessibilityElement(children: .combine)
-    }
-
-    // MARK: 트랙패드 제스처
-
-    private var gestures: some View {
-        SettingsSection(title: "트랙패드 제스처",
-                        info: "아이폰에 버튼을 한 번 등록해야 동작해요. 앱 사이 좌우 넘기기와 뒤로 가기는 아직 지원하지 않아요.") {
-            HStack(spacing: Space.s) {
-                if settings.gestureButtonsRegistered {
-                    Badge(text: "아이폰 등록함", fg: .successText, bg: Color.success.opacity(0.14))
-                } else {
-                    Badge(text: "아이폰 등록 전", fg: .warningText, bg: .warningBg)
-                }
-                Button("트랙패드 제스처 설정") {
-                    model.settingsWindow.showGestureSetup()
-                }
-                .buttonStyle(PillButtonStyle(kind: settings.gestureButtonsRegistered ? .secondary : .primary, height: 30))
-                .fixedSize()
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: Space.s) {
-                SettingsGroup {
-                    ForEach(Array(PhoneGesture.allCases.filter { $0 != .lockOnly }.enumerated()), id: \.element.id) { i, g in
-                        if i > 0 { RowDivider() }
-                        gestureRow(g)
-                    }
-                    if settings.profile.model.isPad {
-                        RowDivider()
-                        ToggleRow(title: "아이패드는 키보드 단축키로", hint: "버튼 대신 ⌘H·⌘Tab을 보내요",
-                                  info: "⌘H는 홈, ⌘Tab은 앱 전환이에요. 아이패드에선 버튼보다 더 확실해요.",
-                                  isOn: $settings.padUsesShortcuts)
-                    }
-                }
-                if !macGestures.isEmpty { macGestureHelp }
-            }
-        }
-    }
-
-    /// 제스처 대신 쓰는 아이폰 동작 단축키 (제스처 섹션과 따로)
-    private var phoneShortcuts: some View {
-        SettingsSection(title: "아이폰 동작 단축키") {
-            hotkeyGroup(HotkeyAction.allCases.filter { $0.gesture != nil })
-        }
-    }
-
-    /// Mac이 먼저 가져가는 제스처가 있을 때: 무엇을 하면 되는지
-    private var macGestureHelp: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-            SettingsFootnote(text: "‘Mac에서 먼저 써요’ 줄은 Mac 트랙패드 설정에서 끄면 아이폰으로 가요")
-            Spacer(minLength: 0)
-            Button("트랙패드 설정 열기") {
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Trackpad-Settings.extension")!)
-            }
-            .buttonStyle(TextLinkStyle(color: .brandText))
-            .fixedSize()
-        }
-    }
-
-    /// 버튼 번호는 아이폰 등록과 맞물려 있어 여기서 바꾸지 않는다. 아이폰 동작 이름만 보인다.
-    private func gestureRow(_ g: PhoneGesture) -> some View {
-        let setting = settings.gestureMap[g] ?? GestureSetting.defaults[g]!
-        // 시스템 설정 › 트랙패드에서 같은 제스처가 켜져 있는 줄에만
-        let hint: String? = macGestures.contains(g) ? "Mac에서 먼저 써요" : nil
-        return ToggleRow(title: g.label, hint: hint, isOn: Binding(get: { setting.gestureEnabled }, set: { on in
-            var s = setting
-            s.gestureEnabled = on
-            settings.gestureMap[g] = s
-        })) {
-            Text(g.phoneAction)
-                .font(Typo.font(12, .semibold))
-                .foregroundStyle(Color.brandStrong)
-                .padding(.horizontal, Space.s)
-                .frame(height: 26)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.brandTint))
-                .accessibilityLabel("아이폰 동작: \(g.phoneAction)")
-        }
-    }
-}
-
-/// 작은 상태 알약
-struct Badge: View {
-    var text: String
-    var fg: Color
-    var bg: Color
-    var body: some View {
-        Text(text)
-            .font(Typo.font(11.5, .semibold))
-            .foregroundStyle(fg)
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(Capsule().fill(bg))
-    }
-}
-
-/// macOS가 먼저 쓰는 트랙패드 제스처 (시스템 설정 › 트랙패드 › 추가 제스처)
-enum TrackpadGestures {
-    static func usedByMac() -> Set<PhoneGesture> {
-        let domains = ["com.apple.AppleMultitouchTrackpad", "com.apple.driver.AppleBluetoothMultitouch.trackpad"]
-        func on(_ key: String) -> Bool {
-            domains.contains { UserDefaults(suiteName: $0)?.integer(forKey: key) ?? 0 != 0 }
-        }
-        var out: Set<PhoneGesture> = []
-        // 세 손가락 위·아래: Mission Control, 앱 윈도우
-        if on("TrackpadThreeFingerVertSwipeGesture") { out.formUnion([.threeFingerUp, .threeFingerDown]) }
-        // 네 손가락 위·아래
-        if on("TrackpadFourFingerVertSwipeGesture") { out.insert(.fourFingerDown) }
-        // 네 손가락 모으기: Launchpad
-        if on("TrackpadFourFingerPinchGesture") { out.insert(.fourFingerPinch) }
-        return out
     }
 }

@@ -129,7 +129,7 @@ final class InputRouter {
         CFRunLoopRun()
     }
 
-    /// 키보드·마우스·스크롤·수정키·system-defined(14)·제스처 계열(18, 19, 20, 29, 30, 31, 32)
+    /// 키보드·마우스·스크롤·수정키·system-defined(14)·트랙패드 확대·회전·쓸기(18, 19, 20, 29, 30, 31, 32)
     private static let eventTypes: [UInt32] = [
         CGEventType.keyDown.rawValue, CGEventType.keyUp.rawValue, CGEventType.flagsChanged.rawValue,
         CGEventType.mouseMoved.rawValue,
@@ -138,7 +138,7 @@ final class InputRouter {
         CGEventType.otherMouseDown.rawValue, CGEventType.otherMouseUp.rawValue, CGEventType.otherMouseDragged.rawValue,
         CGEventType.scrollWheel.rawValue,
         RawType.systemDefined,
-    ] + RawType.gestures
+    ] + RawType.trackpad
 
     // MARK: - 전환 (공개)
 
@@ -162,28 +162,6 @@ final class InputRouter {
         let mode = st.mode
         lock.unlock()
         if mode == .mac { enterPhone(.menu) } else { returnToMac(.menu) }
-    }
-
-    /// 트랙패드 제스처 설정: 추가 버튼 n(4~8)을 한 번 누른다
-    /// 아이폰은 포인터를 쓰고 있지 않을 때(Mac 조작 중) 들어온 버튼을 무시했다 (실기기 확인).
-    /// 그래서 Mac 조작 중이면 아이폰 포인터를 살짝 움직여 깨운 뒤 누른다.
-    func sendButton(_ n: Int) {
-        guard model.isConnected else { return showToast("아이폰이 연결되지 않았어요") }
-        guard (1...8).contains(n) else { return }
-        lock.lock()
-        let onMac = st.mode == .mac
-        lock.unlock()
-        if onMac {
-            model.hid.move(dx: 2, dy: 0)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { self.model.hid.move(dx: -2, dy: 0) }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                self.model.hid.click(button: n)
-                HIDLog.info("추가 버튼 \(n) 보냄 (포인터 깨운 뒤)")
-            }
-        } else {
-            model.hid.click(button: n)
-            HIDLog.info("추가 버튼 \(n) 보냄")
-        }
     }
 
     // MARK: - 넘어가기 · 돌아오기 (lock을 잡은 채 부른다, 어느 스레드든)
@@ -523,9 +501,7 @@ final class InputRouter {
         c.pointerScale = PointerScale.scale(unitsPerPoint: s.unitsPerPoint, speed: s.pointerSpeed)
         c.capsLockHangul = s.capsLockHangul
         c.mediaKeysToPhone = s.mediaKeysToPhone
-        c.padShortcuts = s.profile.model.isPad && s.padUsesShortcuts
         c.hotkeys = s.hotkeys.mapValues { KeyCombo(keyCode: $0.keyCode, modifiers: $0.modifiers) }
-        c.gestures = s.gestureMap
         let size = s.profile.model.screenSize
         (c.phoneWidth, c.phoneHeight) = s.profile.landscape ? (size.height, size.width) : (size.width, size.height)
         let k = s.unitsPerPoint
@@ -590,8 +566,7 @@ final class InputRouter {
                 st.swallowKeyUp.remove(code)          // 새로 누름이면 남은 기록은 버린다
             }
             if code == ModifierKeys.escapeKeyCode, !isRepeat, st.typing != nil { st.typing?.stop = true }
-            guard !isRepeat, let action = matchHotkeyLocked(code, event.flags.rawValue, gestures: false),
-                  [.toggleRemote, .sendClipboard, .toggleEdge].contains(action) else { return true }
+            guard !isRepeat, let action = matchHotkeyLocked(code, event.flags.rawValue) else { return true }
             // 단축키의 뗌·반복도 Mac에 보내지 않는다 (넘어가기 전에 적어 둬야 넘어갈 때 눌린 키에서 빠진다)
             st.swallowKeyUp.insert(code)
             switch action {
@@ -601,8 +576,6 @@ final class InputRouter {
                 DispatchQueue.main.async { self.model.requestClipboardSend() }
             case .toggleEdge:
                 DispatchQueue.main.async { self.toggleEdge() }
-            default:
-                break
             }
             return false
 
@@ -674,7 +647,7 @@ final class InputRouter {
                 beginReturnLocked(.screenLocked)
                 return true
             }
-            if !isRepeat, let action = matchHotkeyLocked(code, flags, gestures: !calibrating) {
+            if !isRepeat, let action = matchHotkeyLocked(code, flags) {
                 st.swallowKeyUp.insert(code)
                 runRemoteHotkeyLocked(action, calibrating: calibrating)
                 return false
@@ -835,11 +808,8 @@ final class InputRouter {
             return handleMediaKeyLocked(event, calibrating: calibrating)
 
         default:
-            if RawType.gestures.contains(raw) {
-                // 제스처는 Mac에 보내지 않는다. 손가락 이벤트(29)로 아이폰 동작을 알아낸다.
-                if raw == RawType.gesture, !calibrating { recognizeGestureLocked(event) }
-                return false
-            }
+            // 트랙패드 확대·회전·쓸기는 아이폰으로 보낼 수 없고, Mac에 넘기면 커서 밑 Mac 창이 확대·이동되니 막는다
+            if RawType.trackpad.contains(raw) { return false }
             return true
         }
     }
@@ -853,23 +823,17 @@ final class InputRouter {
             if !calibrating { DispatchQueue.main.async { self.model.requestClipboardSend() } }
         case .toggleEdge:
             DispatchQueue.main.async { self.toggleEdge() }
-        default:
-            if let g = action.gesture { performGestureLocked(g, viaHotkey: true) }
         }
     }
 
-    /// 단축키 찾기. 아이폰 조작 중에는 ⌃⌥⌘Space가 늘 전환이고, 제스처 대체 단축키도 본다.
-    private func matchHotkeyLocked(_ code: UInt16, _ flags: UInt64, gestures: Bool) -> HotkeyAction? {
+    /// 단축키 찾기. 아이폰 조작 중에는 ⌃⌥⌘Space가 늘 전환이다.
+    private func matchHotkeyLocked(_ code: UInt16, _ flags: UInt64) -> HotkeyAction? {
         let c = st.config
         if st.mode != .mac, Self.safetyCombo.matches(keyCode: code, flags: flags) { return .toggleRemote }
         // 설정 창에서 단축키를 기록하는 중엔 Mac 조작 단축키를 처리하지 않는다 (안전 조합은 위에서 이미 처리)
         if HotkeyRecorderState.isRecording { return nil }
-        for action in [HotkeyAction.toggleRemote, .sendClipboard, .toggleEdge] {
+        for action in HotkeyAction.allCases {
             if c.hotkeys[action]?.matches(keyCode: code, flags: flags) == true { return action }
-        }
-        guard gestures else { return nil }
-        for g in PhoneGesture.allCases where (c.gestures[g] ?? GestureSetting.defaults[g])?.hotkeyEnabled == true {
-            if c.hotkeys[g.hotkeyAction]?.matches(keyCode: code, flags: flags) == true { return g.hotkeyAction }
         }
         return nil
     }
@@ -911,49 +875,6 @@ final class InputRouter {
         }
         guard done.wait(timeout: .now() + 0.03) == .success, let r = result else { return nil }
         return (subtype: r.0, data1: r.1)
-    }
-
-    /// 제스처는 아이폰 조작 중 늘 Mac에서 막으므로 바로 판단할 필요가 없다.
-    /// 손가락 정보는 메인 스레드에서 NSEvent로 읽고, 결과만 잠금 안에서 반영한다.
-    private func recognizeGestureLocked(_ event: CGEvent) {
-        guard st.session != nil, let copy = event.copy() else { return }
-        DispatchQueue.main.async { [weak self] in
-            guard let self, let ns = NSEvent(cgEvent: copy), ns.type == .gesture else { return }
-            let all = ns.allTouches()
-            // 손가락 정보가 없는 제스처 이벤트(확대·회전 등)는 건너뛴다
-            guard !all.isEmpty else { return }
-            let touching = all.filter { !$0.phase.contains(.ended) && !$0.phase.contains(.cancelled) }
-                .map { GestureRecognizer.Touch(x: Double($0.normalizedPosition.x), y: Double($0.normalizedPosition.y)) }
-            self.lock.lock()
-            defer { self.lock.unlock() }
-            guard self.st.mode == .phone, var s = self.st.session else { return }
-            let found = s.gestures.update(touching)
-            self.st.session = s
-            guard let found else { return }
-            let g: PhoneGesture
-            switch found {
-            case .threeFingerUp: g = .threeFingerUp
-            case .threeFingerDown: g = .threeFingerDown
-            case .fourFingerDown: g = .fourFingerDown
-            case .fourFingerPinch: g = .fourFingerPinch
-            }
-            self.performGestureLocked(g, viaHotkey: false)
-        }
-    }
-
-    /// 제스처 → 추가 버튼 클릭. 아이패드 옵션이면 홈은 ⌘H, 앱 전환기는 ⌘Tab.
-    private func performGestureLocked(_ g: PhoneGesture, viaHotkey: Bool) {
-        let c = st.config
-        let setting = c.gestures[g] ?? GestureSetting.defaults[g]!
-        guard viaHotkey ? setting.hotkeyEnabled : setting.gestureEnabled else { return }
-        if c.padShortcuts, g == .fourFingerPinch || g == .threeFingerUp {
-            let usage = g == .fourFingerPinch ? PadShortcut.home : PadShortcut.appSwitcher
-            let restore = st.session?.keys.report ?? KeyboardReport()
-            for r in PadShortcut.reports(usage: usage, restore: restore) { model.hid.send(r) }
-        } else {
-            model.hid.click(button: setting.button)
-        }
-        DispatchQueue.main.async { HIDLog.info("제스처 동작 보냄 (\(g.phoneAction))") }
     }
 
     static func buttonBit(_ event: CGEvent) -> UInt32 {
@@ -1217,9 +1138,8 @@ private func routerTapCallback(proxy: CGEventTapProxy, type: CGEventType, event:
 /// CGEventType에 이름이 없는 종류 (NSEvent.EventType 값)
 private enum RawType {
     static let systemDefined: UInt32 = 14
-    static let gesture: UInt32 = 29
-    /// rotate 18, beginGesture 19, endGesture 20, gesture 29, magnify 30, swipe 31, smartMagnify 32
-    static let gestures: [UInt32] = [18, 19, 20, 29, 30, 31, 32]
+    /// 트랙패드 이벤트: rotate 18, beginGesture 19, endGesture 20, gesture 29, magnify 30, swipe 31, smartMagnify 32
+    static let trackpad: [UInt32] = [18, 19, 20, 29, 30, 31, 32]
 }
 
 /// 탭 스레드가 읽는 설정 사본 (메인에서 만든다)
@@ -1235,9 +1155,7 @@ private struct RouterConfig {
     var pointerScale: Double = 2.0
     var capsLockHangul = true
     var mediaKeysToPhone = false
-    var padShortcuts = false
     var hotkeys: [HotkeyAction: KeyCombo] = [:]
-    var gestures: [PhoneGesture: GestureSetting] = [:]
     var placement: PlacementInfo?
     var phoneWidth = 393.0
     var phoneHeight = 852.0
@@ -1276,7 +1194,6 @@ private struct PhoneSession {
     var macButtonsAtEntry: UInt32 = 0
     var scroll = ScrollConverter()
     var remainder = MotionRemainder()
-    var gestures = GestureRecognizer()
     var returnGuardUntil: TimeInterval = 0
     var savedCursor: CGPoint?
     var capsLockAtEntry: Bool?

@@ -7,7 +7,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     /// 설정 창에서 보여줄 탭. 창이 열려 있을 때 show(tab:)로 바꾼다.
     let state = SettingsWindowState()
     private var window: NSWindow?
-    private var gestureWindow: NSWindow?
     private var keyMonitor: Any?
 
     init(model: AppModel) {
@@ -33,18 +32,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
-    }
-
-    /// 트랙패드 제스처 설정 창 (720×560, 캔버스 1-9). AppDialog.gestureSetup이 이걸 부른다.
-    func showGestureSetup() {
-        if gestureWindow == nil {
-            let root = GestureSetupView(onClose: { [weak self] in self?.gestureWindow?.close() })
-                .environmentObject(model)
-                .environmentObject(model.settings)
-            gestureWindow = makeWindow(root, size: NSSize(width: 720, height: 560), title: "트랙패드 제스처 설정", toolbar: false)
-        }
-        NSApp.activate(ignoringOtherApps: true)
-        gestureWindow?.makeKeyAndOrderFront(nil)
     }
 
     /// 제목 표시줄이 내용 위에 겹치는 고정 크기 창.
@@ -81,7 +68,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         if w === window { HotkeyRecorderState.end() }
         // 다음에 열 때 새로 만들어서 각 화면의 onAppear가 다시 불리게 한다
         if w === window { DispatchQueue.main.async { self.window = nil } }
-        if w === gestureWindow { DispatchQueue.main.async { self.gestureWindow = nil } }
     }
 
     /// 메뉴 막대가 없는 앱이라 ⌘, 와 ⌘W를 직접 받는다. 앱 창이 앞에 있을 때만 동작한다.
@@ -96,7 +82,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 self.show(tab: self.state.tab)
                 return nil
             case "w":
-                if let key = NSApp.keyWindow, key === self.window || key === self.gestureWindow {
+                if let key = NSApp.keyWindow, key === self.window {
                     key.performClose(nil)
                     return nil
                 }
@@ -336,19 +322,16 @@ struct RowText: View {
 }
 
 /// 스위치 줄 (최소 높이 60)
-struct ToggleRow<Trailing: View>: View {
+struct ToggleRow: View {
     var title: String
     var hint: String?
     var info: String?
     @Binding var isOn: Bool
-    /// 스위치 왼쪽에 붙는 것 (제스처가 하는 아이폰 동작 등)
-    @ViewBuilder var trailing: Trailing
 
     var body: some View {
         HStack(spacing: Space.m) {
             RowText(title: title, hint: hint, info: info)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            trailing
             Toggle(title, isOn: $isOn)
                 .toggleStyle(SettingsSwitchStyle())
                 .labelsHidden()
@@ -357,12 +340,6 @@ struct ToggleRow<Trailing: View>: View {
         }
         .padding(.vertical, Space.m)
         .frame(minHeight: 60)
-    }
-}
-
-extension ToggleRow where Trailing == EmptyView {
-    init(title: String, hint: String? = nil, info: String? = nil, isOn: Binding<Bool>) {
-        self.init(title: title, hint: hint, info: info, isOn: isOn) { EmptyView() }
     }
 }
 

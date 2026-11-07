@@ -1334,16 +1334,6 @@ struct DoneStep: View {
                     .padding(.horizontal, Space.l)
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.line, lineWidth: 1))
                 }
-                // 선택 기능: 아래쪽 "이전" 옆에 두면 내비게이션처럼 보여서 본문 카드로
-                GrayCard(padding: 0) {
-                    HStack(spacing: Space.m) {
-                        Text("트랙패드 제스처로 아이폰 홈·앱 전환 열기 (선택)").font(Typo.body).lineLimit(1)
-                        Spacer()
-                        Button("설정하기") { model.settingsWindow.showGestureSetup() }
-                            .buttonStyle(PillButtonStyle(kind: .secondary, height: 30))
-                    }
-                    .padding(.horizontal, Space.l).padding(.vertical, Space.s)
-                }
                 HStack(spacing: Space.l) {
                     HStack(spacing: Space.s) {
                         MenuBarMiniArt()

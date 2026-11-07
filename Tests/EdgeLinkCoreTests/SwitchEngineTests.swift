@@ -403,7 +403,7 @@ struct ScrollTests {
     }
 }
 
-@Suite("Caps Lock · 아이패드 단축키 · 미디어 키")
+@Suite("Caps Lock · 미디어 키")
 struct SpecialKeyTests {
     @Test func capsLockHangulSendsCtrlSpace() {
         let r = CapsLockRule.reports(hangul: true, current: KeyboardReport())
@@ -415,13 +415,6 @@ struct SpecialKeyTests {
         let cur = KeyboardReport(modifiers: 0x02, keys: [0x04])
         let r = CapsLockRule.reports(hangul: false, current: cur)
         #expect(r == [KeyboardReport(modifiers: 0x02, keys: [0x04, HIDUsage.capsLock]), cur])
-    }
-
-    @Test func padShortcutDropsOtherModifiers() {
-        let held = KeyboardReport(modifiers: 0x01 | 0x04 | 0x08) // ⌃⌥⌘ (대체 단축키를 누른 채)
-        let r = PadShortcut.reports(usage: PadShortcut.home, restore: held)
-        #expect(r[1] == KeyboardReport(modifiers: 0x08, keys: [0x0B]))
-        #expect(r.last == held)
     }
 
     @Test func mediaKeyParse() {
@@ -437,47 +430,6 @@ struct SpecialKeyTests {
         // 밝기는 아이폰으로 보내지 않음
         #expect(MediaKey.isBrightness(2) && MediaKey.isBrightness(3))
         #expect(MediaKey.consumerUsage(2) == nil)
-    }
-}
-
-@Suite("트랙패드 제스처 인식")
-struct GestureTests {
-    typealias T = GestureRecognizer.Touch
-    func fingers(_ n: Int, y: Double, spread: Double = 0.1) -> [T] {
-        (0..<n).map { T(x: 0.3 + Double($0) * spread, y: y) }
-    }
-
-    @Test func threeFingerUpOnce() {
-        var g = GestureRecognizer()
-        #expect(g.update(fingers(3, y: 0.3)) == nil)
-        #expect(g.update(fingers(3, y: 0.38)) == nil)
-        #expect(g.update(fingers(3, y: 0.43)) == .threeFingerUp)
-        // 한 제스처에 한 번만
-        #expect(g.update(fingers(3, y: 0.7)) == nil)
-        // 손가락을 다 떼면 다시 인식
-        #expect(g.update([]) == nil)
-        #expect(g.update(fingers(3, y: 0.7)) == nil)
-        #expect(g.update(fingers(3, y: 0.5)) == .threeFingerDown)
-    }
-
-    @Test func fourFingerDownAndPinch() {
-        var g = GestureRecognizer()
-        _ = g.update(fingers(4, y: 0.6))
-        #expect(g.update(fingers(4, y: 0.45)) == .fourFingerDown)
-        var p = GestureRecognizer()
-        _ = p.update(fingers(4, y: 0.5, spread: 0.15))
-        #expect(p.update(fingers(4, y: 0.5, spread: 0.1)) == .fourFingerPinch)
-    }
-
-    @Test func twoFingersIgnoredAndHorizontalIgnored() {
-        var g = GestureRecognizer()
-        _ = g.update(fingers(2, y: 0.2))
-        #expect(g.update(fingers(2, y: 0.8)) == nil)
-        var h = GestureRecognizer()
-        _ = h.update(fingers(3, y: 0.5))
-        // 가로로 크게 움직이면 위아래 쓸기로 보지 않음
-        let moved = fingers(3, y: 0.65).map { T(x: $0.x + 0.3, y: $0.y) }
-        #expect(h.update(moved) == nil)
     }
 }
 

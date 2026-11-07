@@ -124,11 +124,6 @@ struct HotkeyRecorderRow: View {
     @State private var noModifierHint = false
 
     private var hotkey: Hotkey { settings.hotkeys[action] ?? Hotkey.defaults[action]! }
-    /// 제스처 대체 단축키를 껐는지
-    private var hotkeyOff: Bool {
-        guard let g = action.gesture else { return false }
-        return settings.gestureMap[g]?.hotkeyEnabled == false
-    }
 
     var body: some View {
         VStack(alignment: .trailing, spacing: Space.xs) {
@@ -164,9 +159,6 @@ struct HotkeyRecorderRow: View {
                 .accessibilityValue(accessibilityValue)
                 .accessibilityHint("누르고 새 조합을 입력하세요. Esc는 취소예요.")
                 .contextMenu {
-                    if action.gesture != nil {
-                        Button(hotkeyOff ? "단축키 켜기" : "단축키 끄기") { setHotkeyEnabled(hotkeyOff) }
-                    }
                     Button("기본값으로", action: resetToDefault)
                         .disabled(hotkey == Hotkey.defaults[action])
                 }
@@ -209,7 +201,7 @@ struct HotkeyRecorderRow: View {
 
     private var buttonText: String {
         switch phase {
-        case .idle: return hotkeyOff ? "꺼짐" : hotkey.display
+        case .idle: return hotkey.display
         case let .recording(held): return held == 0 ? "키를 누르세요…" : Hotkey.modifierSymbols(held) + "…"
         case let .rejected(attempt, _): return attempt.display
         }
@@ -217,7 +209,7 @@ struct HotkeyRecorderRow: View {
 
     private var accessibilityValue: String {
         switch phase {
-        case .idle: return hotkeyOff ? "꺼짐" : hotkey.spoken
+        case .idle: return hotkey.spoken
         case .recording: return "기록 중"
         case let .rejected(attempt, message): return "\(attempt.spoken), \(message)"
         }
@@ -225,7 +217,7 @@ struct HotkeyRecorderRow: View {
 
     private var foreground: Color {
         switch phase {
-        case .idle: return hotkeyOff ? .textSecondary : .textPrimary
+        case .idle: return .textPrimary
         case .recording: return .brandStrong
         case .rejected: return .dangerText
         }
@@ -245,12 +237,6 @@ struct HotkeyRecorderRow: View {
         case .recording: return .brand
         case .rejected: return .danger
         }
-    }
-
-    private func setHotkeyEnabled(_ on: Bool) {
-        guard let g = action.gesture, var s = settings.gestureMap[g] else { return }
-        s.hotkeyEnabled = on
-        settings.gestureMap[g] = s
     }
 
     private func toggleRecording() {
@@ -291,7 +277,7 @@ struct HotkeyRecorderRow: View {
             return stop(keep: .rejected(attempt: candidate, message: "Mac ↔ 아이폰 전환에 쓰는 조합이라 다른 동작에 쓸 수 없어요"))
         }
         if let other = HotkeyAction.allCases.first(where: { $0 != action && settings.hotkeys[$0] == candidate }) {
-            return stop(keep: .rejected(attempt: candidate, message: "‘\(other.settingsLabel)’에서 이미 쓰는 조합이에요"))
+            return stop(keep: .rejected(attempt: candidate, message: "‘\(other.label)’에서 이미 쓰는 조합이에요"))
         }
         if let system = SystemShortcuts.conflict(candidate) {
             // 저장하지 않고 확인 창에서 고르게 한다 ("그래도 쓰기"를 누르면 확인 창이 저장)
@@ -300,14 +286,8 @@ struct HotkeyRecorderRow: View {
             return
         }
         settings.hotkeys[action] = candidate
-        if action.gesture != nil { setHotkeyEnabled(true) }
         stop(keep: .idle)
     }
-}
-
-extension HotkeyAction {
-    /// 설정 › 입력 목록의 이름 (제스처 대체 단축키는 "아이폰 홈"처럼)
-    var settingsLabel: String { gesture == nil ? label : "아이폰 \(label)" }
 }
 
 extension Hotkey {

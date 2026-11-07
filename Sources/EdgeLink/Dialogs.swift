@@ -18,10 +18,6 @@ final class DialogPresenter: NSObject, NSWindowDelegate {
     }
 
     func present(_ dialog: AppDialog) {
-        if case .gestureSetup = dialog {
-            model.settingsWindow.showGestureSetup()
-            return
-        }
         let key = dialog.kind
         if let w = windows[key] {
             if shown[key] == dialog {
@@ -54,7 +50,6 @@ final class DialogPresenter: NSObject, NSWindowDelegate {
     }
 
     func dismiss(_ dialog: AppDialog) {
-        if case .gestureSetup = dialog { return }
         windows[dialog.kind]?.close()
     }
 
@@ -78,8 +73,6 @@ final class DialogPresenter: NSObject, NSWindowDelegate {
             ConnectionLogView(handle: handle)
         case .calibration:
             CalibrationView(session: CalibrationSession(model: model), handle: handle)
-        case .gestureSetup:
-            EmptyView()
         case .update:
             UpdateView(updater: model.updater, handle: handle)
         }
@@ -157,7 +150,6 @@ extension AppDialog {
         case .resetPairing: return "resetPairing"
         case .connectionLog: return "connectionLog"
         case .calibration: return "calibration"
-        case .gestureSetup: return "gestureSetup"
         case .update: return "update"
         }
     }
@@ -179,7 +171,6 @@ extension AppDialog {
         case .resetPairing: return "페어링 초기화"
         case .connectionLog: return "연결 로그"
         case .calibration: return "돌아오는 위치 맞추기"
-        case .gestureSetup: return "트랙패드 제스처 설정"
         case .update: return "업데이트"
         }
     }

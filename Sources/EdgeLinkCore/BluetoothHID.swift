@@ -476,8 +476,7 @@ public final class BluetoothHID: NSObject {
         }
     }
 
-    /// 버튼 하나를 누르고 바로 뗀다 (제스처 → 추가 버튼).
-    /// 버튼을 hold초 동안 누르고 뗀다. 10ms로 짧게 누르면 아이폰 AssistiveTouch가 추가 버튼을 알아채지 못했다.
+    /// 버튼을 hold초 동안 누르고 뗀다 (bthid 시험 도구 등). 10ms로 짧게 누르면 아이폰이 추가 버튼을 알아채지 못했다.
     /// 기다리는 동안 쓰기 큐를 막지 않아서 움직임은 계속 나간다.
     public func click(button: Int, hold: TimeInterval = 0.1) {
         guard (1...8).contains(button) else { return }

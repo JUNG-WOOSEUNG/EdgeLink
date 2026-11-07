@@ -499,18 +499,6 @@ public enum CapsLockRule {
     }
 }
 
-public enum PadShortcut {
-    public static let home: UInt8 = 0x0B      // H
-    public static let appSwitcher: UInt8 = 0x2B  // Tab
-
-    /// ⌘ + 키 한 번. 다른 수정키는 잠깐 떼고 보내고, 끝나면 원래대로.
-    public static func reports(usage: UInt8, restore: KeyboardReport) -> [KeyboardReport] {
-        let cmd = HIDUsage.modifierBit(HIDUsage.leftGUI)!
-        return [KeyboardReport(modifiers: cmd), KeyboardReport(modifiers: cmd, keys: [usage]),
-                KeyboardReport(modifiers: cmd), restore]
-    }
-}
-
 // MARK: - 미디어 키
 
 /// system-defined 이벤트(종류 14, 하위 종류 8)의 data1을 읽는다.
@@ -546,82 +534,6 @@ public enum MediaKey {
         case 18, 20: return ConsumerReport.previousTrack
         default: return nil
         }
-    }
-}
-
-// MARK: - 트랙패드 제스처
-
-public enum TrackpadGesture: Equatable {
-    case threeFingerUp, threeFingerDown, fourFingerDown, fourFingerPinch
-}
-
-/// 트랙패드 손가락 위치(0~1, 아래쪽이 y 0)로 제스처를 알아낸다. 손가락을 다 뗄 때까지 한 번만.
-public struct GestureRecognizer: Equatable {
-    public struct Touch: Equatable {
-        public var x: Double, y: Double
-        public init(x: Double, y: Double) { self.x = x; self.y = y }
-    }
-
-    /// 손가락 중심이 이만큼(트랙패드 높이 비율) 움직이면 쓸기
-    public static let swipeDistance: Double = 0.12
-    /// 손가락 사이 거리가 처음의 이 비율 아래로 줄면 모으기
-    public static let pinchRatio: Double = 0.7
-
-    private var count = 0
-    private var startCenter = Touch(x: 0, y: 0)
-    private var startSpread: Double = 0
-    public private(set) var fired = false
-
-    public init() {}
-
-    public mutating func reset() {
-        count = 0
-        fired = false
-    }
-
-    public mutating func update(_ touches: [Touch]) -> TrackpadGesture? {
-        if touches.isEmpty {
-            reset()
-            return nil
-        }
-        guard touches.count >= 3 else {
-            count = 0
-            return nil
-        }
-        let c = Self.center(touches)
-        let spread = Self.spread(touches, c)
-        if touches.count != count {
-            // 손가락 수가 바뀌면 그때부터 다시 잰다
-            count = touches.count
-            startCenter = c
-            startSpread = spread
-            return nil
-        }
-        guard !fired else { return nil }
-        let dx = c.x - startCenter.x, dy = c.y - startCenter.y
-        let vertical = abs(dy) > abs(dx)
-        var result: TrackpadGesture?
-        if count == 3 {
-            if vertical && dy >= Self.swipeDistance { result = .threeFingerUp }
-            if vertical && dy <= -Self.swipeDistance { result = .threeFingerDown }
-        } else {
-            if startSpread > 0, spread / startSpread <= Self.pinchRatio {
-                result = .fourFingerPinch
-            } else if vertical && dy <= -Self.swipeDistance {
-                result = .fourFingerDown
-            }
-        }
-        if result != nil { fired = true }
-        return result
-    }
-
-    static func center(_ t: [Touch]) -> Touch {
-        let n = Double(t.count)
-        return Touch(x: t.reduce(0) { $0 + $1.x } / n, y: t.reduce(0) { $0 + $1.y } / n)
-    }
-
-    static func spread(_ t: [Touch], _ c: Touch) -> Double {
-        t.reduce(0) { $0 + hypot($1.x - c.x, $1.y - c.y) } / Double(t.count)
     }
 }
 

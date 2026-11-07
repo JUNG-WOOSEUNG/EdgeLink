@@ -21,8 +21,6 @@ final class AppSettings: ObservableObject {
         static let onboardingDone = "onboardingDone"
         static let remoteActive = "remoteActive"
         static let hotkeys = "hotkeys"
-        static let gestureMap = "gestureMap"
-        static let gestureButtonsRegistered = "gestureButtonsRegistered"
         static let glassEnabled = "glassEnabled"
         static let soundEnabled = "soundEnabled"
         static let invertScroll = "invertScroll"
@@ -34,7 +32,6 @@ final class AppSettings: ObservableObject {
         static let clipboardConfirmSkip = "clipboardConfirmSkip"
         static let showDeviceNameInMenuBar = "showDeviceNameInMenuBar"
         static let autoUpdateCheck = "autoUpdateCheck"
-        static let padUsesShortcuts = "padUsesShortcuts"
         // 관리 설정 (회사 배포판)
         static let clipboardTypingAllowed = "clipboardTypingAllowed"
         static let autoUpdateAllowed = "autoUpdateAllowed"
@@ -62,7 +59,6 @@ final class AppSettings: ObservableObject {
             Key.clipboardConfirmSkip: false,
             Key.showDeviceNameInMenuBar: false,
             Key.autoUpdateCheck: true,
-            Key.padUsesShortcuts: true,
             Key.clipboardTypingAllowed: true,
             Key.autoUpdateAllowed: true,
         ])
@@ -72,9 +68,7 @@ final class AppSettings: ObservableObject {
         onboardingDone = defaults.bool(forKey: Key.onboardingDone)
         phoneLayout = Self.decode(PhoneLayout.self, defaults.data(forKey: Key.phoneLayout))
         profile = Self.decode([String: DeviceProfile].self, defaults.data(forKey: Key.profiles))?.values.first ?? DeviceProfile()
-        hotkeys = Self.decode([HotkeyAction: Hotkey].self, defaults.data(forKey: Key.hotkeys)).map { Hotkey.defaults.merging($0) { $1 } } ?? Hotkey.defaults
-        gestureMap = Self.decode([PhoneGesture: GestureSetting].self, defaults.data(forKey: Key.gestureMap)).map { GestureSetting.defaults.merging($0) { $1 } } ?? GestureSetting.defaults
-        gestureButtonsRegistered = defaults.bool(forKey: Key.gestureButtonsRegistered)
+        hotkeys = Self.decodeHotkeys(defaults.data(forKey: Key.hotkeys)).map { Hotkey.defaults.merging($0) { $1 } } ?? Hotkey.defaults
         onlyDefaultDevice = defaults.bool(forKey: Key.onlyDefaultDevice)
         sensitivityValue = defaults.double(forKey: Key.sensitivity)
         unitsPerPointValue = defaults.double(forKey: Key.unitsPerPoint)
@@ -93,7 +87,6 @@ final class AppSettings: ObservableObject {
         clipboardConfirmSkip = defaults.bool(forKey: Key.clipboardConfirmSkip)
         showDeviceNameInMenuBar = defaults.bool(forKey: Key.showDeviceNameInMenuBar)
         autoUpdateCheck = defaults.bool(forKey: Key.autoUpdateCheck)
-        padUsesShortcuts = defaults.bool(forKey: Key.padUsesShortcuts)
     }
 
     @Published var lastDeviceAddress: String? { didSet { defaults.set(lastDeviceAddress, forKey: Key.lastDeviceAddress) } }
@@ -111,11 +104,8 @@ final class AppSettings: ObservableObject {
     @Published var phoneLayout: PhoneLayout? { didSet { defaults.set(Self.encode(phoneLayout), forKey: Key.phoneLayout) } }
     @Published var profile: DeviceProfile { didSet { saveProfile() } }
 
-    /// 동작별 단축키 (기본 3개 + 제스처 5개)
+    /// 동작별 단축키 3개
     @Published var hotkeys: [HotkeyAction: Hotkey] { didSet { defaults.set(Self.encode(hotkeys), forKey: Key.hotkeys) } }
-    /// 제스처별 켜기, 버튼 번호
-    @Published var gestureMap: [PhoneGesture: GestureSetting] { didSet { defaults.set(Self.encode(gestureMap), forKey: Key.gestureMap) } }
-    @Published var gestureButtonsRegistered: Bool { didSet { defaults.set(gestureButtonsRegistered, forKey: Key.gestureButtonsRegistered) } }
     @Published var onlyDefaultDevice: Bool { didSet { defaults.set(onlyDefaultDevice, forKey: Key.onlyDefaultDevice) } }
     /// 전환 감도 0~1 (기준 = 60 + 감도 × 200pt)
     @Published var sensitivityValue: Double { didSet { defaults.set(sensitivityValue, forKey: Key.sensitivity) } }
@@ -143,8 +133,6 @@ final class AppSettings: ObservableObject {
     @Published var clipboardConfirmSkip: Bool { didSet { defaults.set(clipboardConfirmSkip, forKey: Key.clipboardConfirmSkip) } }
     @Published var showDeviceNameInMenuBar: Bool { didSet { defaults.set(showDeviceNameInMenuBar, forKey: Key.showDeviceNameInMenuBar) } }
     @Published var autoUpdateCheck: Bool { didSet { defaults.set(autoUpdateCheck, forKey: Key.autoUpdateCheck) } }
-    /// 아이패드면 제스처를 버튼 대신 ⌘H, ⌘Tab으로
-    @Published var padUsesShortcuts: Bool { didSet { defaults.set(padUsesShortcuts, forKey: Key.padUsesShortcuts) } }
 
     /// 관리 설정 (회사 배포판에서 MDM으로 끔). 앱에서는 읽기만 한다.
     var clipboardTypingAllowed: Bool { defaults.bool(forKey: Key.clipboardTypingAllowed) }
@@ -154,12 +142,11 @@ final class AppSettings: ObservableObject {
     var unitsPerPoint: Double { unitsPerPointValue }
     var sensitivity: Double { sensitivityValue }
 
-    /// 페어링 초기화 (캔버스 4-4): 기본 기기, 기기별 모델·방향, 버튼 등록 기록을 지운다. 단축키·배치·보정값은 남긴다.
+    /// 페어링 초기화 (캔버스 4-4): 기본 기기, 기기별 모델·방향을 지운다. 단축키·배치·보정값은 남긴다.
     func resetPairing() {
         lastDeviceAddress = nil
         lastDeviceName = nil
         profile = DeviceProfile()
-        gestureButtonsRegistered = false
         resetOnboarding()
     }
 
@@ -182,6 +169,18 @@ final class AppSettings: ObservableObject {
     private static func encode<T: Encodable>(_ value: T?) -> Data? {
         guard let value else { return nil }
         return try? JSONEncoder().encode(value)
+    }
+
+    /// 저장된 단축키. JSON에 [동작, 단축키, 동작, 단축키…] 배열로 들어 있다.
+    /// 0.3.x까지 있던 아이폰 동작 단축키 5개처럼 지금 없는 동작은 건너뛴다 (통째로 읽으면 실패해서 남은 단축키까지 기본값이 됨).
+    private static func decodeHotkeys(_ data: Data?) -> [HotkeyAction: Hotkey]? {
+        guard let parts = decode([StoredHotkeyPart].self, data), parts.count % 2 == 0 else { return nil }
+        var out: [HotkeyAction: Hotkey] = [:]
+        for i in stride(from: 0, to: parts.count, by: 2) {
+            guard case let .action(name) = parts[i], case let .hotkey(hotkey) = parts[i + 1] else { return nil }
+            if let action = HotkeyAction(rawValue: name) { out[action] = hotkey }
+        }
+        return out
     }
 }
 
@@ -246,10 +245,9 @@ struct DeviceProfile: Codable, Equatable {
 
 // MARK: - 단축키
 
-/// 단축키로 하는 동작 (설계 문서 › 단축키 기본값, 제스처를 아이폰 동작으로)
+/// 단축키로 하는 동작 (설계 문서 › 단축키 기본값)
 enum HotkeyAction: String, Codable, CaseIterable, Identifiable {
     case toggleRemote, sendClipboard, toggleEdge
-    case appSwitcher, home, notificationCenter, controlCenter, lockScreen
     var id: String { rawValue }
 
     var label: String {
@@ -257,23 +255,6 @@ enum HotkeyAction: String, Codable, CaseIterable, Identifiable {
         case .toggleRemote: return "Mac ↔ 아이폰 전환"
         case .sendClipboard: return "클립보드 보내기"
         case .toggleEdge: return "가장자리 전환 켜기/끄기"
-        case .appSwitcher: return "앱 전환기"
-        case .home: return "홈"
-        case .notificationCenter: return "알림 센터"
-        case .controlCenter: return "제어 센터"
-        case .lockScreen: return "잠금 화면"
-        }
-    }
-
-    /// 제스처를 대신하는 단축키인지
-    var gesture: PhoneGesture? {
-        switch self {
-        case .appSwitcher: return .threeFingerUp
-        case .home: return .fourFingerPinch
-        case .notificationCenter: return .threeFingerDown
-        case .controlCenter: return .fourFingerDown
-        case .lockScreen: return .lockOnly
-        default: return nil
         }
     }
 }
@@ -317,66 +298,16 @@ struct Hotkey: Codable, Equatable, Hashable {
         .toggleRemote: Hotkey(keyCode: 0x31, modifiers: ctrlOptCmd),
         .sendClipboard: Hotkey(keyCode: 0x09, modifiers: ctrlOptCmd),
         .toggleEdge: Hotkey(keyCode: 0x0E, modifiers: ctrlOptCmd),
-        .appSwitcher: Hotkey(keyCode: 0x7E, modifiers: ctrlOptCmd),
-        .home: Hotkey(keyCode: 0x04, modifiers: ctrlOptCmd),
-        .notificationCenter: Hotkey(keyCode: 0x7D, modifiers: ctrlOptCmd),
-        .controlCenter: Hotkey(keyCode: 0x08, modifiers: ctrlOptCmd),
-        .lockScreen: Hotkey(keyCode: 0x25, modifiers: ctrlOptCmd),
     ]
 }
 
-// MARK: - 제스처
+/// 저장된 단축키 배열의 한 칸 (동작 이름 또는 단축키)
+private enum StoredHotkeyPart: Decodable {
+    case action(String)
+    case hotkey(Hotkey)
 
-/// 트랙패드 제스처 → 아이폰 AssistiveTouch 추가 버튼(4~8)
-enum PhoneGesture: String, Codable, CaseIterable, Identifiable {
-    case threeFingerUp, fourFingerPinch, threeFingerDown, fourFingerDown, lockOnly
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .threeFingerUp: return "세 손가락 위로 쓸기"
-        case .fourFingerPinch: return "네 손가락 모으기"
-        case .threeFingerDown: return "세 손가락 아래로 쓸기"
-        case .fourFingerDown: return "네 손가락 아래로 쓸기"
-        case .lockOnly: return "없음 (단축키만)"
-        }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if let name = try? c.decode(String.self) { self = .action(name) } else { self = .hotkey(try c.decode(Hotkey.self)) }
     }
-
-    /// 아이폰에서 지정할 동작 (기본 추천)
-    var phoneAction: String {
-        switch self {
-        case .threeFingerUp: return "앱 전환기"
-        case .fourFingerPinch: return "홈"
-        case .threeFingerDown: return "알림 센터"
-        case .fourFingerDown: return "제어 센터"
-        case .lockOnly: return "잠금 화면"
-        }
-    }
-
-    var hotkeyAction: HotkeyAction {
-        switch self {
-        case .threeFingerUp: return .appSwitcher
-        case .fourFingerPinch: return .home
-        case .threeFingerDown: return .notificationCenter
-        case .fourFingerDown: return .controlCenter
-        case .lockOnly: return .lockScreen
-        }
-    }
-}
-
-struct GestureSetting: Codable, Equatable {
-    /// 제스처를 아이폰 동작으로 바꿔 보낼지
-    var gestureEnabled: Bool
-    /// 대체 단축키를 쓸지
-    var hotkeyEnabled: Bool
-    /// 보내는 마우스 추가 버튼 (4~8)
-    var button: Int
-
-    static let defaults: [PhoneGesture: GestureSetting] = [
-        .threeFingerUp: GestureSetting(gestureEnabled: true, hotkeyEnabled: true, button: 4),
-        .fourFingerPinch: GestureSetting(gestureEnabled: true, hotkeyEnabled: true, button: 5),
-        .threeFingerDown: GestureSetting(gestureEnabled: true, hotkeyEnabled: true, button: 6),
-        .fourFingerDown: GestureSetting(gestureEnabled: true, hotkeyEnabled: true, button: 7),
-        .lockOnly: GestureSetting(gestureEnabled: false, hotkeyEnabled: true, button: 8),
-    ]
 }

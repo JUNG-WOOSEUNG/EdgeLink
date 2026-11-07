@@ -438,11 +438,6 @@ struct ShortcutConflictView: View {
 
     private func useAnyway() {
         settings.hotkeys[action] = hotkey
-        // 제스처를 대신하는 단축키는 저장하면서 켠다
-        if let g = action.gesture, var s = settings.gestureMap[g] {
-            s.hotkeyEnabled = true
-            settings.gestureMap[g] = s
-        }
         handle.close()
     }
 
@@ -466,7 +461,7 @@ struct ResetPairingView: View {
             // 이름표 열을 맞춰 두 줄로 넘어가도 내용끼리 시작선이 같게
             VStack(alignment: .leading, spacing: Space.s) {
                 summaryRow("지워지는 것",
-                           "기본 기기(\((settings.lastDeviceName ?? "없음").nonBreaking)), \("기기별 모델·방향".nonBreaking), \("트랙패드 제스처 등록".nonBreaking)")
+                           "기본 기기(\((settings.lastDeviceName ?? "없음").nonBreaking)), \("기기별 모델·방향".nonBreaking)")
                 summaryRow("남는 것", "단축키, 배치, 돌아오는 위치 등 \("다른 설정".nonBreaking)")
             }
             DialogBox {

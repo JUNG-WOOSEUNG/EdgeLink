@@ -76,8 +76,6 @@ enum AppDialog: Equatable, Identifiable {
     case connectionLog
     /// 돌아오는 위치 맞추기 (설정 › 배치, 처음 설정 연습)
     case calibration
-    /// 트랙패드 제스처 설정 (설정 › 입력, 처음 설정 뒤 선택 단계)
-    case gestureSetup
     /// 새 버전 알림 (자동 확인, 설정 › 정보 › 지금 확인)
     case update(version: String)
 
@@ -89,7 +87,6 @@ enum AppDialog: Equatable, Identifiable {
         case .resetPairing: return "resetPairing"
         case .connectionLog: return "connectionLog"
         case .calibration: return "calibration"
-        case .gestureSetup: return "gestureSetup"
         case .update: return "update"
         }
     }
