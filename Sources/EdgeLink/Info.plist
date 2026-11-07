@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.3.10</string>
+	<string>0.4.0</string>
 	<key>CFBundleVersion</key>
-	<string>13</string>
+	<string>14</string>
 	<key>EdgeLinkUpdateFeed</key>
 	<string>https://api.github.com/repos/JUNG-WOOSEUNG/EdgeLink/releases/latest</string>
 	<key>LSMinimumSystemVersion</key>
