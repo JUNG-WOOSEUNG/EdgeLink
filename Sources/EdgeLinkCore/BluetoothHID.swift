@@ -103,6 +103,8 @@ public final class BluetoothHID: NSObject {
     private var stats = WriteStats()
 
     public static let motionInterval: DispatchTimeInterval = .milliseconds(8)
+    /// 아이폰 조작 중 이만큼 보낸 게 없으면 움직임 0 리포트를 보낸다 (100ms에서 줄임: 아이폰이 그보다 빨리 절전에 넣는 것으로 보임)
+    static let keepAliveNanos: UInt64 = 30_000_000
     public static let slowWriteThreshold: TimeInterval = 0.050
 
     public override init() { super.init() }
@@ -450,7 +452,7 @@ public final class BluetoothHID: NSObject {
     private var keepAlive = false
 
     /// 아이폰 조작 중엔 켠다. 입력이 잠깐 없으면 블루투스 연결이 절전(스니프) 상태가 돼서
-    /// 다시 움직이기 시작하는 순간 커서가 굼떴다. 100ms 동안 보낸 게 없으면 움직임 0 리포트를 보낸다.
+    /// 다시 움직이기 시작하는 순간 커서가 굼떴다. 잠깐(keepAliveNanos) 보낸 게 없으면 움직임 0 리포트를 보낸다.
     public func setKeepAlive(_ on: Bool) {
         writeQueue.async { self.keepAlive = on }
     }
@@ -624,7 +626,7 @@ public final class BluetoothHID: NSObject {
         t.setEventHandler { [weak self] in
             guard let self else { return }
             self.flushMotion()
-            if self.keepAlive, DispatchTime.now().uptimeNanoseconds &- self.lastWriteAt >= 100_000_000 {
+            if self.keepAlive, DispatchTime.now().uptimeNanoseconds &- self.lastWriteAt >= BluetoothHID.keepAliveNanos {
                 self.write(MouseReport(buttons: self.buttons).bytes)
             }
         }
