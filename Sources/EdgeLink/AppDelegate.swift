@@ -725,33 +725,51 @@ struct MenuBarIcon: View {
 
     private static var cache: [String: NSImage] = [:]
 
-    /// 18pt 템플릿 아이콘. 경고일 땐 주황 점을 덧그린다. 만든 이미지는 다시 쓴다.
+    /// 템플릿 아이콘. 경고일 땐 주황 점을 덧그린다. 만든 이미지는 다시 쓴다(메뉴 막대 두께가 바뀌면 새로).
     static func image(symbol: String, warning: Bool) -> NSImage {
-        let key = "\(symbol)-\(warning)"
+        let key = "\(symbol)-\(warning)-\(NSStatusBar.system.thickness)"
         if let img = cache[key] { return img }
         let img = makeImage(symbol: symbol, warning: warning)
         cache[key] = img
         return img
     }
 
+    /// 메뉴 막대에 들어갈 기호 높이: 막대 두께에서 위아래 3pt씩 뺀다 (macOS 26: 22 → 16).
+    /// 15pt 고정으로 그렸더니 기호 높이가 18pt라, 메뉴 막대 아이콘 칸이 줄어든 macOS 27에서 위아래가 잘렸다.
+    static var symbolMaxHeight: CGFloat { max(12, NSStatusBar.system.thickness - 6) }
+
+    /// 높이가 `maxHeight` 안에 들어가는 가장 큰 크기로 기호를 만든다
+    static func fittedSymbol(_ name: String, maxHeight: CGFloat) -> NSImage {
+        var pt: CGFloat = 15
+        while pt >= 9 {
+            let config = NSImage.SymbolConfiguration(pointSize: pt, weight: .regular)
+            if let img = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config),
+               img.size.height <= maxHeight {
+                return img
+            }
+            pt -= 0.5
+        }
+        return NSImage(systemSymbolName: name, accessibilityDescription: nil) ?? NSImage()
+    }
+
     private static func makeImage(symbol: String, warning: Bool) -> NSImage {
-        let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
-        let base = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?.withSymbolConfiguration(config) ?? NSImage()
+        let base = fittedSymbol(symbol, maxHeight: symbolMaxHeight)
         guard warning else {
             base.isTemplate = true
             return base
         }
-        let size = NSSize(width: 18, height: 18)
+        // 캔버스는 기호 크기에 맞춘다 (18×18 고정이었을 때 폭 27pt인 전파 기호는 좌우가 잘렸다). 오른쪽 위에 점 자리.
+        let s = base.size
+        let size = NSSize(width: s.width + 3, height: s.height)
         let img = NSImage(size: size, flipped: false) { rect in
             let tinted = base.copy() as! NSImage
             tinted.lockFocus()
             NSColor.labelColor.set()
             NSRect(origin: .zero, size: tinted.size).fill(using: .sourceAtop)
             tinted.unlockFocus()
-            let s = tinted.size
-            tinted.draw(in: NSRect(x: (rect.width - s.width) / 2, y: (rect.height - s.height) / 2, width: s.width, height: s.height))
+            tinted.draw(in: NSRect(x: 0, y: 0, width: s.width, height: s.height))
             NSColor(hex: 0xFF9500).setFill()
-            NSBezierPath(ovalIn: NSRect(x: rect.width - 7, y: rect.height - 7, width: 6, height: 6)).fill()
+            NSBezierPath(ovalIn: NSRect(x: rect.width - 6, y: rect.height - 6, width: 6, height: 6)).fill()
             return true
         }
         img.isTemplate = false
