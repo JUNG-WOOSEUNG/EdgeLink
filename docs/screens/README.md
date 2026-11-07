@@ -66,12 +66,3 @@
 | settings-layout-empty | <img src="settings-layout-empty.png" width="320"> | <img src="settings-layout-empty-dark.png" width="320"> |
 | settings-layout | <img src="settings-layout.png" width="320"> | <img src="settings-layout-dark.png" width="320"> |
 
-## 트랙패드 제스처 설정
-
-| 화면 | 라이트 | 다크 |
-| --- | --- | --- |
-| gesture-setup-done | <img src="gesture-setup-done.png" width="320"> | <img src="gesture-setup-done-dark.png" width="320"> |
-| gesture-setup-offline | <img src="gesture-setup-offline.png" width="320"> | <img src="gesture-setup-offline-dark.png" width="320"> |
-| gesture-setup-sent | <img src="gesture-setup-sent.png" width="320"> | <img src="gesture-setup-sent-dark.png" width="320"> |
-| gesture-setup-test | <img src="gesture-setup-test.png" width="320"> | <img src="gesture-setup-test-dark.png" width="320"> |
-| gesture-setup | <img src="gesture-setup.png" width="320"> | <img src="gesture-setup-dark.png" width="320"> |
