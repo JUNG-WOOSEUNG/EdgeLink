@@ -561,7 +561,7 @@ final class InputRouter {
     private func handleMac(_ raw: UInt32, _ event: CGEvent) -> Bool {
         switch raw {
         case CGEventType.keyDown.rawValue:
-            let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+            let code = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
             let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
             if st.swallowKeyUp.contains(code) {
                 if isRepeat { return false }          // 단축키를 누른 채 반복
@@ -582,7 +582,7 @@ final class InputRouter {
             return false
 
         case CGEventType.keyUp.rawValue:
-            let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+            let code = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
             return st.swallowKeyUp.remove(code) == nil
 
         case CGEventType.mouseMoved.rawValue, CGEventType.leftMouseDragged.rawValue,
@@ -636,7 +636,7 @@ final class InputRouter {
         let calibrating = st.mode == .calibrating
         switch raw {
         case CGEventType.keyDown.rawValue:
-            let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+            let code = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
             let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
             let flags = event.flags.rawValue
             if st.swallowKeyUp.contains(code) {
@@ -684,7 +684,7 @@ final class InputRouter {
             return false
 
         case CGEventType.keyUp.rawValue:
-            let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+            let code = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
             if st.swallowKeyUp.remove(code) != nil { return false }
             guard var s = st.session else { return false }
             if s.held.keyUp(code) == .mac {
@@ -699,7 +699,7 @@ final class InputRouter {
             return false
 
         case CGEventType.flagsChanged.rawValue:
-            let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+            let code = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
             guard var s = st.session else { return false }
             let quiet = calibrating || st.typing != nil
             if code == ModifierKeys.capsLockKeyCode {

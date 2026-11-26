@@ -8,6 +8,8 @@ set -e
 cd "$(dirname "$0")/.."
 V=${1:?버전을 적어 주세요. 예: ./scripts/release.sh 0.3.0 "고친 것"}
 shift
+# 버전은 숫자와 점만 (Info.plist 명령에 그대로 들어간다)
+case "$V" in ""|*[!0-9.]*|.*|*.|*..*) echo "버전 형식이 이상해요: $V (예: 0.4.3)"; exit 1;; esac
 [ -z "$(git status --porcelain)" ] || { echo "커밋하지 않은 변경이 있어요. 먼저 정리해 주세요"; exit 1; }
 git rev-parse "v$V" >/dev/null 2>&1 && { echo "v$V 태그가 이미 있어요"; exit 1; }
 

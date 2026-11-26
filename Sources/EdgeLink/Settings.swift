@@ -71,8 +71,8 @@ final class AppSettings: ObservableObject {
         profile = Self.decode([String: DeviceProfile].self, defaults.data(forKey: Key.profiles))?.values.first ?? DeviceProfile()
         hotkeys = Self.decodeHotkeys(defaults.data(forKey: Key.hotkeys)).map { Hotkey.defaults.merging($0) { $1 } } ?? Hotkey.defaults
         onlyDefaultDevice = defaults.bool(forKey: Key.onlyDefaultDevice)
-        sensitivityValue = defaults.double(forKey: Key.sensitivity)
-        unitsPerPointValue = defaults.double(forKey: Key.unitsPerPoint)
+        sensitivityValue = Self.finite(defaults.double(forKey: Key.sensitivity), or: 0.5)
+        unitsPerPointValue = Self.finite(defaults.double(forKey: Key.unitsPerPoint), or: 2.0)
         edgeEnabled = defaults.bool(forKey: Key.edgeEnabled)
         autoReconnectValue = defaults.bool(forKey: Key.autoReconnect)
         disconnectOnSleep = defaults.bool(forKey: Key.disconnectOnSleep)
@@ -80,8 +80,8 @@ final class AppSettings: ObservableObject {
         glassEnabled = defaults.bool(forKey: Key.glassEnabled)
         soundEnabled = defaults.bool(forKey: Key.soundEnabled)
         invertScroll = defaults.bool(forKey: Key.invertScroll)
-        pointerSpeed = defaults.double(forKey: Key.pointerSpeed)
-        scrollSpeed = defaults.double(forKey: Key.scrollSpeed)
+        pointerSpeed = Self.finite(defaults.double(forKey: Key.pointerSpeed), or: 1.0)
+        scrollSpeed = Self.finite(defaults.double(forKey: Key.scrollSpeed), or: 0.5)
         capsLockHangul = defaults.bool(forKey: Key.capsLockHangul)
         dragLock = defaults.bool(forKey: Key.dragLock)
         crossModifier = CrossModifier(rawValue: defaults.string(forKey: Key.crossModifier) ?? "") ?? .none
@@ -145,6 +145,9 @@ final class AppSettings: ObservableObject {
     var autoReconnect: Bool { autoReconnectValue }
     var unitsPerPoint: Double { unitsPerPointValue }
     var sensitivity: Double { sensitivityValue }
+
+    /// 설정 파일을 손으로 고쳐 NaN·무한대가 들어 있으면 기본값으로
+    static func finite(_ v: Double, or fallback: Double) -> Double { v.isFinite ? v : fallback }
 
     /// 페어링 초기화 (캔버스 4-4): 기본 기기, 기기별 모델·방향을 지운다. 단축키·배치·보정값은 남긴다.
     func resetPairing() {

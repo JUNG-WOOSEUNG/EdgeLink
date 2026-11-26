@@ -567,3 +567,32 @@ struct PointerScaleTests {
         #expect(PointerScale.scale(unitsPerPoint: 0, speed: 1) == 2)
     }
 }
+
+@Suite("비정상 값 방어")
+struct AbnormalValueTests {
+    @Test func motionIgnoresNaNAndInfinity() {
+        var m = MotionRemainder()
+        let r = m.take(dx: .nan, dy: -.infinity)
+        #expect(r.dx == 0 && r.dy == 0)
+        let big = m.take(dx: 1e300, dy: -1e300)
+        #expect(big.dx == Int(MotionRemainder.maxStep) && big.dy == -Int(MotionRemainder.maxStep))
+        let ok = m.take(dx: 3.5, dy: 0)
+        #expect(ok.dx == 3)
+    }
+
+    @Test func scrollIgnoresNaNAndHugeValues() {
+        var s = ScrollConverter(pointsPerNotch: .nan)
+        #expect(s.pointsPerNotch == ScrollConverter.defaultPointsPerNotch)
+        let a = s.convert(deltaY: .nan, deltaX: .infinity, continuous: true)
+        #expect(a.wheel == 0 && a.pan == 0)
+        let b = s.convert(deltaY: 1e300, deltaX: 0, continuous: false)
+        #expect(b.wheel == ScrollConverter.maxNotches)
+        let c = s.convert(deltaY: 1e300, deltaX: 0, continuous: true)
+        #expect(c.wheel == ScrollConverter.maxNotches)
+    }
+
+    @Test func settingsScalesIgnoreNaN() {
+        #expect(ScrollConverter.pointsPerNotch(speed: .nan) == ScrollConverter.defaultPointsPerNotch)
+        #expect(PointerScale.scale(unitsPerPoint: 2, speed: .nan) == 2)
+    }
+}

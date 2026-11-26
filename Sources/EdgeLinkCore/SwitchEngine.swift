@@ -444,7 +444,8 @@ public struct ScrollConverter: Equatable {
 
     /// 스크롤 속도 0~1 → 휠 1칸당 pt (0 = 70pt 가장 느림, 0.5 = 40pt, 1 = 10pt 가장 빠름)
     public static func pointsPerNotch(speed: Double) -> Double {
-        70 - min(max(speed, 0), 1) * 60
+        guard speed.isFinite else { return defaultPointsPerNotch }
+        return 70 - min(max(speed, 0), 1) * 60
     }
 
     public var invert: Bool
@@ -454,7 +455,7 @@ public struct ScrollConverter: Equatable {
 
     public init(invert: Bool = false, pointsPerNotch: Double = ScrollConverter.defaultPointsPerNotch) {
         self.invert = invert
-        self.pointsPerNotch = max(pointsPerNotch, 1)
+        self.pointsPerNotch = pointsPerNotch.isFinite ? max(pointsPerNotch, 1) : Self.defaultPointsPerNotch
     }
 
     public mutating func reset() { restY = 0; restX = 0 }
@@ -479,17 +480,23 @@ public struct ScrollConverter: Equatable {
     }
 
     static func take(_ delta: Double, _ rest: inout Double, perNotch: Double) -> Int {
+        // 다른 앱이 만든 이벤트엔 NaN·무한대·터무니없는 값이 올 수 있다 (Int로 바꾸다 앱이 죽지 않게)
+        guard delta.isFinite, perNotch.isFinite, perNotch > 0 else { rest = 0; return 0 }
         // 방향이 바뀌면 남은 양을 버린다 (반대로 돌렸는데 한 칸 늦게 반응하지 않게)
         if delta != 0, rest != 0, (delta > 0) != (rest > 0) { rest = 0 }
         rest += delta
-        let n = (rest / perNotch).rounded(.towardZero)
+        let n = min(max((rest / perNotch).rounded(.towardZero), -Double(maxNotches)), Double(maxNotches))
         rest -= n * perNotch
+        if abs(rest) >= perNotch { rest = 0 }
         return Int(n)
     }
 
+    /// 이벤트 하나로 보낼 수 있는 최대 칸 수 (HID 휠 값은 어차피 -127~127로 자른다)
+    static let maxNotches = 127
+
     static func lines(_ delta: Double) -> Int {
-        guard delta != 0 else { return 0 }
-        let n = Int(delta.rounded(.towardZero))
+        guard delta != 0, delta.isFinite else { return 0 }
+        let n = Int(min(max(delta, -Double(maxNotches)), Double(maxNotches)).rounded(.towardZero))
         return n != 0 ? n : (delta > 0 ? 1 : -1)
     }
 }
@@ -649,7 +656,8 @@ public enum PointerScale {
     public static let speedRange: ClosedRange<Double> = 0.5...2.0
     public static func scale(unitsPerPoint: Double, speed: Double) -> Double {
         let k = unitsPerPoint.isFinite && unitsPerPoint > 0 ? unitsPerPoint : 2.0
-        return k * min(max(speed, speedRange.lowerBound), speedRange.upperBound)
+        let v = speed.isFinite ? speed : 1.0
+        return k * min(max(v, speedRange.lowerBound), speedRange.upperBound)
     }
 }
 
@@ -658,8 +666,13 @@ public struct MotionRemainder: Equatable {
     public private(set) var y: Double = 0
     public init() {}
 
+    /// 이벤트 하나로 보낼 수 있는 최대 이동량. 넘는 값은 비정상 이벤트로 보고 자른다.
+    public static let maxStep: Double = 10_000
+
     public mutating func take(dx: Double, dy: Double) -> (dx: Int, dy: Int) {
-        x += dx; y += dy
+        // NaN·무한대는 버리고, 터무니없이 큰 값은 자른다 (Int로 바꾸다 앱이 죽지 않게)
+        func clean(_ v: Double) -> Double { v.isFinite ? min(max(v, -Self.maxStep), Self.maxStep) : 0 }
+        x = clean(x + clean(dx)); y = clean(y + clean(dy))
         let ix = x.rounded(.towardZero), iy = y.rounded(.towardZero)
         x -= ix; y -= iy
         return (Int(ix), Int(iy))

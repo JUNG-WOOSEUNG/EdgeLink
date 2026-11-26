@@ -25,7 +25,8 @@ public enum UpdateFeed {
     public static let dmgName = "EdgeLink.dmg"
 
     /// GitHub API의 릴리스 JSON을 읽는다. 초안·사전 릴리스이거나 DMG가 없으면 nil.
-    public static func parse(_ data: Data) -> ReleaseInfo? {
+    /// requireTrusted를 끄면 아무 주소나 받는다 (개발용 빌드에서 file:// 피드로 업데이트 과정을 시험할 때만).
+    public static func parse(_ data: Data, requireTrusted: Bool = true) -> ReleaseInfo? {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let tag = obj["tag_name"] as? String else { return nil }
         if obj["draft"] as? Bool == true || obj["prerelease"] as? Bool == true { return nil }
@@ -33,9 +34,18 @@ public enum UpdateFeed {
         // 이름이 정확히 같은 것을 먼저, 없으면 .dmg 아무거나
         let asset = assets.first { $0["name"] as? String == dmgName }
             ?? assets.first { ($0["name"] as? String)?.lowercased().hasSuffix(".dmg") == true }
-        guard let link = asset?["browser_download_url"] as? String, let url = URL(string: link) else { return nil }
-        let page = (obj["html_url"] as? String).flatMap(URL.init(string:))
+        guard let link = asset?["browser_download_url"] as? String, let url = URL(string: link),
+              !requireTrusted || isTrusted(url) else { return nil }
+        let page = (obj["html_url"] as? String).flatMap(URL.init(string:)).flatMap { !requireTrusted || isTrusted($0) ? $0 : nil }
         return ReleaseInfo(version: normalize(tag), notes: obj["body"] as? String ?? "", dmgURL: url, pageURL: page)
+    }
+
+    /// 받거나 여는 주소는 https인 github.com만. (받은 앱은 서명으로 한 번 더 확인한다)
+    public static let trustedHost = "github.com"
+
+    public static func isTrusted(_ url: URL) -> Bool {
+        url.scheme?.lowercased() == "https" && url.host?.lowercased() == trustedHost
+            && url.user == nil && url.password == nil && (url.port == nil || url.port == 443)
     }
 
     /// "v0.3.0" → "0.3.0"

@@ -494,6 +494,10 @@ public enum HIDLog {
     public static func debug(_ message: String) { if verbose { write(.debug, message) } }
 
     public static func write(_ level: Level, _ message: String) {
+        // 기기 이름은 상대 기기가 정한다. 줄바꿈 같은 제어 문자로 가짜 로그 줄을 만들지 못하게 공백으로 바꾼다.
+        let message = String(String.UnicodeScalarView(message.unicodeScalars.map {
+            CharacterSet.controlCharacters.contains($0) ? " " : $0
+        }))
         let line = "\(timestamp()) [\(level.rawValue)] \(message)"
         // 시스템 로그에는 블루투스 주소 뒷자리를 가려서 남긴다
         if systemLog {

@@ -4,8 +4,8 @@ import EdgeLinkCore
 import Security
 
 /// GitHub 릴리스로 업데이트한다.
-/// - 확인: Info.plist의 EdgeLinkUpdateFeed(릴리스 API 주소) 한 곳만 본다. 개발용으로 EDGELINK_UPDATE_FEED로 바꿀 수 있다(file:// 가능),
-///   EDGELINK_UPDATE_AUTOINSTALL이 있으면 묻지 않고 설치한다.
+/// - 확인: Info.plist의 EdgeLinkUpdateFeed(릴리스 API 주소) 한 곳만 본다. 개발용(DEBUG) 빌드에서만 EDGELINK_UPDATE_FEED로
+///   바꿀 수 있고(file:// 가능), EDGELINK_UPDATE_AUTOINSTALL이 있으면 묻지 않고 설치한다. 릴리스 빌드는 둘 다 무시한다.
 /// - 설치: DMG를 받아 열고, 새 앱이 지금 앱과 같은 인증서로 서명됐는지 확인한 뒤, 앱이 끝나면 바꿔 끼우고 다시 띄운다.
 ///   서명이 다르면 설치하지 않는다 (권한도 서명 기준이라, 같은 인증서여야 손쉬운 사용 허용이 그대로 남는다).
 final class Updater: ObservableObject {
@@ -40,8 +40,17 @@ final class Updater: ObservableObject {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
     }
 
+    /// 개발용 환경변수(피드 바꾸기·묻지 않고 설치)는 DEBUG 빌드에서만 읽는다
+    static var devEnvironment: [String: String] {
+        #if DEBUG
+        return ProcessInfo.processInfo.environment
+        #else
+        return [:]
+        #endif
+    }
+
     static var feedURL: URL? {
-        let s = ProcessInfo.processInfo.environment["EDGELINK_UPDATE_FEED"]
+        let s = devEnvironment["EDGELINK_UPDATE_FEED"]
             ?? Bundle.main.infoDictionary?["EdgeLinkUpdateFeed"] as? String
         return s.flatMap(URL.init(string:))
     }
@@ -94,7 +103,7 @@ final class Updater: ObservableObject {
                 HIDLog.warn("업데이트 확인 실패: \(message)")
                 self.state = userInitiated ? .failed(message) : .idle
             case let .success(data):
-                guard let release = UpdateFeed.parse(data) else {
+                guard let release = UpdateFeed.parse(data, requireTrusted: Self.devEnvironment["EDGELINK_UPDATE_FEED"] == nil) else {
                     self.state = userInitiated ? .failed("릴리스 정보를 읽지 못했어요") : .idle
                     return
                 }
@@ -113,7 +122,7 @@ final class Updater: ObservableObject {
     /// 확인 창은 Mac 조작 중일 때만 띄운다. 아이폰 조작 중이면 돌아올 때까지 기다린다.
     private func offer(_ release: ReleaseInfo, now: Bool) {
         // 개발용: 묻지 않고 바로 설치 (업데이트 과정 시험)
-        if ProcessInfo.processInfo.environment["EDGELINK_UPDATE_AUTOINSTALL"] != nil { return install() }
+        if Self.devEnvironment["EDGELINK_UPDATE_AUTOINSTALL"] != nil { return install() }
         if now || model.controlMode == .mac {
             model.dialogs.present(.update(version: release.version))
             return
@@ -201,6 +210,9 @@ final class Updater: ObservableObject {
         let mount = work.appendingPathComponent("mnt")
         let staged = work.appendingPathComponent("EdgeLink.app")
         defer { try? fm.removeItem(at: dmg) }
+        // 실패하면 꺼낸 앱 사본까지 지운다 (성공하면 교체 스크립트가 지운다)
+        var succeeded = false
+        defer { if !succeeded { try? fm.removeItem(at: work) } }
         do { try fm.createDirectory(at: mount, withIntermediateDirectories: true) } catch {
             return .failure("임시 폴더를 만들지 못했어요")
         }
@@ -221,6 +233,7 @@ final class Updater: ObservableObject {
             return .failure("DMG 속 앱이 지금 버전보다 새것이 아니에요")
         }
         if let problem = signatureProblem(staged) { return .failure(problem) }
+        succeeded = true
         return .success(staged)
     }
 
@@ -281,11 +294,14 @@ final class Updater: ObservableObject {
         let script = """
         trap '' HUP TERM INT
         while kill -0 "$0" 2>/dev/null; do sleep 0.2; done
-        if mv "$1" "$3" && /usr/bin/ditto "$2" "$1"; then
-          /usr/bin/xattr -dr com.apple.quarantine "$1" 2>/dev/null
-          rm -rf "$3"
-        else
-          rm -rf "$1"; mv "$3" "$1"
+        # 옛 앱을 옮기지 못하면 아무것도 지우지 않고 옛 앱을 다시 켠다
+        if mv "$1" "$3"; then
+          if /usr/bin/ditto "$2" "$1"; then
+            /usr/bin/xattr -dr com.apple.quarantine "$1" 2>/dev/null
+            rm -rf "$3"
+          else
+            rm -rf "$1"; mv "$3" "$1"
+          fi
         fi
         for i in 1 2 3 4 5; do
           /usr/bin/open "$1"

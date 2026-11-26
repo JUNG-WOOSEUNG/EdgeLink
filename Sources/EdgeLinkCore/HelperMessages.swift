@@ -359,7 +359,9 @@ struct ByteReader {
     mutating func f64() -> Double? {
         guard let s = take(8) else { return nil }
         let bits = s.enumerated().reduce(UInt64(0)) { $0 | UInt64($1.element) << (8 * UInt64($1.offset)) }
-        return Double(bitPattern: bits)
+        // 주고받는 실수(초·밀리초)에 NaN·무한대가 올 일은 없다. 오면 메시지째 버린다 (화면에서 Int로 바꾸다 죽지 않게).
+        let v = Double(bitPattern: bits)
+        return v.isFinite ? v : nil
     }
     mutating func string() -> String? {
         guard let n = u16(), let s = take(Int(n)) else { return nil }

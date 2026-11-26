@@ -80,9 +80,9 @@ enum SystemShortcuts {
             if let entry = dict[String(s.id)] as? [String: Any] {
                 if let enabled = entry["enabled"] as? NSNumber, !enabled.boolValue { continue }
                 if let value = entry["value"] as? [String: Any], let p = value["parameters"] as? [NSNumber], p.count >= 3 {
-                    let code = p[1].intValue
-                    if code == 65535 || code < 0 { continue } // 키가 지정되지 않음
-                    hotkey = Hotkey(keyCode: UInt16(code), modifiers: p[2].uint64Value & Hotkey.all)
+                    // 65535는 키가 지정되지 않음. 시스템 설정 파일이라 범위 밖 값은 건너뛴다.
+                    guard let code = UInt16(exactly: p[1].intValue), code != 65535 else { continue }
+                    hotkey = Hotkey(keyCode: code, modifiers: p[2].uint64Value & Hotkey.all)
                 }
             }
             out.append(Entry(name: s.name, hotkey: hotkey))

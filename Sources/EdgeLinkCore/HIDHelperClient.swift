@@ -187,8 +187,9 @@ public final class HIDHelperClient {
     /// 앱 번들의 Contents/MacOS/edgelink-hid. `swift build`로 만든 실행 파일 옆에 있어도 찾는다.
     public static var bundledHelperURL: URL? {
         if let url = Bundle.main.url(forAuxiliaryExecutable: "edgelink-hid") { return url }
-        let beside = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
-            .deletingLastPathComponent().appendingPathComponent("edgelink-hid")
+        // argv[0]은 띄우는 쪽이 아무렇게나 정할 수 있어서, 실제 실행 파일 위치를 기준으로 찾는다
+        guard let me = Bundle.main.executableURL else { return nil }
+        let beside = me.resolvingSymlinksInPath().deletingLastPathComponent().appendingPathComponent("edgelink-hid")
         return FileManager.default.isExecutableFile(atPath: beside.path) ? beside : nil
     }
 
