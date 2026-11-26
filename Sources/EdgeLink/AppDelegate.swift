@@ -755,8 +755,21 @@ struct MenuBarIcon: View {
         return NSImage(systemSymbolName: name, accessibilityDescription: nil) ?? NSImage()
     }
 
+    /// 기호를 같은 크기의 평범한 이미지에 다시 그린다.
+    /// macOS 27의 iphone 기호는 alignmentRect가 그림 높이의 절반 정도(16pt 중 9pt)로 잡혀 있어서,
+    /// 외장 모니터처럼 메뉴 막대가 낮은 화면에선 그 영역만 남고 위아래가 잘렸다.
+    static func flattened(_ symbol: NSImage) -> NSImage {
+        let s = symbol.size
+        let img = NSImage(size: s, flipped: false) { rect in
+            symbol.draw(in: rect)
+            return true
+        }
+        img.alignmentRect = NSRect(origin: .zero, size: s)
+        return img
+    }
+
     private static func makeImage(symbol: String, warning: Bool) -> NSImage {
-        let base = fittedSymbol(symbol, maxHeight: symbolMaxHeight)
+        let base = flattened(fittedSymbol(symbol, maxHeight: symbolMaxHeight))
         guard warning else {
             base.isTemplate = true
             return base

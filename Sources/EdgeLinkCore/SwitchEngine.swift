@@ -45,10 +45,14 @@ public struct EdgePush {
         public var threshold: Double
         /// 드래그 중 전환 막기
         public var dragLock: Bool
+        /// 이 수정키(KeyCombo 마스크)를 누르고 있어야 넘어간다. 0이면 누르지 않아도 된다.
+        public var requiredModifier: UInt64
 
-        public init(screen: ScreenRect, edge: ScreenEdge, passage: EdgeSegment, threshold: Double, dragLock: Bool) {
+        public init(screen: ScreenRect, edge: ScreenEdge, passage: EdgeSegment, threshold: Double, dragLock: Bool,
+                    requiredModifier: UInt64 = 0) {
             self.screen = screen; self.edge = edge; self.passage = passage
             self.threshold = threshold; self.dragLock = dragLock
+            self.requiredModifier = requiredModifier & KeyCombo.relevant
         }
     }
 
@@ -61,6 +65,8 @@ public struct EdgePush {
         case crossed(along: Double, fraction: Double)
         /// 버튼을 누른 채라 막음 (드래그 중 전환 막기)
         case blockedByDrag
+        /// 넘어가기 키를 누르지 않아 막음
+        case blockedByModifier
     }
 
     /// 커서가 모서리 선에서 이만큼 안이면 닿았다고 본다 (Quartz ↔ Cocoa 변환으로 1pt 어긋남).
@@ -100,8 +106,9 @@ public struct EdgePush {
     }
 
     /// 마우스 이동 하나를 반영한다. x·y는 이동 뒤 커서 위치, dx·dy는 이동량(Cocoa 기준).
+    /// flags는 이벤트의 수정키 상태 (넘어가기 키를 정했을 때만 본다).
     public mutating func update(x: Double, y: Double, dx: Double, dy: Double,
-                                buttonsDown: Bool, time: TimeInterval) -> Result {
+                                buttonsDown: Bool, flags: UInt64 = 0, time: TimeInterval) -> Result {
         let c = config
         guard let along = Self.along(screen: c.screen, edge: c.edge, x: x, y: y), c.passage.contains(along) else {
             reset()
@@ -110,6 +117,10 @@ public struct EdgePush {
         if buttonsDown && c.dragLock {
             reset()
             return .blockedByDrag
+        }
+        if c.requiredModifier != 0 && flags & c.requiredModifier != c.requiredModifier {
+            reset()
+            return .blockedByModifier
         }
         if let last = lastPush, time - last > Self.idleReset { accumulated = 0 }
         let out = c.edge.outward(dx: dx, dy: dy)

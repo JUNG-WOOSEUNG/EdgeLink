@@ -496,6 +496,7 @@ final class InputRouter {
         c.edgeEnabled = s.edgeEnabled
         c.glass = s.glassEnabled
         c.dragLock = s.dragLock
+        c.crossModifier = s.crossModifier.mask
         c.invertScroll = s.invertScroll
         c.scrollPointsPerNotch = ScrollConverter.pointsPerNotch(speed: s.scrollSpeed)
         c.pointerScale = PointerScale.scale(unitsPerPoint: s.unitsPerPoint, speed: s.pointerSpeed)
@@ -521,7 +522,8 @@ final class InputRouter {
         st.config = c
         if let p = c.placement {
             let pc = EdgePush.Config(screen: p.glow.screen, edge: p.glow.edge, passage: p.glow.passage,
-                                     threshold: p.threshold, dragLock: c.dragLock)
+                                     threshold: p.threshold, dragLock: c.dragLock,
+                                     requiredModifier: c.crossModifier)
             if st.push?.config != pc { st.push = EdgePush(config: pc) }
         } else {
             st.push = nil
@@ -616,14 +618,14 @@ final class InputRouter {
         let dx = event.getDoubleValueField(.mouseEventDeltaX)
         let dy = -event.getDoubleValueField(.mouseEventDeltaY)   // Quartz는 아래가 +
         let r = push.update(x: x, y: y, dx: dx, dy: dy, buttonsDown: dragging || st.macButtons != 0,
-                            time: ProcessInfo.processInfo.systemUptime)
+                            flags: event.flags.rawValue, time: ProcessInfo.processInfo.systemUptime)
         st.push = push
         switch r {
         case let .pushing(progress, along):
             requestGlowLocked(progress: progress, along: along, placement: p)
         case let .crossed(along, _):
             if let failure = beginEnterLocked(.edge, macAlong: along) { showToast(failure) }
-        case .none, .blockedByDrag:
+        case .none, .blockedByDrag, .blockedByModifier:
             break
         }
     }
@@ -1149,6 +1151,8 @@ private struct RouterConfig {
     var edgeEnabled = true
     var glass = true
     var dragLock = true
+    /// 넘어갈 때 누르고 있어야 하는 수정키 마스크 (0 = 없음)
+    var crossModifier: UInt64 = 0
     var invertScroll = false
     var scrollPointsPerNotch = ScrollConverter.defaultPointsPerNotch
     /// Mac 이동 → 아이폰 HID 단위 배율 (보정 중엔 1:1)

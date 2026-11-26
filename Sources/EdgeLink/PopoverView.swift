@@ -919,7 +919,7 @@ struct ConnectedPanel: View {
                     (settings.edgeEnabled ? Text("\(returnSide) 끝으로 밀거나 ") : Text(""))
                         + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 Mac에 돌아와요.")
                 } else if settings.edgeEnabled {
-                    Text("화면 끝으로 밀거나 ") + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 넘어가요.")
+                    Text(settings.crossModifier == .none ? "화면 끝으로 밀거나 " : "\(settings.crossModifier.shortLabel) 키를 누른 채 화면 끝으로 밀거나 ") + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 넘어가요.")
                 } else {
                     Text("가장자리 전환이 꺼져 있어요. ") + Text(toggleKey).font(Typo.font(12, .semibold)).foregroundColor(.textPrimary) + Text("로 넘어가요.")
                 }

@@ -84,6 +84,36 @@ struct EdgePushTests {
         }
     }
 
+    @Test func requiredModifierBlocksWithoutKey() {
+        var c = pushConfig(threshold: 100)
+        c.requiredModifier = KeyCombo.control
+        var p = EdgePush(config: c)
+        #expect(p.update(x: 1511, y: 500, dx: 60, dy: 0, buttonsDown: false, flags: 0, time: 0) == .blockedByModifier)
+        #expect(p.update(x: 1511, y: 500, dx: 60, dy: 0, buttonsDown: false, flags: KeyCombo.command, time: 0.01) == .blockedByModifier)
+        #expect(p.accumulated == 0)
+    }
+
+    @Test func requiredModifierCrossesWithKey() {
+        var c = pushConfig(threshold: 100)
+        c.requiredModifier = KeyCombo.control
+        var p = EdgePush(config: c)
+        // ⌃와 함께 다른 수정키·장치별 비트가 같이 켜져 있어도 된다
+        let flags = KeyCombo.control | KeyCombo.shift | 0x0001
+        #expect(p.update(x: 1511, y: 500, dx: 60, dy: 0, buttonsDown: false, flags: flags, time: 0) == .pushing(progress: 0.6, along: 500))
+        if case .crossed = p.update(x: 1511, y: 500, dx: 60, dy: 0, buttonsDown: false, flags: flags, time: 0.01) {} else {
+            Issue.record("넘어가기 키를 누르고 있으면 넘어가야 해요")
+        }
+    }
+
+    @Test func releasingModifierResetsPush() {
+        var c = pushConfig(threshold: 100)
+        c.requiredModifier = KeyCombo.option
+        var p = EdgePush(config: c)
+        _ = p.update(x: 1511, y: 500, dx: 90, dy: 0, buttonsDown: false, flags: KeyCombo.option, time: 0)
+        #expect(p.update(x: 1511, y: 500, dx: 5, dy: 0, buttonsDown: false, flags: 0, time: 0.01) == .blockedByModifier)
+        #expect(p.update(x: 1511, y: 500, dx: 20, dy: 0, buttonsDown: false, flags: KeyCombo.option, time: 0.02) == .pushing(progress: 0.2, along: 500))
+    }
+
     @Test func pauseResetsAccumulation() {
         var p = EdgePush(config: pushConfig(threshold: 100))
         _ = p.update(x: 1511, y: 500, dx: 90, dy: 0, buttonsDown: false, time: 0)

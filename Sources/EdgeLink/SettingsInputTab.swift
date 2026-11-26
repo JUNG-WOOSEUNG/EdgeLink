@@ -69,6 +69,8 @@ struct InputTab: View {
                     RowDivider()
                     ToggleRow(title: "드래그 중엔 넘어가지 않기", hint: "파일이나 창을 끌다 실수로 넘어가는 걸 막아요", isOn: $settings.dragLock)
                     RowDivider()
+                    crossModifierRow
+                    RowDivider()
                     ToggleRow(title: "미디어 키를 아이폰으로", hint: "볼륨·재생 키를 아이폰에 보내요",
                               info: "아이폰을 조작하는 동안만 보내요. 밝기 키는 늘 Mac에서 동작해요.", isOn: $settings.mediaKeysToPhone)
                 }
@@ -95,6 +97,33 @@ struct InputTab: View {
                 }
             }
         }
+    }
+
+    /// 넘어갈 때 누르고 있을 키
+    private var crossModifierRow: some View {
+        HStack(spacing: Space.m) {
+            RowText(title: "넘어갈 때 누르고 있을 키",
+                    hint: settings.crossModifier == .none ? "화면 끝으로 밀기만 하면 넘어가요" : "이 키를 누른 채 화면 끝으로 밀어야 넘어가요",
+                    info: "커서가 화면 끝에 자주 닿아 실수로 넘어갈 때 쓰세요. 단축키로 넘어가기와 Mac으로 돌아오기는 키 없이 그대로 돼요.")
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Menu {
+                Picker("넘어갈 때 누르고 있을 키", selection: $settings.crossModifier) {
+                    ForEach(CrossModifier.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } label: {
+                Text(settings.crossModifier.label)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .font(Typo.font(13, .regular))
+            .foregroundStyle(Color.textPrimary)
+            .accessibilityLabel("넘어갈 때 누르고 있을 키")
+            .accessibilityValue(settings.crossModifier.label)
+        }
+        .padding(.vertical, Space.m)
+        .frame(minHeight: 60)
     }
 
     /// 막을 수 없는 시스템 단축키 도움말

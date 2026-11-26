@@ -28,6 +28,7 @@ final class AppSettings: ObservableObject {
         static let scrollSpeed = "scrollSpeed"
         static let capsLockHangul = "capsLockHangul"
         static let dragLock = "dragLock"
+        static let crossModifier = "crossModifier"
         static let mediaKeysToPhone = "mediaKeysToPhone"
         static let clipboardConfirmSkip = "clipboardConfirmSkip"
         static let showDeviceNameInMenuBar = "showDeviceNameInMenuBar"
@@ -83,6 +84,7 @@ final class AppSettings: ObservableObject {
         scrollSpeed = defaults.double(forKey: Key.scrollSpeed)
         capsLockHangul = defaults.bool(forKey: Key.capsLockHangul)
         dragLock = defaults.bool(forKey: Key.dragLock)
+        crossModifier = CrossModifier(rawValue: defaults.string(forKey: Key.crossModifier) ?? "") ?? .none
         mediaKeysToPhone = defaults.bool(forKey: Key.mediaKeysToPhone)
         clipboardConfirmSkip = defaults.bool(forKey: Key.clipboardConfirmSkip)
         showDeviceNameInMenuBar = defaults.bool(forKey: Key.showDeviceNameInMenuBar)
@@ -129,6 +131,8 @@ final class AppSettings: ObservableObject {
     @Published var capsLockHangul: Bool { didSet { defaults.set(capsLockHangul, forKey: Key.capsLockHangul) } }
     /// 드래그 중 전환 막기
     @Published var dragLock: Bool { didSet { defaults.set(dragLock, forKey: Key.dragLock) } }
+    /// 화면 끝을 넘어갈 때 누르고 있어야 하는 키
+    @Published var crossModifier: CrossModifier { didSet { defaults.set(crossModifier.rawValue, forKey: Key.crossModifier) } }
     @Published var mediaKeysToPhone: Bool { didSet { defaults.set(mediaKeysToPhone, forKey: Key.mediaKeysToPhone) } }
     @Published var clipboardConfirmSkip: Bool { didSet { defaults.set(clipboardConfirmSkip, forKey: Key.clipboardConfirmSkip) } }
     @Published var showDeviceNameInMenuBar: Bool { didSet { defaults.set(showDeviceNameInMenuBar, forKey: Key.showDeviceNameInMenuBar) } }
@@ -309,5 +313,43 @@ private enum StoredHotkeyPart: Decodable {
     init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         if let name = try? c.decode(String.self) { self = .action(name) } else { self = .hotkey(try c.decode(Hotkey.self)) }
+    }
+}
+
+/// 아이폰으로 넘어갈 때 누르고 있어야 하는 키
+enum CrossModifier: String, CaseIterable, Identifiable {
+    case none, control, option, command, shift
+
+    var id: String { rawValue }
+
+    var mask: UInt64 {
+        switch self {
+        case .none: return 0
+        case .control: return KeyCombo.control
+        case .option: return KeyCombo.option
+        case .command: return KeyCombo.command
+        case .shift: return KeyCombo.shift
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .none: return "누르지 않아도 됨"
+        case .control: return "⌃ Control"
+        case .option: return "⌥ Option"
+        case .command: return "⌘ Command"
+        case .shift: return "⇧ Shift"
+        }
+    }
+
+    /// 안내 문구에 넣을 짧은 이름
+    var shortLabel: String {
+        switch self {
+        case .none: return ""
+        case .control: return "⌃"
+        case .option: return "⌥"
+        case .command: return "⌘"
+        case .shift: return "⇧"
+        }
     }
 }
