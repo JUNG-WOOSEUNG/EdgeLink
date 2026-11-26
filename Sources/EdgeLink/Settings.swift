@@ -334,7 +334,7 @@ enum CrossModifier: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .none: return "누르지 않아도 됨"
+        case .none: return "없음"
         case .control: return "⌃ Control"
         case .option: return "⌥ Option"
         case .command: return "⌘ Command"
