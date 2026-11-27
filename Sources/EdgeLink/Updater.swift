@@ -26,6 +26,8 @@ final class Updater: ObservableObject {
     private var timer: Timer?
     private var waitForMac: AnyCancellable?
     private var download: URLSessionDownloadTask?
+    /// 받기 직전 최신 릴리스를 다시 확인하는 중일 때, 그 전에 알던 릴리스
+    private var rechecking: ReleaseInfo?
     private var progressWatch: NSKeyValueObservation?
     private static let lastCheckKey = "lastUpdateCheck"
     private static let interval: TimeInterval = 24 * 3600
@@ -154,9 +156,28 @@ final class Updater: ObservableObject {
 
     // MARK: 설치
 
+    /// 받기 직전에 최신 릴리스를 한 번 더 확인한다. 켤 때 찾은 버전(예: 0.4.2)을 들고 있다가
+    /// 그 사이 더 새 버전(0.4.3)이 나왔으면 업데이트를 두 번 하게 됐다. 확인에 실패하면 들고 있던 버전으로 받는다.
     func install() {
-        guard case let .available(release) = state else { return }
+        guard case let .available(known) = state else { return }
         state = .downloading(0)
+        guard let url = Self.feedURL else { return startDownload(known) }
+        rechecking = known
+        fetch(url) { [weak self] result in
+            guard let self, self.rechecking != nil else { return }   // 다시 확인하는 동안 취소됨
+            self.rechecking = nil
+            var release = known
+            if case let .success(data) = result,
+               let latest = UpdateFeed.parse(data, requireTrusted: Self.devEnvironment["EDGELINK_UPDATE_FEED"] == nil),
+               UpdateFeed.isNewer(latest.version, than: known.version) {
+                HIDLog.info("받기 전에 더 새 버전 \(latest.version) 확인 (\(known.version) 대신)")
+                release = latest
+            }
+            self.startDownload(release)
+        }
+    }
+
+    private func startDownload(_ release: ReleaseInfo) {
         HIDLog.info("업데이트 내려받기 \(release.version)")
         let task = URLSession.shared.downloadTask(with: release.dmgURL) { [weak self] file, response, error in
             // 임시 파일은 이 클로저가 끝나면 지워지므로 바로 옮긴다
@@ -193,6 +214,12 @@ final class Updater: ObservableObject {
     }
 
     func cancelDownload() {
+        // 받기 전 다시 확인하는 중이면 받기 전 상태로 돌린다
+        if let known = rechecking {
+            rechecking = nil
+            state = .available(known)
+            return
+        }
         download?.cancel()
     }
 
