@@ -12,12 +12,32 @@ struct DialogFrame<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: spacing) { content }
+        VStack(alignment: .leading, spacing: spacing) {
+            DialogBrand()
+            content
+        }
             .padding(Space.xl)
             .frame(width: width, alignment: .leading)
             .background(Color.bgWindow)
             .foregroundStyle(Color.textPrimary)
             .noFocusRing()
+    }
+}
+
+/// 확인 창 맨 위 앱 표시. 창 제목 줄을 숨겨서, 어느 앱이 띄운 창인지 알 수 있게 아이콘과 이름을 둔다.
+struct DialogBrand: View {
+    var body: some View {
+        HStack(spacing: Space.s) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 20, height: 20)
+                // 아이콘 왼쪽 절반이 흰색이라 흰 바탕에 묻히지 않게 옅은 그림자
+                .shadow(color: .black.opacity(0.18), radius: 1, x: 0, y: 0.5)
+            Text("EdgeLink").font(Typo.font(12, .semibold)).foregroundStyle(Color.textSecondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("EdgeLink")
     }
 }
 
